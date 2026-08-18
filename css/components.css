@@ -561,14 +561,14 @@
 }
 
 /* --------------------------------------------------------------------------
-   속성 설명 탭 (ui/explain.js)
+   좌우 2열 탭 — 속성 설명 · 실전 예제 · 챌린지가 같은 판을 쓴다
 
-   데모 요소에는 인라인 스타일이 붙는다. 어떤 속성의 어떤 값을 보여줄지가
-   스키마에서 오므로 CSS 규칙으로 미리 적을 수 없다. renderer가 프리뷰에
-   값을 얹는 것과 같은 성격이다.
+   속성 설명 탭의 모양을 그대로 뽑아 온 것이다. 셋이 같은 목록 · 같은 선택 표시 ·
+   같은 여백 · 같은 스크롤 규칙을 쓴다. 탭마다 다른 것은 본문 안에서 처리하고
+   틀은 건드리지 않는다.
    -------------------------------------------------------------------------- */
 
-.fgp-explain {
+.fgp-pane {
   display: grid;
   grid-template-columns: minmax(0, 14rem) minmax(0, 1fr);
   gap: var(--sp-4);
@@ -578,14 +578,21 @@
 
 /**
  * 목록과 본문이 각각 스크롤한다. 둘 다 화면을 넘기므로 한쪽에 묶으면
- * 속성을 고르러 갈 때마다 본문을 스크롤해서 되돌아와야 한다.
+ * 항목을 고르러 갈 때마다 본문을 스크롤해서 되돌아와야 한다.
  *
  * 모바일은 제외한다. 그 구간은 페이지가 스크롤되므로 안쪽에 또 스크롤을
  * 만들면 손가락이 어느 쪽을 움직일지 알 수 없다.
  */
 @media (min-width: 600px) {
-  .fgp-explain__nav,
-  .fgp-explain__detail-stage {
+  /* 패널이 아니라 두 열이 스크롤한다. 패널까지 스크롤하면 스크롤바가 둘 겹친다.
+     layout.css의 [role='tabpanel'] 규칙과 선택자 가중치가 같으므로 뒤에
+     불러오는 이 파일이 이긴다. layout.css는 건드리지 않았다. */
+  .fgp-pane {
+    overflow: hidden;
+  }
+
+  .fgp-pane__side,
+  .fgp-pane__stage {
     min-height: 0;
     overflow-y: auto;
     overscroll-behavior: contain;
@@ -593,7 +600,7 @@
   }
 }
 
-.fgp-explain__nav {
+.fgp-pane__side {
   display: flex;
   flex-direction: column;
   gap: var(--sp-1);
@@ -603,7 +610,7 @@
   border-radius: var(--radius-lg);
 }
 
-.fgp-explain__navitem {
+.fgp-pane__item {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -615,30 +622,62 @@
   text-align: left;
 }
 
-.fgp-explain__navitem code {
-  font-family: var(--p-font-code);
+.fgp-pane__item__name {
   font-size: var(--fs-xs);
   font-weight: var(--fw-semibold);
   color: var(--fgp-text-secondary);
 }
 
-.fgp-explain__navitem span {
+/* 속성 이름처럼 코드인 항목만 고정폭이다. 보통 글은 본문 글꼴을 쓴다 */
+code.fgp-pane__item__name {
+  font-family: var(--p-font-code);
+}
+
+.fgp-pane__item__meta {
   font-size: var(--fs-3xs);
   color: var(--fgp-text-muted);
 }
 
-.fgp-explain__navitem:hover code {
+.fgp-pane__item:hover .fgp-pane__item__name {
   color: var(--fgp-text-primary);
 }
 
-.fgp-explain__navitem.is-selected {
+.fgp-pane__item.is-selected {
   background: var(--fgp-accent-faint);
   border-color: var(--fgp-accent-quiet);
 }
 
-.fgp-explain__navitem.is-selected code {
+.fgp-pane__item.is-selected .fgp-pane__item__name {
   color: var(--fgp-accent-text);
 }
+
+/* 본문의 여백 체계. 보이는 자식이 하나뿐인 탭에서는 gap이 드러나지 않는다 */
+.fgp-pane__stage {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+
+/* 2열이 성립하지 않는 구간. 목록을 위로 눕히고 본문을 아래에 둔다 */
+@media (max-width: 599px) {
+  .fgp-pane {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .fgp-pane__side {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   속성 설명 탭 (ui/explain.js)
+
+   데모 요소에는 인라인 스타일이 붙는다. 어떤 속성의 어떤 값을 보여줄지가
+   스키마에서 오므로 CSS 규칙으로 미리 적을 수 없다. renderer가 프리뷰에
+   값을 얹는 것과 같은 성격이다.
+   -------------------------------------------------------------------------- */
 
 .fgp-explain__detail {
   display: flex;
@@ -777,17 +816,6 @@
 .fgp-explain__demoitem[data-target='true'] {
   border-width: 2px;
   border-style: solid;
-}
-
-@media (max-width: 599px) {
-  .fgp-explain {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .fgp-explain__nav {
-    flex-direction: row;
-    flex-wrap: wrap;
-  }
 }
 
 /* --------------------------------------------------------------------------

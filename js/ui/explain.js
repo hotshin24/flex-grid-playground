@@ -17,6 +17,14 @@ import { toCssValue } from '../core/renderer.js';
 export const ROOT_CLASS = 'fgp-explain';
 export const NAV_CLASS = 'fgp-explain__nav';
 export const NAV_ITEM_CLASS = 'fgp-explain__navitem';
+
+/** 좌우 2열 탭 공통 틀. 실전 예제 · 챌린지가 같은 클래스를 쓴다 */
+export const PANE_CLASS = 'fgp-pane';
+export const PANE_SIDE_CLASS = 'fgp-pane__side';
+export const PANE_ITEM_CLASS = 'fgp-pane__item';
+export const PANE_NAME_CLASS = 'fgp-pane__item__name';
+export const PANE_META_CLASS = 'fgp-pane__item__meta';
+export const PANE_STAGE_CLASS = 'fgp-pane__stage';
 export const DETAIL_CLASS = 'fgp-explain__detail';
 export const CASE_CLASS = 'fgp-explain__case';
 export const DEMO_CLASS = 'fgp-explain__demo';
@@ -275,28 +283,32 @@ export function createExplain(config) {
   if (!doc) throw new Error('createExplain: document를 찾을 수 없습니다');
 
   root.classList.add(ROOT_CLASS);
+  root.classList.add(PANE_CLASS);
 
   const nav = doc.createElement('nav');
-  nav.className = NAV_CLASS;
+  nav.className = `${PANE_SIDE_CLASS} ${NAV_CLASS}`;
   nav.setAttribute('aria-label', '속성 목록');
   root.appendChild(nav);
 
   const stage = doc.createElement('div');
-  stage.className = `${DETAIL_CLASS}-stage`;
+  stage.className = `${PANE_STAGE_CLASS} ${DETAIL_CLASS}-stage`;
   root.appendChild(stage);
 
   const buttons = schema.map((entry) => {
     const button = doc.createElement('button');
-    button.className = NAV_ITEM_CLASS;
+    button.className = `${PANE_ITEM_CLASS} ${NAV_ITEM_CLASS}`;
     button.setAttribute('type', 'button');
     button.setAttribute('data-prop', entry.prop);
 
+    // 이름 줄과 설명 줄. 세 탭이 같은 두 줄 구조를 쓴다.
     const name = doc.createElement('code');
+    name.className = PANE_NAME_CLASS;
     name.textContent = entry.prop;
     button.appendChild(name);
 
     if (entry.label) {
       const label = doc.createElement('span');
+      label.className = PANE_META_CLASS;
       label.textContent = entry.label;
       button.appendChild(label);
     }
