@@ -765,6 +765,14 @@
   font-weight: var(--fw-bold);
 }
 
+/* 비율 속성 데모 — 형제도 남은/모자란 공간의 배분에 참여해야 값이 구분된다.
+   형제가 flex: none 이면 대상 아이템 혼자 다 가져가 1과 2가 같은 그림이 된다.
+   basis 를 auto 로 두는 것은 의도한 것이다. flex-grow 는 크기가 아니라
+   "남은 공간"의 분배 비율이므로, 아이템의 원래 크기 위에 그 몫이 얹혀야 한다. */
+.fgp-explain__demo--ratio .fgp-explain__demoitem {
+  flex: 1 1 auto;
+}
+
 /* 값이 걸린 아이템을 눈에 띄게 한다 */
 .fgp-explain__demoitem[data-target='true'] {
   border-width: 2px;

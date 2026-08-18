@@ -22,6 +22,7 @@ export const CASE_CLASS = 'fgp-explain__case';
 export const DEMO_CLASS = 'fgp-explain__demo';
 export const DEMO_ITEM_CLASS = 'fgp-explain__demoitem';
 export const AXIS_CLASS = 'fgp-explain__axis';
+export const RATIO_CLASS = 'fgp-explain__demo--ratio';
 export const SELECTED_CLASS = 'is-selected';
 
 /** 데모 아이템 크기 갈래. 스키마 demo.itemSizes 가 고른다. */
@@ -86,6 +87,32 @@ function appendRich(target, text, doc) {
    전용 상태를 함께 다룬다. 정적 스냅숏에는 맞지 않는 도구다.
    -------------------------------------------------------------------------- */
 
+/**
+ * 이 값이 남거나 모자란 공간의 배분에 끼어드는가.
+ *
+ * 배분에 참여하는 아이템이 대상 하나뿐이면 비율이 1이든 2이든 혼자 다 가져가
+ * 결과가 같아진다. flex-grow의 "1과 2를 주면 1:2로 나눠 갖습니다"를 보여주려면
+ * 형제도 기준선을 들고 있어야 한다.
+ *
+ * 어느 속성이 그런지는 코드에 적지 않는다. 빈 요소에 값을 넣어보고 브라우저가
+ * flex-grow·flex-shrink로 풀어내는지 CSS 파서에 직접 묻는다. 단축 속성이든
+ * 개별 속성이든, 나중에 무엇이 늘든 같은 방식으로 판정된다.
+ */
+function sharesFreeSpace(entry, value, doc) {
+  if (entry.scope !== 'item') return false;
+
+  const probe = doc.createElement('div');
+  if (!probe.style) return false;
+
+  try {
+    probe.style[entry.jsProp] = toCssValue(entry, value);
+  } catch {
+    return false;
+  }
+
+  return Boolean(probe.style.flexGrow || probe.style.flexShrink);
+}
+
 function sizeAt(kind, index) {
   const set = ITEM_SIZES[kind] ?? ITEM_SIZES.default;
   return set[index % set.length];
@@ -96,7 +123,9 @@ function buildDemo(entry, value, axis, doc) {
   const count = demo.itemCount ?? 3;
 
   const box = doc.createElement('div');
-  box.className = DEMO_CLASS;
+  // 비율 속성이면 형제도 배분에 참여시킨다. 나머지 데모는 형제가 고정이라야
+  // 대상 하나만 달라지는 것이 보이므로 기본값을 그대로 둔다.
+  box.className = sharesFreeSpace(entry, value, doc) ? `${DEMO_CLASS} ${RATIO_CLASS}` : DEMO_CLASS;
 
   // 컨테이너 스타일: 데모 설정 → 축 → 속성 값 순으로 얹는다
   Object.entries(demo.containerStyle ?? {}).forEach(([k, v]) => { box.style[k] = v; });
