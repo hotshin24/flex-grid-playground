@@ -10,7 +10,7 @@
 
 import { readFileSync } from 'node:fs';
 import {
-  createControl, splitLength, joinLength,
+  createControl, createRangeControl, splitLength, joinLength,
   CONTROL_CLASS, LABEL_CLASS, PROP_CLASS, HINT_CLASS, OPTION_CLASS, VALUES_CLASS, CHECKED_CLASS,
 } from '../js/ui/controls.js';
 import { FLEX_SCHEMA } from '../js/topics/flex/schema.js';
@@ -106,12 +106,12 @@ const optionsOf = (root) => findByClass(root, OPTION_CLASS);
 
 function build(entry, value) {
   const calls = [];
-  const root = createControl(entry, {
+  const { root, sync } = createControl(entry, {
     value,
     onChange: (jsProp, v) => calls.push([jsProp, v]),
     doc,
   });
-  return { root, calls };
+  return { root, sync, calls };
 }
 
 const byProp = (schema, prop) => schema.find((e) => e.prop === prop);
@@ -367,6 +367,104 @@ section('M3 보류 컨트롤');
   check('data-pending=M3 표시', roots.every((r) => findByClass(r, VALUES_CLASS)[0].getAttribute('data-pending') === 'M3'));
   check('조작 요소 없음', roots.every((r) => optionsOf(r).length === 0));
   check('라벨은 그대로 생성', roots.every((r) => findByClass(r, PROP_CLASS)[0].textContent.length > 0));
+}
+
+/* ==========================================================================
+   sync — 컨트롤 밖에서 상태가 바뀌었을 때 (undo 등)
+   ========================================================================== */
+section('sync');
+
+{
+  const entry = byProp(FLEX_SCHEMA, 'justify-content');
+  const { root, sync, calls } = build(entry, 'flex-start');
+  const options = optionsOf(root);
+  const checked = () => options.find((o) => o.getAttribute('aria-checked') === 'true').getAttribute('data-value');
+
+  sync('space-around');
+  check('enum 선택 이동', checked() === 'space-around', checked());
+  check('sync는 onChange를 부르지 않음', calls.length === 0, `${calls.length}회`);
+  check('tabindex도 따라감',
+    options.find((o) => o.getAttribute('data-value') === 'space-around').getAttribute('tabindex') === '0');
+
+  fire(options[0], 'click');
+  check('sync 후에도 클릭이 정상 동작', eq(calls[0], ['justifyContent', 'flex-start']), JSON.stringify(calls[0]));
+}
+
+{
+  const { root, sync, calls } = build(byProp(FLEX_SCHEMA, 'flex-grow'), 0);
+  sync(4);
+  check('number 슬라이더 갱신', findByClass(root, 'fgp-control__field')[0].value === '4');
+  check('number readout 갱신', findByClass(root, 'fgp-control__readout')[0].textContent === '4');
+  check('number sync는 통지 없음', calls.length === 0);
+}
+
+{
+  const { root, sync, calls } = build(byProp(FLEX_SCHEMA, 'flex-basis'), 'auto');
+  const input = findByClass(root, 'fgp-control__field')[0];
+  const select = findByClass(root, 'fgp-control__unit')[0];
+
+  sync('140px');
+  check('length 수치·단위 갱신', input.value === '140' && select.value === 'px');
+  check('length sync가 입력을 활성화', input.getAttribute('disabled') === null);
+
+  sync('auto');
+  check('키워드로 되돌리면 다시 비활성', input.getAttribute('disabled') === 'disabled' && input.value === '');
+  check('length sync는 통지 없음', calls.length === 0);
+}
+
+/* ==========================================================================
+   createRangeControl — 스키마 밖 수치 컨트롤
+   ========================================================================== */
+section('createRangeControl');
+
+{
+  const calls = [];
+  const { root, sync } = createRangeControl({
+    key: 'containerHeight', label: '높이', min: 120, max: 900, step: 10,
+    fallback: 400, nullText: '기본값', value: null,
+    onChange: (k, v) => calls.push([k, v]), doc,
+  });
+
+  const input = findByClass(root, 'fgp-control__field')[0];
+  const readout = findByClass(root, 'fgp-control__readout')[0];
+
+  check('data-range-key 반영', root.getAttribute('data-range-key') === 'containerHeight');
+  check('null이면 nullText 표시', readout.textContent === '기본값', readout.textContent);
+  check('null이면 슬라이더는 fallback 위치', input.value === '400', input.value);
+  check('data-default 표시', root.getAttribute('data-default') === 'true');
+  check('range 속성', input.getAttribute('min') === '120' && input.getAttribute('max') === '900' && input.getAttribute('step') === '10');
+
+  input.value = '240';
+  fire(input, 'input');
+  check('조작 시 onChange', eq(calls[0], ['containerHeight', 240]), JSON.stringify(calls[0]));
+  check('숫자 타입', typeof calls[0][1] === 'number');
+  check('조작 후 readout', readout.textContent === '240px');
+  check('조작 후 data-default 해제', root.getAttribute('data-default') === 'false');
+
+  sync(null);
+  check('sync(null)로 기본값 복귀', readout.textContent === '기본값' && root.getAttribute('data-default') === 'true');
+  check('sync는 통지 없음', calls.length === 1);
+}
+
+{
+  // 아이템 기하값처럼 null을 쓰지 않는 용례
+  const calls = [];
+  const { root, sync } = createRangeControl({
+    key: 'width', label: '너비', min: 20, max: 400, step: 10, value: 80,
+    onChange: (k, v) => calls.push([k, v]), doc,
+  });
+  const readout = findByClass(root, 'fgp-control__readout')[0];
+
+  check('nullText 없으면 항상 수치 표시', readout.textContent === '80px', readout.textContent);
+  check('data-default는 false', root.getAttribute('data-default') === 'false');
+  sync(160);
+  check('sync로 값 갱신', readout.textContent === '160px' && findByClass(root, 'fgp-control__field')[0].value === '160');
+  check('sync 통지 없음', calls.length === 0);
+
+  let threw = 0;
+  try { createRangeControl({ label: 'x', min: 0, max: 1, doc }); } catch { threw++; }
+  try { createRangeControl({ key: 'w', min: 0, max: 1, doc: null }); } catch { threw++; }
+  check('잘못된 구성 2종 거부', threw === 2, `${threw}/2`);
 }
 
 /* ==========================================================================

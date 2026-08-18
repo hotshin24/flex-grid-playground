@@ -13,7 +13,7 @@
 
 import { createStore } from './core/store.js';
 import { createRenderer } from './core/renderer.js';
-import { createControl, createViewControl } from './ui/controls.js';
+import { createControl, createRangeControl } from './ui/controls.js';
 import { FLEX_SCHEMA } from './topics/flex/schema.js';
 
 const SCHEMAS = { flex: FLEX_SCHEMA };
@@ -51,16 +51,21 @@ createRenderer({ store, schemas: SCHEMAS, root: stage });
 const panel = document.getElementById('fgp-controls');
 const initial = store.getState();
 
-FLEX_SCHEMA
+const containerControls = FLEX_SCHEMA
   .filter((entry) => entry.scope === 'container')
-  .forEach((entry) => {
-    panel.appendChild(
-      createControl(entry, {
-        value: initial.container[entry.jsProp],
-        onChange: (jsProp, value) => store.dispatch({ container: { [jsProp]: value } }),
-      })
-    );
+  .map((entry) => {
+    const { root, sync } = createControl(entry, {
+      value: initial.container[entry.jsProp],
+      onChange: (jsProp, value) => store.dispatch({ container: { [jsProp]: value } }),
+    });
+    panel.appendChild(root);
+    return { jsProp: entry.jsProp, sync };
   });
+
+/** undo처럼 컨트롤 밖에서 상태가 바뀌면 패널도 따라가야 한다. */
+function syncContainerControls(container) {
+  containerControls.forEach(({ jsProp, sync }) => sync(container[jsProp]));
+}
 
 /* --------------------------------------------------------------------------
    프리뷰 크기 (F-06)
@@ -73,8 +78,9 @@ FLEX_SCHEMA
 const viewPanel = document.getElementById('fgp-view-controls');
 
 const viewControls = VIEW_CONTROLS.map((config) => {
-  const control = createViewControl({
+  const control = createRangeControl({
     ...config,
+    nullText: '기본값',
     value: initial.view[config.key],
     onChange: (key, value) => store.setView({ [key]: value }),
   });
@@ -134,12 +140,49 @@ const ACTIONS = {
   'item-add': () => changeItemCount(1),
   'item-remove': () => changeItemCount(-1),
   'view-reset': () => store.resetView(),
+  'undo': () => store.undo(),
+  'redo': () => store.redo(),
 };
 
-document.querySelector('.fgp-panel').addEventListener('click', (event) => {
+document.addEventListener('click', (event) => {
   const button = event.target.closest('[data-action]');
   const action = button && ACTIONS[button.dataset.action];
   if (action) action();
+});
+
+/* --------------------------------------------------------------------------
+   키보드 단축키 (F-07)
+   -------------------------------------------------------------------------- */
+
+/** 글자를 입력하는 자리인가. 여기서는 브라우저 기본 undo를 건드리지 않는다. */
+const TEXT_INPUT_TYPES = new Set(['text', 'number', 'search', 'url', 'tel', 'email', 'password']);
+
+function isTextEntry(el) {
+  if (!el) return false;
+  if (el.isContentEditable) return true;
+  if (el.tagName === 'TEXTAREA') return true;
+  if (el.tagName !== 'INPUT') return false;
+  return TEXT_INPUT_TYPES.has((el.getAttribute('type') || 'text').toLowerCase());
+}
+
+document.addEventListener('keydown', (event) => {
+  if (!(event.metaKey || event.ctrlKey)) return;
+  if (event.key.toLowerCase() !== 'z') return;
+  if (isTextEntry(document.activeElement)) return;
+
+  event.preventDefault();
+  if (event.shiftKey) store.redo();
+  else store.undo();
+});
+
+/* --------------------------------------------------------------------------
+   아이템 선택 — 프리뷰를 눌러 고른다 (F-05)
+   -------------------------------------------------------------------------- */
+
+stage.addEventListener('click', (event) => {
+  const el = event.target.closest('[data-item-id]');
+  if (!el) return;
+  store.dispatch({ selectedId: Number(el.dataset.itemId) });
 });
 
 /* --------------------------------------------------------------------------
@@ -157,10 +200,20 @@ function syncItembar(state) {
   removeBtn.disabled = count <= MIN_ITEMS;
 }
 
+const undoBtn = document.querySelector('[data-action="undo"]');
+const redoBtn = document.querySelector('[data-action="redo"]');
+
+function syncHistoryButtons() {
+  undoBtn.disabled = !store.canUndo();
+  redoBtn.disabled = !store.canRedo();
+}
+
 function sync(state) {
   syncItembar(state);
   applyView(state.view);
   syncViewControls(state.view);
+  syncContainerControls(state.container);
+  syncHistoryButtons();
 }
 
 store.subscribe(sync);

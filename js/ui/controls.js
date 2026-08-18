@@ -293,26 +293,33 @@ function bindLength(root, entry, state, onChange) {
 export const VIEW_DEFAULT_TEXT = '기본값';
 
 /**
+ * 스키마 밖의 수치 컨트롤. 뷰 설정과 아이템 기하값이 같은 모양이라 함께 쓴다.
+ *
  * @param {Object}   config
- * @param {string}   config.key       view 필드 이름 (containerWidth 등)
+ * @param {string}   config.key       상태 필드 이름 (containerWidth · width 등)
  * @param {string}   config.label     표시 이름
  * @param {number}   config.min
  * @param {number}   config.max
  * @param {number}   [config.step]
- * @param {number}   [config.fallback] null일 때 슬라이더가 가리킬 위치
+ * @param {number}   [config.fallback] 값이 null일 때 슬라이더가 가리킬 위치
+ * @param {string}   [config.nullText] 값이 null일 때 readout에 적을 말.
+ *                                     없으면 null을 허용하지 않는 컨트롤이다
  * @param {number|null} config.value
  * @param {Function} config.onChange  (key, Number) => void
  * @param {Document} [config.doc]
  */
-export function createViewControl(config) {
-  const { key, label, min, max, step = 1, fallback, value, onChange, doc = globalThis.document } = config;
+export function createRangeControl(config) {
+  const {
+    key, label, min, max, step = 1, fallback, nullText,
+    value, onChange, doc = globalThis.document,
+  } = config;
 
-  if (!key) throw new Error('createViewControl: key가 필요합니다');
-  if (!doc) throw new Error('createViewControl: document를 찾을 수 없습니다');
+  if (!key) throw new Error('createRangeControl: key가 필요합니다');
+  if (!doc) throw new Error('createRangeControl: document를 찾을 수 없습니다');
 
   const root = doc.createElement('div');
-  root.className = `${CONTROL_CLASS} ${CONTROL_CLASS}--view`;
-  root.setAttribute('data-view-key', key);
+  root.className = `${CONTROL_CLASS} ${CONTROL_CLASS}--range`;
+  root.setAttribute('data-range-key', key);
 
   const inputId = nextId(key);
 
@@ -344,9 +351,10 @@ export function createViewControl(config) {
 
   /** 저장소 값에 UI를 맞춘다. null이면 슬라이더는 기준점에 두고 표시만 바꾼다. */
   function sync(next) {
-    const isDefault = next === null || next === undefined;
-    input.value = String(isDefault ? (fallback ?? min) : next);
-    readout.textContent = isDefault ? VIEW_DEFAULT_TEXT : `${next}px`;
+    const isDefault = (next === null || next === undefined) && nullText !== undefined;
+    const shown = isDefault ? (fallback ?? min) : Number(next ?? fallback ?? min);
+    input.value = String(shown);
+    readout.textContent = isDefault ? nullText : `${shown}px`;
     root.setAttribute('data-default', String(isDefault));
   }
 
@@ -374,7 +382,9 @@ export function createViewControl(config) {
  * @param {*}        config.value        현재 값. 없으면 entry.default
  * @param {Function} config.onChange     (jsProp, value) => void
  * @param {Document} [config.doc]        문서 객체. 테스트에서 대체 가능
- * @returns {Element} 컨트롤 루트
+ * @returns {{root: Element, sync: Function}}
+ *          sync(value)는 저장소 값에 UI를 맞춘다. undo처럼 컨트롤 밖에서
+ *          상태가 바뀌었을 때 호출한다. 호출해도 onChange는 불리지 않는다.
  */
 export function createControl(entry, { value, onChange, doc = globalThis.document } = {}) {
   if (!entry) throw new Error('createControl: 스키마 항목이 필요합니다');
@@ -398,28 +408,45 @@ export function createControl(entry, { value, onChange, doc = globalThis.documen
 
   root.appendChild(buildLabel(entry, doc, state));
 
+  const noop = () => {};
+
   if (PENDING_CONTROLS.has(entry.control)) {
     root.appendChild(buildPending(entry, doc));
-    return root;
+    return { root, sync: noop };
   }
 
-  const notify = typeof onChange === 'function' ? onChange : () => {};
+  const notify = typeof onChange === 'function' ? onChange : noop;
+  let sync = noop;
 
   switch (entry.control) {
     case 'enum': {
       root.appendChild(buildEnum(entry, current, doc, state));
       syncEnum(state, current);
       bindEnum(root, entry, state, notify);
+      sync = (next) => syncEnum(state, next);
       break;
     }
     case 'number': {
       root.appendChild(buildNumber(entry, current, doc, state));
       bindNumber(root, entry, state, notify);
+      sync = (next) => {
+        state.value = next;
+        state.input.value = String(next);
+        state.readout.textContent = String(next);
+      };
       break;
     }
     case 'length': {
       root.appendChild(buildLength(entry, current, doc, state));
       bindLength(root, entry, state, notify);
+      sync = (next) => {
+        const { num, unit } = splitLength(next, entry.units);
+        state.value = next;
+        state.input.value = num;
+        state.select.value = unit;
+        if (NUMERIC_UNITS.has(unit)) state.input.removeAttribute('disabled');
+        else state.input.setAttribute('disabled', 'disabled');
+      };
       break;
     }
     default: {
@@ -428,7 +455,7 @@ export function createControl(entry, { value, onChange, doc = globalThis.documen
     }
   }
 
-  return root;
+  return { root, sync };
 }
 
 export default createControl;
