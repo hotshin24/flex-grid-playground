@@ -58,6 +58,34 @@
   color: var(--fgp-accent-text);
 }
 
+/* 제목과 보조 동작을 한 줄에 둔다 */
+.fgp-panel__head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.fgp-panel__head .fgp-panel__title {
+  flex: 1;
+}
+
+.fgp-btn--quiet {
+  padding: var(--sp-1) var(--sp-2);
+  background: transparent;
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-medium);
+}
+
+/* 뷰 설정 컨트롤. 값이 없으면 readout이 '기본값'을 흐리게 보여준다 */
+.fgp-control--view .fgp-control__readout {
+  min-width: calc(var(--sp-10) + var(--sp-4));
+}
+
+.fgp-control--view[data-default='true'] .fgp-control__readout {
+  color: var(--fgp-text-muted);
+  font-weight: var(--fw-normal);
+}
+
 .fgp-itembar {
   display: flex;
   align-items: center;
@@ -203,16 +231,29 @@
  * 밖으로 삐져나오게 둔다 — nowrap이 왜 위험한지 보이는 것이 학습 내용이다.
  *
  * 구간은 layout.css의 브레이크포인트(599 / 1023)를 그대로 따른다.
+ *
+ * 사용자가 크기를 지정하면(F-06) main.js가 --fgp-view-* 를 얹는다. 지정하지
+ * 않았거나 리셋했으면 변수가 없으므로 아래 기본값이 그대로 산다.
  */
 .fgp-preview__container {
-  height: 40vh;
-  min-height: calc(var(--sp-16) * 3);
+  width: var(--fgp-view-width, 100%);
+  max-width: 100%;
+  height: var(--fgp-view-height, 40vh);
+  /* 하한은 기본값(vh)이 짧은 화면에서 뭉개지지 않게 하려는 것이다.
+     사용자가 높이를 정하면 그 값이 하한이 되어 지정값이 밀려 올라가지 않는다. */
+  min-height: var(--fgp-view-height, calc(var(--sp-16) * 3));
   overflow: visible;
   padding: var(--sp-3);
   background: var(--fgp-preview-container-bg);
   border: 1px dashed var(--fgp-preview-container-edge);
   border-radius: var(--radius-md);
-  transition: all var(--dur-preview) var(--ease-out);
+  /* all을 쓰면 --fgp-view-* 같은 사용자 지정 속성까지 전이 대상이 되어
+     크기 변경이 반영되지 않는다. 전이할 속성을 직접 적는다. */
+  transition:
+    width var(--dur-preview) var(--ease-out),
+    height var(--dur-preview) var(--ease-out),
+    gap var(--dur-preview) var(--ease-out),
+    padding var(--dur-preview) var(--ease-out);
 }
 
 .fgp-preview__item {
@@ -226,7 +267,15 @@
   font-family: var(--p-font-code);
   font-size: var(--fs-sm);
   font-weight: var(--fw-bold);
-  transition: all var(--dur-preview) var(--ease-out);
+  /* 아이템도 --fgp-item-accent를 인라인으로 받으므로 all을 쓰지 않는다 */
+  transition:
+    width var(--dur-preview) var(--ease-out),
+    height var(--dur-preview) var(--ease-out),
+    flex-basis var(--dur-preview) var(--ease-out),
+    flex-grow var(--dur-preview) var(--ease-out),
+    background-color var(--dur-preview) var(--ease-out),
+    border-color var(--dur-preview) var(--ease-out),
+    color var(--dur-preview) var(--ease-out);
 }
 
 .fgp-preview__item.is-selected {
@@ -237,15 +286,15 @@
 /* 600 ~ 1023px — 프리뷰가 상단 절반을 쓴다 */
 @media (min-width: 600px) {
   .fgp-preview__container {
-    height: 46vh;
-    min-height: calc(var(--sp-16) * 4);
+    height: var(--fgp-view-height, 46vh);
+    min-height: var(--fgp-view-height, calc(var(--sp-16) * 4));
   }
 }
 
 /* 1024px ~ — 프리뷰가 우측 컬럼 전체를 쓴다 */
 @media (min-width: 1024px) {
   .fgp-preview__container {
-    height: 62vh;
-    min-height: calc(var(--sp-16) * 5);
+    height: var(--fgp-view-height, 62vh);
+    min-height: var(--fgp-view-height, calc(var(--sp-16) * 5));
   }
 }

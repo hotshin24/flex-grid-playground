@@ -280,6 +280,91 @@ function bindLength(root, entry, state, onChange) {
 }
 
 /* --------------------------------------------------------------------------
+   뷰 설정 컨트롤 (F-06)
+
+   컨테이너 크기는 학습 대상 CSS 속성이 아니라 도구의 뷰 설정이다. 스키마에
+   없으므로 createControl()을 거치지 않는 별개 경로다. 토픽을 모르므로 Grid에도
+   그대로 쓰인다.
+
+   값이 null이면 "사용자가 안 건드림"이고 CSS 기본값이 산다. 슬라이더는 그때
+   기준점을 보여줄 수 없으므로 readout에 '기본값'이라고 적는다.
+   -------------------------------------------------------------------------- */
+
+export const VIEW_DEFAULT_TEXT = '기본값';
+
+/**
+ * @param {Object}   config
+ * @param {string}   config.key       view 필드 이름 (containerWidth 등)
+ * @param {string}   config.label     표시 이름
+ * @param {number}   config.min
+ * @param {number}   config.max
+ * @param {number}   [config.step]
+ * @param {number}   [config.fallback] null일 때 슬라이더가 가리킬 위치
+ * @param {number|null} config.value
+ * @param {Function} config.onChange  (key, Number) => void
+ * @param {Document} [config.doc]
+ */
+export function createViewControl(config) {
+  const { key, label, min, max, step = 1, fallback, value, onChange, doc = globalThis.document } = config;
+
+  if (!key) throw new Error('createViewControl: key가 필요합니다');
+  if (!doc) throw new Error('createViewControl: document를 찾을 수 없습니다');
+
+  const root = doc.createElement('div');
+  root.className = `${CONTROL_CLASS} ${CONTROL_CLASS}--view`;
+  root.setAttribute('data-view-key', key);
+
+  const inputId = nextId(key);
+
+  const labelEl = doc.createElement('label');
+  labelEl.className = LABEL_CLASS;
+  labelEl.setAttribute('for', inputId);
+  const name = doc.createElement('span');
+  name.className = HINT_CLASS;
+  name.textContent = label;
+  labelEl.appendChild(name);
+  root.appendChild(labelEl);
+
+  const input = doc.createElement('input');
+  input.className = FIELD_CLASS;
+  input.setAttribute('type', 'range');
+  input.setAttribute('id', inputId);
+  input.setAttribute('min', String(min));
+  input.setAttribute('max', String(max));
+  input.setAttribute('step', String(step));
+
+  const readout = doc.createElement('output');
+  readout.className = READOUT_CLASS;
+
+  const wrap = doc.createElement('div');
+  wrap.className = VALUES_CLASS;
+  wrap.appendChild(input);
+  wrap.appendChild(readout);
+  root.appendChild(wrap);
+
+  /** 저장소 값에 UI를 맞춘다. null이면 슬라이더는 기준점에 두고 표시만 바꾼다. */
+  function sync(next) {
+    const isDefault = next === null || next === undefined;
+    input.value = String(isDefault ? (fallback ?? min) : next);
+    readout.textContent = isDefault ? VIEW_DEFAULT_TEXT : `${next}px`;
+    root.setAttribute('data-default', String(isDefault));
+  }
+
+  const notify = typeof onChange === 'function' ? onChange : () => {};
+
+  root.addEventListener('input', (e) => {
+    if (e.target !== input) return;
+    const parsed = Number(input.value);
+    sync(parsed);
+    notify(key, parsed);
+  });
+
+  sync(value ?? null);
+
+  return { root, sync };
+}
+
+/* --------------------------------------------------------------------------
    진입점
    -------------------------------------------------------------------------- */
 

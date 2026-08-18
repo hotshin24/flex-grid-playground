@@ -13,7 +13,7 @@
 
 import { createStore } from './core/store.js';
 import { createRenderer } from './core/renderer.js';
-import { createControl } from './ui/controls.js';
+import { createControl, createViewControl } from './ui/controls.js';
 import { FLEX_SCHEMA } from './topics/flex/schema.js';
 
 const SCHEMAS = { flex: FLEX_SCHEMA };
@@ -22,13 +22,26 @@ const SCHEMAS = { flex: FLEX_SCHEMA };
 const MIN_ITEMS = 1;
 const MAX_ITEMS = 12;
 
-const store = createStore(SCHEMAS);
+/**
+ * 뷰 설정 슬라이더 범위 (F-06). 스키마 항목이 아니므로 여기서 정의한다.
+ * fallback은 값이 null일 때 슬라이더가 놓일 자리이며, 실제 적용값이 아니다 —
+ * null이면 CSS 기본값(40vh / 46vh / 62vh)이 그대로 산다.
+ */
+const VIEW_CONTROLS = [
+  { key: 'containerWidth', label: '너비', min: 240, max: 1200, step: 10, fallback: 800 },
+  { key: 'containerHeight', label: '높이', min: 120, max: 900, step: 10, fallback: 400 },
+];
 
-createRenderer({
-  store,
-  schemas: SCHEMAS,
-  root: document.getElementById('fgp-preview'),
-});
+/** view 값을 CSS 사용자 지정 속성으로 흘린다. null이면 지워서 기본값을 되살린다. */
+const VIEW_CSS_PROP = {
+  containerWidth: '--fgp-view-width',
+  containerHeight: '--fgp-view-height',
+};
+
+const store = createStore(SCHEMAS);
+const stage = document.getElementById('fgp-preview');
+
+createRenderer({ store, schemas: SCHEMAS, root: stage });
 
 /* --------------------------------------------------------------------------
    컨트롤 — 스키마의 container scope 항목에서 자동 생성
@@ -48,6 +61,39 @@ FLEX_SCHEMA
       })
     );
   });
+
+/* --------------------------------------------------------------------------
+   프리뷰 크기 (F-06)
+
+   스키마를 거치지 않는 별개 경로다. 토픽을 참조하지 않으므로 Grid에도 쓰인다.
+   값은 인라인 스타일이 아니라 CSS 사용자 지정 속성으로 넘긴다. 그래야
+   지정 안 한 항목에서 components.css의 반응형 기본값이 그대로 산다.
+   -------------------------------------------------------------------------- */
+
+const viewPanel = document.getElementById('fgp-view-controls');
+
+const viewControls = VIEW_CONTROLS.map((config) => {
+  const control = createViewControl({
+    ...config,
+    value: initial.view[config.key],
+    onChange: (key, value) => store.setView({ [key]: value }),
+  });
+  viewPanel.appendChild(control.root);
+  return { key: config.key, control };
+});
+
+function applyView(view) {
+  for (const [key, cssProp] of Object.entries(VIEW_CSS_PROP)) {
+    const value = view[key];
+    if (value === null || value === undefined) stage.style.removeProperty(cssProp);
+    else stage.style.setProperty(cssProp, `${value}px`);
+  }
+}
+
+/** 저장소가 진실이다. 리셋처럼 UI 밖에서 바뀐 값도 슬라이더에 되비친다. */
+function syncViewControls(view) {
+  viewControls.forEach(({ key, control }) => control.sync(view[key]));
+}
 
 /* --------------------------------------------------------------------------
    아이템 추가 · 제거
@@ -80,12 +126,20 @@ function changeItemCount(step) {
 
 const itembar = document.getElementById('fgp-itembar');
 
-itembar.addEventListener('click', (event) => {
-  const button = event.target.closest('[data-action]');
-  if (!button) return;
+/**
+ * 버튼 동작은 패널 전체에 한 번만 위임한다.
+ * core/events.js가 생기면 이 표와 위임을 그쪽으로 옮긴다.
+ */
+const ACTIONS = {
+  'item-add': () => changeItemCount(1),
+  'item-remove': () => changeItemCount(-1),
+  'view-reset': () => store.resetView(),
+};
 
-  if (button.dataset.action === 'item-add') changeItemCount(1);
-  if (button.dataset.action === 'item-remove') changeItemCount(-1);
+document.querySelector('.fgp-panel').addEventListener('click', (event) => {
+  const button = event.target.closest('[data-action]');
+  const action = button && ACTIONS[button.dataset.action];
+  if (action) action();
 });
 
 /* --------------------------------------------------------------------------
@@ -103,7 +157,13 @@ function syncItembar(state) {
   removeBtn.disabled = count <= MIN_ITEMS;
 }
 
-store.subscribe(syncItembar);
-syncItembar(store.getState());
+function sync(state) {
+  syncItembar(state);
+  applyView(state.view);
+  syncViewControls(state.view);
+}
+
+store.subscribe(sync);
+sync(store.getState());
 
 document.getElementById('fgp-topic-badge').textContent = `display: ${store.getTopic()}`;
