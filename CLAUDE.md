@@ -20,6 +20,14 @@ CSS Flexbox와 Grid를 값 단위로 조작하며 익히는 정적 학습 사이
 - 단, `js/data.js`의 **콘텐츠**(EXAMPLES 18건 · CHALLENGES 8건 · EXPLAIN_DATA 설명문)는
   신규 스키마로 변환해 재사용한다. 설명 문장은 새로 쓰지 말고 이관한다.
 - 전 마일스톤 완료 후 v0.1 파일을 일괄 삭제한다. 그 전에는 지우지 않는다.
+- v1.0 진입점은 `index-v1.html`이다. 기존 `index.html`을 덮어쓰거나 수정하지 않는다.
+  M2 회귀 검증에서 두 화면을 나란히 띄워 비교해야 하므로 둘 다 살아 있어야 한다.
+
+## 진입점
+
+v1.0 진입점은 `index-v1.html`이다. 기존 `index.html`은 v0.1 참조 화면이며
+M2 회귀 검증에서 나란히 띄워 비교하는 용도이므로 수정·덮어쓰기 금지.
+M7 완료 시 `index-v1.html`을 `index.html`로 교체한다.
 
 ## 절대 규칙
 
@@ -66,7 +74,8 @@ node tools/validate-schema.mjs   # 종료 코드 0이어야 한다
 ## 파일 구조
 
 ```
-index.html              셸만. 탭 컨테이너와 마운트 지점 외 마크업 없음
+index.html              v0.1 참조 화면. 수정 금지
+index-v1.html           v1.0 진입점. 셸만 — 탭 컨테이너와 마운트 지점 외 마크업 없음
 css/
   tokens.css            토큰 (완료 — 수정 시 사유를 남길 것)
   base.css              리셋 · 타이포그래피
