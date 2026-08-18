@@ -1,0 +1,83 @@
+/**
+ * layout.css — 셸 · 반응형
+ *
+ * PRD 6장 브레이크포인트 (599 / 1023)
+ *   ~ 599px      프리뷰 상단 고정 · 컨트롤 하단 스크롤
+ *   600 ~ 1023px 프리뷰 상 · 컨트롤 하 2단
+ *   1024px ~     컨트롤 좌 · 프리뷰 우 2컬럼
+ *
+ * 마크업 순서는 패널 → 프리뷰다. 구간별 배치는 grid-template-areas로 바꾼다.
+ */
+
+.fgp-header {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--fgp-surface-panel);
+  border-bottom: 1px solid var(--fgp-border-subtle);
+}
+
+.fgp-header__spacer {
+  flex: 1;
+}
+
+.fgp-shell {
+  display: grid;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+  grid-template-areas:
+    'preview'
+    'panel';
+  grid-template-rows: auto 1fr;
+}
+
+.fgp-panel {
+  grid-area: panel;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  min-width: 0;
+}
+
+.fgp-preview {
+  grid-area: preview;
+  min-width: 0;
+}
+
+/* ~599px — 프리뷰를 상단에 고정하고 컨트롤만 스크롤한다 */
+@media (max-width: 599px) {
+  .fgp-preview {
+    position: sticky;
+    top: var(--sp-0);
+    z-index: var(--z-sticky);
+    background: var(--fgp-surface-page);
+    padding-bottom: var(--sp-2);
+  }
+}
+
+/* 600 ~ 1023px — 고정 해제. 프리뷰 상 · 컨트롤 하 2단 */
+@media (min-width: 600px) {
+  .fgp-shell {
+    gap: var(--sp-4);
+    padding: var(--sp-4);
+  }
+}
+
+/* 1024px ~ — 컨트롤 좌 · 프리뷰 우 2컬럼 */
+@media (min-width: 1024px) {
+  .fgp-shell {
+    grid-template-areas: 'panel preview';
+    grid-template-columns: minmax(0, 21rem) minmax(0, 1fr);
+    grid-template-rows: 1fr;
+    align-items: start;
+  }
+
+  .fgp-panel {
+    position: sticky;
+    top: var(--sp-4);
+    max-height: calc(100vh - var(--sp-12));
+    overflow-y: auto;
+  }
+}
