@@ -17,11 +17,15 @@ import { createControl, createRangeControl } from './ui/controls.js';
 import { createTabs, panelId } from './ui/tabs.js';
 import { createExplain } from './ui/explain.js';
 import { FLEX_EXPLAIN_NOTES, FLEX_EXPLAIN_SAMPLES, AXIS_LABELS } from './topics/flex/explain.js';
-import { isInactive, deriveState, partitionByScope } from './core/schema-spec.js';
+import { FLEX_PRESETS } from './topics/flex/presets.js';
+import { isInactive, deriveState, partitionByScope, defaultsFrom } from './core/schema-spec.js';
 import { generateCode } from './core/codegen.js';
 import { FLEX_SCHEMA } from './topics/flex/schema.js';
 
 const SCHEMAS = { flex: FLEX_SCHEMA };
+
+/** 토픽에서 주입받는다. M3의 Grid는 자기 목록을 여기에 더한다. */
+const PRESETS = { flex: FLEX_PRESETS };
 
 /** 아이템 개수 한계. 스키마와 무관한 프리뷰 구성값이다. */
 const MIN_ITEMS = 1;
@@ -178,6 +182,78 @@ function applyView(view) {
 function syncViewControls(view) {
   viewControls.forEach(({ key, control }) => control.sync(view[key]));
 }
+
+/* --------------------------------------------------------------------------
+   프리셋 (F-11)
+
+   한 번의 dispatch로 끝낸다. 속성을 하나씩 넣으면 히스토리가 그만큼 쌓여
+   undo를 여러 번 눌러야 원래대로 돌아간다.
+   -------------------------------------------------------------------------- */
+
+const presetBar = document.getElementById('fgp-presets');
+
+/**
+ * 프리셋의 아이템을 상태에 넣을 형태로 만든다.
+ *
+ * 스키마 기본값 위에 프리셋을 얹는다. 프리셋이 빠뜨린 키를 그대로 두면
+ * 값이 undefined 인 채로 렌더러에 들어가고, 그게 단축 속성이면 앞서 넣은
+ * 개별 속성까지 지운다. 실제로 v0.1에서 옮겨온 프리셋에 flex 키가 없어
+ * flex-grow·shrink·basis 가 전부 무효가 됐다.
+ *
+ * id 체계는 상태가 쥐고 프리셋은 모른다.
+ */
+function itemsFrom(preset, fallback) {
+  const source = preset.items ?? [];
+  const count = preset.itemCount ?? source.length;
+  if (count === 0) return fallback;
+
+  const base = { ...defaultsFrom(SCHEMAS[store.getTopic()], 'item'), ...(fallback[0] ?? {}) };
+
+  return Array.from({ length: count }, (_, i) => ({
+    ...base,
+    ...(source[i] ?? source[source.length - 1] ?? {}),
+    id: i + 1,
+  }));
+}
+
+function applyPreset(preset) {
+  const state = store.getState();
+  const items = itemsFrom(preset, state.items);
+
+  store.dispatch({
+    container: preset.container ?? {},
+    items,
+    selectedId: items[0]?.id ?? null,
+  });
+}
+
+PRESETS[initial.topic]?.forEach((preset) => {
+  const button = document.createElement('button');
+  button.className = 'fgp-preset';
+  button.type = 'button';
+  button.dataset.preset = preset.id;
+  button.title = preset.desc;
+
+  const label = document.createElement('span');
+  label.className = 'fgp-preset__label';
+  label.textContent = preset.label;
+  button.appendChild(label);
+
+  const desc = document.createElement('span');
+  desc.className = 'fgp-preset__desc';
+  desc.textContent = preset.desc;
+  button.appendChild(desc);
+
+  presetBar.appendChild(button);
+});
+
+presetBar.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-preset]');
+  if (!button) return;
+
+  const preset = PRESETS[store.getTopic()]?.find((p) => p.id === button.dataset.preset);
+  if (preset) applyPreset(preset);
+});
 
 /* --------------------------------------------------------------------------
    탭 (F-02)
