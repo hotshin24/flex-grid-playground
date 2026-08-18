@@ -11,9 +11,10 @@
  * 생기면 그쪽으로 옮긴다.
  */
 
-import { createStore } from './core/store.js';
+import { createStore, TABS } from './core/store.js';
 import { createRenderer } from './core/renderer.js';
 import { createControl, createRangeControl } from './ui/controls.js';
+import { createTabs, panelId } from './ui/tabs.js';
 import { isInactive, deriveState, partitionByScope } from './core/schema-spec.js';
 import { generateCode } from './core/codegen.js';
 import { FLEX_SCHEMA } from './topics/flex/schema.js';
@@ -43,6 +44,17 @@ const VIEW_CONTROLS = [
   { key: 'containerWidth', label: '너비', min: 240, max: 1200, step: 10, fallback: 800 },
   { key: 'containerHeight', label: '높이', min: 120, max: 900, step: 10, fallback: 400 },
 ];
+
+/**
+ * 탭 표시 이름. 탭 목록 자체는 store의 TABS가 정하고 여기는 이름만 붙인다.
+ * 없는 탭은 이름 그대로 나오므로 TABS가 늘어나도 화면이 비지 않는다.
+ */
+const TAB_LABELS = {
+  playground: '플레이그라운드',
+  explain: '속성 설명',
+  examples: '실전 예제',
+  challenge: '챌린지',
+};
 
 /** view 값을 CSS 사용자 지정 속성으로 흘린다. null이면 지워서 기본값을 되살린다. */
 const VIEW_CSS_PROP = {
@@ -163,6 +175,30 @@ function applyView(view) {
 /** 저장소가 진실이다. 리셋처럼 UI 밖에서 바뀐 값도 슬라이더에 되비친다. */
 function syncViewControls(view) {
   viewControls.forEach(({ key, control }) => control.sync(view[key]));
+}
+
+/* --------------------------------------------------------------------------
+   탭 (F-02)
+
+   목록은 store의 TABS에서 나온다. 패널은 마크업에 있고, 여기서는 어느 것을
+   보일지만 정한다. 탭이 늘면 TABS와 마크업에 패널 하나를 더하면 된다.
+   -------------------------------------------------------------------------- */
+
+const tabPanels = new Map(TABS.map((name) => [name, document.getElementById(panelId(name))]));
+
+const tabs = createTabs({
+  tabs: TABS,
+  labels: TAB_LABELS,
+  value: initial.tab,
+  root: document.getElementById('fgp-tabs'),
+  onSelect: (tab) => store.dispatch({ tab }),
+});
+
+function syncTabs(state) {
+  tabs.sync(state.tab);
+  tabPanels.forEach((panel, name) => {
+    if (panel) panel.hidden = name !== state.tab;
+  });
 }
 
 /* --------------------------------------------------------------------------
@@ -377,6 +413,7 @@ function sync(state) {
   syncContainerControls(state);
   syncHistoryButtons();
   syncCode(state);
+  syncTabs(state);
 }
 
 store.subscribe(sync);

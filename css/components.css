@@ -487,3 +487,75 @@
   clip-path: inset(50%);
   overflow: hidden;
 }
+
+/* --------------------------------------------------------------------------
+   탭 (F-02)
+   -------------------------------------------------------------------------- */
+
+.fgp-tabs {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: var(--sp-2) var(--sp-4);
+  background: var(--fgp-surface-panel);
+  border-bottom: 1px solid var(--fgp-border-subtle);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+.fgp-tab {
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--fgp-text-muted);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  white-space: nowrap;
+  transition: background var(--dur-fast) var(--ease-out),
+              border-color var(--dur-fast) var(--ease-out),
+              color var(--dur-fast) var(--ease-out);
+}
+
+.fgp-tab:hover {
+  color: var(--fgp-text-primary);
+}
+
+.fgp-tab.is-selected {
+  background: var(--fgp-accent-faint);
+  border-color: var(--fgp-accent-quiet);
+  color: var(--fgp-accent-text);
+}
+
+/**
+ * 숨긴 탭은 자리를 차지하지 않는다.
+ *
+ * hidden 속성의 기본값은 display: none 이지만, 클래스로 display를 주면
+ * 특이도에서 밀려 무시된다. 패널마다 display가 다르므로 (셸은 grid,
+ * 자리표시는 flex) 역할로 한 번에 잡는다.
+ */
+[role='tabpanel'][hidden] {
+  display: none;
+}
+
+/* 아직 내용이 없는 탭 */
+.fgp-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  padding: var(--sp-8) var(--sp-4);
+  text-align: center;
+}
+
+.fgp-placeholder__title {
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-bold);
+  color: var(--fgp-text-secondary);
+}
+
+.fgp-placeholder__note {
+  font-size: var(--fs-xs);
+  color: var(--fgp-text-muted);
+}

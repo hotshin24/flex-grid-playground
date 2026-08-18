@@ -96,8 +96,18 @@
     overscroll-behavior: none;
   }
 
-  .fgp-header {
+  /* 헤더와 탭 목록은 제 높이를 갖고 그대로 남는다. 스크롤은 탭 내용에서만. */
+  .fgp-header,
+  .fgp-tabs {
     flex: none;
+  }
+
+  /* 자리표시 탭도 남은 높이를 갖고 그 안에서 스크롤한다 */
+  .fgp-placeholder {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
 
   .fgp-shell {

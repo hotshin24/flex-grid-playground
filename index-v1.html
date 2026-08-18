@@ -30,7 +30,10 @@
   <span class="fgp-subtitle">M1 · 플레이그라운드</span>
 </header>
 
-<main class="fgp-shell">
+<!-- 탭 버튼 마운트 지점. 목록은 store의 TABS에서 나온다 -->
+<nav class="fgp-tabs" role="tablist" aria-label="화면 전환" id="fgp-tabs"></nav>
+
+<main class="fgp-shell" id="fgp-panel-playground" role="tabpanel" aria-labelledby="fgp-tab-playground">
 
   <aside class="fgp-panel">
     <section class="fgp-panel__section" aria-labelledby="fgp-controls-title">
@@ -90,6 +93,22 @@
   </section>
 
 </main>
+
+<!-- 나머지 3탭. 내용은 이후 단계에서 채운다 -->
+<section class="fgp-placeholder" id="fgp-panel-explain" role="tabpanel" aria-labelledby="fgp-tab-explain" hidden>
+  <p class="fgp-placeholder__title">속성 설명</p>
+  <p class="fgp-placeholder__note">M2에서 구현 예정입니다. 속성별 값 데모와 설명이 들어갑니다.</p>
+</section>
+
+<section class="fgp-placeholder" id="fgp-panel-examples" role="tabpanel" aria-labelledby="fgp-tab-examples" hidden>
+  <p class="fgp-placeholder__title">실전 예제</p>
+  <p class="fgp-placeholder__note">M2에서 구현 예정입니다. v0.1의 예제 18건을 이관합니다.</p>
+</section>
+
+<section class="fgp-placeholder" id="fgp-panel-challenge" role="tabpanel" aria-labelledby="fgp-tab-challenge" hidden>
+  <p class="fgp-placeholder__title">챌린지</p>
+  <p class="fgp-placeholder__note">M2에서 구현 예정입니다. v0.1의 챌린지 8건을 이관합니다.</p>
+</section>
 
 <script type="module" src="js/main.js"></script>
 </body>
