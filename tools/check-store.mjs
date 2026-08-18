@@ -34,14 +34,15 @@ section('초기 상태 (PRD 4.4)');
 
   check(
     '상태 키 집합',
-    eq(Object.keys(s).sort(), ['container', 'containerWidth', 'items', 'selectedId', 'tab', 'topic']),
+    eq(Object.keys(s).sort(), ['container', 'items', 'selectedId', 'tab', 'topic', 'view']),
     Object.keys(s).join(', ')
   );
   check('시작 토픽 flex', s.topic === 'flex' && store.getTopic() === 'flex');
   check('시작 탭 playground', s.tab === 'playground' && TABS.includes(s.tab));
   check('토픽 목록', eq(store.getTopics(), ['flex', 'grid']));
   check('selectedId가 첫 아이템', s.selectedId === s.items[0].id, `selectedId=${s.selectedId}`);
-  check('containerWidth 숫자', typeof s.containerWidth === 'number', `${s.containerWidth}`);
+  check('view 초기값은 전부 null',
+    eq(s.view, { containerWidth: null, containerHeight: null }), JSON.stringify(s.view));
 }
 
 /* ========================================================================== */
@@ -172,6 +173,87 @@ section('undo / redo');
   check('새 dispatch가 redo 스택을 비움', store.canRedo() === false);
 }
 
+/* ==========================================================================
+   view — 도구 뷰 설정 (PRD 4.4)
+   ========================================================================== */
+section('view 설정');
+
+{
+  const store = make();
+
+  check('초기 null', eq(store.getState().view, { containerWidth: null, containerHeight: null }));
+
+  store.setView({ containerWidth: 420 });
+  check('값 설정', store.getState().view.containerWidth === 420);
+  check('지정 안 한 키는 null 유지', store.getState().view.containerHeight === null);
+
+  store.setView({ containerHeight: 300 });
+  check('부분 갱신이 앞 값을 지우지 않음',
+    eq(store.getState().view, { containerWidth: 420, containerHeight: 300 }));
+
+  store.setView({ containerWidth: null });
+  check('개별 항목만 null 되돌리기',
+    eq(store.getState().view, { containerWidth: null, containerHeight: 300 }));
+
+  store.setView({ containerWidth: 500 });
+  store.resetView();
+  check('resetView 후 전부 null',
+    eq(store.getState().view, { containerWidth: null, containerHeight: null }));
+
+  let notified = 0;
+  const off = store.subscribe(() => notified++);
+  store.setView({ containerWidth: 640 });
+  store.resetView();
+  check('setView·resetView도 통지', notified === 2, `${notified}회`);
+  off();
+
+  check('getState의 view는 사본',
+    (() => { const v = store.getState().view; v.containerWidth = 999; return store.getState().view.containerWidth !== 999; })());
+}
+
+section('view는 히스토리에 쌓이지 않는다');
+
+{
+  const store = make();
+
+  store.setView({ containerWidth: 420 });
+  check('setView 후에도 canUndo false', store.canUndo() === false);
+
+  store.dispatch({ container: { justifyContent: 'center' } });
+  store.setView({ containerWidth: 700 });
+  store.undo();
+
+  check('undo는 속성만 되돌림', store.getState().container.justifyContent === 'flex-start');
+  check('undo가 view를 건드리지 않음', store.getState().view.containerWidth === 700);
+
+  let threw = false;
+  try { store.dispatch({ view: { containerWidth: 100 } }); } catch { threw = true; }
+  check('dispatch로는 view를 못 바꿈', threw);
+}
+
+section('view는 토픽 간 공유');
+
+{
+  const store = make();
+
+  store.setView({ containerWidth: 420, containerHeight: 260 });
+  store.setTopic('grid');
+  check('grid에서도 같은 값',
+    eq(store.getState().view, { containerWidth: 420, containerHeight: 260 }));
+
+  store.setView({ containerHeight: 500 });
+  store.setTopic('flex');
+  check('grid에서 바꾼 값이 flex에도 반영', store.getState().view.containerHeight === 500);
+
+  store.resetView();
+  store.setTopic('grid');
+  check('리셋도 공유', eq(store.getState().view, { containerWidth: null, containerHeight: null }));
+
+  check('container는 여전히 토픽별 분리',
+    store.getState().container.gridAutoFlow === 'row' &&
+    store.getState().container.justifyContent === 'start');
+}
+
 /* ========================================================================== */
 section('토픽별 독립 보관');
 
@@ -248,6 +330,13 @@ section('방어');
   try { make().setTopic('없는토픽'); } catch { threw++; }
   try { make().subscribe('함수아님'); } catch { threw++; }
   check('잘못된 입력 4종 거부', threw === 4, `${threw}/4`);
+
+  let viewThrew = 0;
+  try { make().setView(null); } catch { viewThrew++; }
+  try { make().setView({ 없는키: 1 }); } catch { viewThrew++; }
+  try { make().setView({ containerWidth: '400px' }); } catch { viewThrew++; }
+  try { make().setView({ containerHeight: NaN }); } catch { viewThrew++; }
+  check('setView 잘못된 입력 4종 거부', viewThrew === 4, `${viewThrew}/4`);
 }
 
 /* ========================================================================== */

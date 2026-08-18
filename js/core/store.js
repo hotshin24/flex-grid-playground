@@ -3,7 +3,7 @@
  *
  * PRD 4.4 상태 모델을 토픽별로 독립 보관한다.
  *
- *   { topic, tab, container, items, selectedId, containerWidth }
+ *   { topic, tab, container, items, selectedId, view }
  *
  * container·items의 속성 값은 전부 defaultsFrom(schema, scope)에서 나온다.
  * 이 파일에 CSS 속성 이름이나 기본값이 리터럴로 등장하지 않는다.
@@ -28,7 +28,14 @@ const DEFAULT_TAB = TABS[0];
 const DEFAULT_ITEM_COUNT = 4;
 const DEFAULT_ITEM_WIDTH = 80;
 const DEFAULT_ITEM_HEIGHT = 60;
-const DEFAULT_CONTAINER_WIDTH = 800;
+/**
+ * 뷰 설정의 초기값은 null이다 — "사용자가 아직 안 건드림"을 뜻하며,
+ * 이때 components.css의 반응형 기본 크기가 그대로 산다. (PRD 4.4)
+ */
+const VIEW_KEYS = ['containerWidth', 'containerHeight'];
+
+/** 손대지 않은 뷰 설정. 전 키가 null이다. */
+const initialView = () => Object.fromEntries(VIEW_KEYS.map((k) => [k, null]));
 
 /** 히스토리 스택 상한. 넘으면 가장 오래된 항목부터 버린다. */
 const HISTORY_LIMIT = 50;
@@ -62,7 +69,6 @@ function initialState(topic, schema) {
   state.container = defaultsFrom(schema, 'container');
   state.items = Array.from({ length: DEFAULT_ITEM_COUNT }, (_, i) => makeItem(schema, i + 1));
   state.selectedId = state.items.length > 0 ? state.items[0].id : null;
-  state.containerWidth = DEFAULT_CONTAINER_WIDTH;
   return state;
 }
 
@@ -118,6 +124,17 @@ export function createStore(schemas, options = {}) {
     histories[topic] = { past: [], future: [] };
   }
 
+  /**
+   * 뷰 설정은 토픽별로 나누지 않고 하나만 둔다.
+   *
+   * 프리뷰 크기는 학습 내용이 아니라 사용자가 자기 화면에 맞춰 잡는 값이다.
+   * Flex에서 맞춰 놓은 크기가 Grid로 갔다고 되돌아가면 고장으로 읽힌다.
+   * container·items와 달리 토픽마다 다른 값을 가질 이유가 없다.
+   *
+   * getState()는 PRD 4.4대로 view를 상태에 실어 돌려준다. 보관만 공유다.
+   */
+  const view = initialView();
+
   let activeTopic = startTopic;
   const listeners = new Set();
 
@@ -128,7 +145,9 @@ export function createStore(schemas, options = {}) {
 
   /** 현재 토픽의 상태 사본. 반환값을 고쳐도 저장소는 영향받지 않는다. */
   function getState() {
-    return clone(states[activeTopic]);
+    const snapshot = clone(states[activeTopic]);
+    snapshot.view = clone(view);
+    return snapshot;
   }
 
   function getTopic() {
@@ -146,6 +165,9 @@ export function createStore(schemas, options = {}) {
   function dispatch(patch) {
     if (patch === null || typeof patch !== 'object' || Array.isArray(patch)) {
       throw new TypeError('dispatch: patch는 객체여야 합니다');
+    }
+    if ('view' in patch) {
+      throw new TypeError('dispatch: view는 setView·resetView로만 바꿉니다');
     }
 
     const history = histories[activeTopic];
@@ -203,6 +225,42 @@ export function createStore(schemas, options = {}) {
     return getState();
   }
 
+  /**
+   * 뷰 설정을 바꾼다. 히스토리에 쌓지 않는다.
+   *
+   * undo는 학습 대상인 속성 조작을 되돌리는 수단이다. 여기에 프리뷰 크기까지
+   * 섞이면 Ctrl+Z가 방금 바꾼 속성 대신 창 크기를 되돌려 예측이 어긋난다.
+   * 게다가 view는 토픽 공유이고 히스토리는 토픽별이라, 넣으면 flex에서 undo한
+   * 결과가 grid에도 나타나는 모순이 생긴다.
+   *
+   * @param {Object} patch  { containerWidth?: Number|null, containerHeight?: Number|null }
+   */
+  function setView(patch) {
+    if (patch === null || typeof patch !== 'object' || Array.isArray(patch)) {
+      throw new TypeError('setView: patch는 객체여야 합니다');
+    }
+
+    for (const [key, value] of Object.entries(patch)) {
+      if (!VIEW_KEYS.includes(key)) {
+        throw new Error(`setView: 알 수 없는 뷰 설정 '${key}'`);
+      }
+      if (value !== null && !Number.isFinite(value)) {
+        throw new TypeError(`setView: '${key}'는 숫자이거나 null이어야 합니다`);
+      }
+      view[key] = value;
+    }
+
+    notify();
+    return getState();
+  }
+
+  /** 전 항목을 null로 되돌린다. CSS 기본값이 다시 산다. */
+  function resetView() {
+    Object.assign(view, initialView());
+    notify();
+    return getState();
+  }
+
   /** 구독 해제 함수를 돌려준다. */
   function subscribe(fn) {
     if (typeof fn !== 'function') {
@@ -218,6 +276,8 @@ export function createStore(schemas, options = {}) {
     getTopics,
     dispatch,
     setTopic,
+    setView,
+    resetView,
     subscribe,
     undo,
     redo,
