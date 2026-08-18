@@ -24,7 +24,7 @@ import { createControl } from './controls.js';
 import {
   PANE_CLASS, PANE_SIDE_CLASS, PANE_ITEM_CLASS, PANE_NAME_CLASS, PANE_META_CLASS, PANE_STAGE_CLASS,
 } from './explain.js';
-import { partitionByScope, defaultsFrom } from '../core/schema-spec.js';
+import { partitionByScope, defaultsFrom, isInactive, deriveState } from '../core/schema-spec.js';
 
 /**
  * 좌우 2열 틀은 속성 설명 탭이 기준이다. 클래스 이름을 여기 다시 적지 않고
@@ -51,6 +51,21 @@ export const STORAGE_KEY = 'fgp.challenge.progress.v1';
 
 /** 목표 미리보기의 색 단계. components.css 가 준비해 둔 만큼만 쓴다. */
 const ACCENT_COUNT = 8;
+
+/**
+ * 답안 프리뷰 컨테이너가 넓어질 수 있는 한계.
+ *
+ * components.css 의 .fgp-challenge__preview .fgp-preview__container 가 같은 값으로
+ * max-width 를 건다 (--sp-16 × 16 = 1024). 아이템 폭을 이 값에 맞춰 계산하므로
+ * 둘은 짝이다. 한쪽만 바꾸면 줄 수가 어긋난다.
+ */
+const REFERENCE_WIDTH = 1024;
+
+/** 줄 넘김 문제에서 최소한 이만큼은 줄이 나와야 한다. */
+const MIN_ROWS = 2;
+
+/** 줄이 넘어갈 일이 없는 문제의 아이템 크기. v0.1 부터 쓰던 값이다. */
+const PLAIN_ITEM = { width: 80, height: 60 };
 
 const NEXT_KEYS = new Set(['ArrowRight', 'ArrowDown']);
 const PREV_KEYS = new Set(['ArrowLeft', 'ArrowUp']);
@@ -117,6 +132,50 @@ export function writeProgress(storage, solved) {
   } catch {
     return false;
   }
+}
+
+/* --------------------------------------------------------------------------
+   답안 프리뷰의 아이템 크기
+
+   줄 넘김을 묻는 문제인데 아이템이 좁으면 한 줄에 다 들어가 버린다. 그러면
+   flex-wrap 을 켜도 그림이 그대로고, align-content 는 정렬할 줄 뭉치가 없어
+   문제 자체가 성립하지 않는다. 그래서 그런 문제만 아이템을 넓게 잡는다.
+   -------------------------------------------------------------------------- */
+
+/**
+ * 이 문제의 정답이 줄을 넘기는가.
+ *
+ * 속성 이름을 코드에 적지 않는다. 정답값을 빈 요소에 넣어 보고 브라우저가
+ * flex-wrap 을 무엇으로 푸는지 CSS 파서에 직접 묻는다. ui/explain.js 가
+ * 비율 속성을 가려낼 때 쓴 것과 같은 방법이다.
+ */
+export function wrapsLines(target = {}, doc = globalThis.document) {
+  const probe = doc?.createElement?.('div');
+  if (!probe?.style) return false;
+
+  Object.entries(target).forEach(([key, value]) => {
+    try { probe.style[key] = value; } catch { /* 알 수 없는 키는 무시한다 */ }
+  });
+
+  const wrap = probe.style.flexWrap;
+  return Boolean(wrap) && wrap !== 'nowrap';
+}
+
+/**
+ * 줄 넘김 문제의 아이템 폭.
+ *
+ * 한 줄에 ceil(개수 / 2) 개가 들어가게 잡는다. 폭이 두 값 사이에 있어야 한다 —
+ * 그만큼이 딱 차는 폭(상한)과 하나 더 들어가 버리는 폭(하한)이다. 상한에 붙이면
+ * 컨테이너가 기준보다 조금만 좁아도 한 줄에 한 개씩 서서 세로 줄처럼 보이므로
+ * 가운데를 쓴다. 여유가 양쪽으로 생겨 네 구간 어디서도 두 줄 이상이 나온다.
+ *
+ * 화면이 좁아지면 한 줄에 더 적게 들어가 줄 수가 늘어난다. 줄어들지는 않는다.
+ */
+export function itemWidthFor(itemCount, gap, reference = REFERENCE_WIDTH) {
+  const perRow = Math.max(1, Math.ceil(itemCount / MIN_ROWS));
+  const upper = (reference - (perRow - 1) * gap) / perRow;
+  const lower = (reference - perRow * gap) / (perRow + 1);
+  return Math.floor((upper + lower) / 2);
 }
 
 /* --------------------------------------------------------------------------
@@ -294,15 +353,21 @@ export function createChallenge(config) {
   let goalBox = null;
   let tags = [];
 
+  const containerDefaults = defaultsFrom(schema, 'container');
+  const previewGap = Number.parseFloat(containerDefaults.gap) || 0;
+
   function itemsFor(challenge) {
     const base = defaultsFrom(schema, 'item');
-    return Array.from({ length: challenge.itemCount }, (_, i) => ({ ...base, id: i + 1, width: 80, height: 60 }));
+    const size = wrapsLines(challenge.target, doc)
+      ? { width: itemWidthFor(challenge.itemCount, previewGap), height: PLAIN_ITEM.height }
+      : PLAIN_ITEM;
+    return Array.from({ length: challenge.itemCount }, (_, i) => ({ ...base, id: i + 1, ...size }));
   }
 
   /** 문제를 열 때마다 답안을 기본값으로 되돌린다. 앞 문제의 답이 남으면 곤란하다. */
   function load(challenge) {
     store.dispatch({
-      container: defaultsFrom(schema, 'container'),
+      container: { ...containerDefaults },
       items: itemsFor(challenge),
       selectedId: 1,
     });
@@ -391,9 +456,20 @@ export function createChallenge(config) {
     return show;
   }
 
-  /** 컨트롤 밖에서 값이 바뀌어도 패널이 따라간다. */
+  /**
+   * 컨트롤 밖에서 값이 바뀌어도 패널이 따라간다.
+   *
+   * 조건부 비활성(F-13 유형 A)도 여기서 갱신한다. 플레이그라운드와 같은 판정을
+   * 같은 함수로 한다 — align-content 를 묻는 문제를 nowrap 상태로 열면 그 컨트롤이
+   * 왜 죽어 있는지 사유까지 화면에 나온다. 판정은 isInactive 가 하므로 이 파일에
+   * 속성명 분기가 없다.
+   */
   function sync(state) {
-    controls.forEach(({ entry, control }) => control.sync(state.container[entry.jsProp]));
+    const derived = deriveState(state);
+    controls.forEach(({ entry, control }) => {
+      control.sync(state.container[entry.jsProp]);
+      control.setInactive(isInactive(entry, { container: state.container, state: derived }));
+    });
   }
 
   const closest = (target, attr, stop) => {

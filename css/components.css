@@ -1192,6 +1192,21 @@ code.fgp-pane__item__name {
   border-radius: var(--radius-md);
 }
 
+/**
+ * 답안 프리뷰는 여기까지만 넓어진다.
+ *
+ * 줄 넘김 문제의 아이템 폭을 ui/challenge.js 가 이 한계에 맞춰 계산한다.
+ * 컨테이너가 한없이 넓어지면 아무리 넓은 아이템도 한 줄에 들어가 버려
+ * 문제가 성립하지 않는다. --sp-16 × 16 = 1024px 이고, 그 숫자가
+ * challenge.js 의 REFERENCE_WIDTH 와 같아야 한다.
+ *
+ * 네 구간(375 · 768 · 1024 · 1280)에서는 컨테이너가 이 값보다 좁으므로
+ * 겉모습이 달라지지 않는다. 더 넓은 화면에서만 상한이 걸린다.
+ */
+.fgp-challenge__preview .fgp-preview__container {
+  max-width: calc(var(--sp-16) * 16);
+}
+
 .fgp-challenge__preview {
   display: flex;
   min-height: var(--sp-16);

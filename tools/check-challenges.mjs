@@ -20,6 +20,7 @@ import { createStore } from '../js/core/store.js';
 import { partitionByScope, defaultsFrom } from '../js/core/schema-spec.js';
 import {
   createChallenge, checkAnswer, readProgress, writeProgress, STORAGE_KEY,
+  wrapsLines, itemWidthFor,
   LIST_ITEM_CLASS, TAG_CLASS, GOAL_CLASS, GOAL_ITEM_CLASS, PREVIEW_CLASS,
   HINT_CLASS, RESULT_CLASS, PROGRESS_CLASS, MATCH_CLASS, MISMATCH_CLASS, SOLVED_CLASS,
 } from '../js/ui/challenge.js';
@@ -425,6 +426,145 @@ section('풀이');
   const wrong = entry.values?.find((v) => v.val !== undefined)?.val ?? '99px';
   store.dispatch({ container: { ...target, [ignored]: wrong } });
   check(`ignore(${ignored})가 달라도 통과`, api.submit().solved === true, `${ignored}=${wrong}`);
+}
+
+/* ==========================================================================
+   줄 넘김 — 답안 프리뷰에서 실제로 줄이 넘어가는가
+
+   아이템이 좁으면 한 줄에 다 들어가 flex-wrap 을 켜도 그림이 그대로다.
+   align-content 를 묻는 문제는 정렬할 줄 뭉치가 없어 문제 자체가 성립하지 않는다.
+   ========================================================================== */
+section('줄 넘김');
+
+{
+  const GAP = Number.parseFloat(defaultsFrom(FLEX_SCHEMA, 'container').gap) || 0;
+  const REFERENCE = 1024;
+
+  /** 폭 cw 인 컨테이너에 그 아이템들이 몇 줄로 서는가 */
+  const rowsAt = (count, width, cw) => {
+    const perRow = Math.max(1, Math.floor((cw + GAP) / (width + GAP)));
+    return Math.ceil(count / perRow);
+  };
+
+  const wrapping = FLEX_CHALLENGES.filter((ch) => wrapsLines(ch.target, doc));
+  const plain = FLEX_CHALLENGES.filter((ch) => !wrapsLines(ch.target, doc));
+
+  check('줄 넘김 문제를 골라낸다', wrapping.length === 12,
+    wrapping.map((c) => c.id).join(', '));
+  check('나머지는 줄이 넘어가지 않는 문제', plain.length === FLEX_CHALLENGES.length - wrapping.length,
+    `${plain.length}건`);
+
+  // 네 구간의 답안 프리뷰 컨테이너 실측 폭. 좁아질수록 줄이 늘어난다.
+  const WIDTHS = [['1280', 967], ['1024', 711], ['768', 736], ['375', 311]];
+
+  const short = [];
+  wrapping.forEach((ch) => {
+    const width = itemWidthFor(ch.itemCount, GAP, REFERENCE);
+    WIDTHS.forEach(([label, cw]) => {
+      const rows = rowsAt(ch.itemCount, width, cw);
+      if (rows < 2) short.push(`#${ch.id}@${label} ${rows}줄`);
+    });
+    // 기준 폭에서도 두 줄이어야 한다. 그보다 넓어지지 않도록 CSS 가 막는다.
+    if (rowsAt(ch.itemCount, width, REFERENCE) < 2) short.push(`#${ch.id}@기준폭 1줄`);
+  });
+  check('줄 넘김 문제 12건이 네 구간 + 기준폭에서 2줄 이상', short.length === 0,
+    short.join(', ') || `${wrapping.length}건 × 5폭`);
+
+  const ac = FLEX_CHALLENGES.filter((ch) => 'alignContent' in ch.target);
+  const acShort = ac.filter((ch) =>
+    WIDTHS.some(([, cw]) => rowsAt(ch.itemCount, itemWidthFor(ch.itemCount, GAP, REFERENCE), cw) < 2));
+  check('align-content 문제 6건이 전부 2줄 이상', ac.length === 6 && acShort.length === 0,
+    acShort.map((c) => `#${c.id}`).join(', ') || ac.map((c) => `#${c.id}`).join(', '));
+  check('align-content 문제는 전부 줄 넘김 문제', ac.every((ch) => wrapsLines(ch.target, doc)));
+
+  // 줄이 넘어가지 않는 문제의 아이템은 예전 크기 그대로여야 한다
+  const store = createStore({ flex: FLEX_SCHEMA });
+  const { api } = build({ store });
+  const sizes = {};
+  FLEX_CHALLENGES.forEach((ch) => {
+    api.select(ch.id);
+    const first = store.getState().items[0];
+    sizes[ch.id] = { w: first.width, h: first.height, n: store.getState().items.length };
+  });
+  check('줄 넘김 아닌 문제는 80×60 그대로',
+    plain.every((ch) => sizes[ch.id].w === 80 && sizes[ch.id].h === 60),
+    plain.filter((ch) => sizes[ch.id].w !== 80).map((c) => `#${c.id}`).join(', ') || `${plain.length}건`);
+  check('줄 넘김 문제는 아이템이 넓어짐',
+    wrapping.every((ch) => sizes[ch.id].w === itemWidthFor(ch.itemCount, GAP, REFERENCE)),
+    wrapping.map((ch) => `#${ch.id}:${sizes[ch.id].w}`).join(' '));
+  check('아이템 개수는 문제를 따라간다',
+    FLEX_CHALLENGES.every((ch) => sizes[ch.id].n === ch.itemCount));
+
+  // 판정이 이름 분기가 아니라 CSS 파서에서 온다
+  check('wrapsLines는 nowrap을 걸러낸다', wrapsLines({ flexWrap: 'nowrap' }, doc) === false);
+  check('wrapsLines는 wrap·wrap-reverse를 잡는다',
+    wrapsLines({ flexWrap: 'wrap' }, doc) && wrapsLines({ flexWrap: 'wrap-reverse' }, doc));
+  check('wrapsLines는 관계없는 속성에 반응하지 않음',
+    wrapsLines({ justifyContent: 'center', alignItems: 'baseline' }, doc) === false);
+
+  const css = read('../css/components.css');
+  check('CSS가 컨테이너 폭에 상한을 건다',
+    /\.fgp-challenge__preview \.fgp-preview__container \{[^}]*max-width: calc\(var\(--sp-16\) \* 16\)/.test(css),
+    '--sp-16 × 16 = 1024 = REFERENCE_WIDTH');
+}
+
+/* ==========================================================================
+   조건부 비활성 (F-13 유형 A) — 플레이그라운드와 같아야 한다
+   ========================================================================== */
+section('조건부 비활성');
+
+{
+  const store = createStore({ flex: FLEX_SCHEMA });
+  const { root } = build({ store });
+
+  const controlOf = (prop) => walk(root).find((el) =>
+    el.className.split(' ').includes('fgp-control')
+    && walk(el).some((n) => n.className.split(' ').includes('fgp-control__prop') && n.textContent === prop));
+
+  const entry = FLEX_SCHEMA.find((e) => e.inactiveWhen && e.scope === 'container');
+  check('스키마에 조건부 비활성 컨테이너 속성이 있다', Boolean(entry), entry?.prop);
+
+  const target = controlOf(entry.prop);
+  check('그 컨트롤이 챌린지 탭에 있다', Boolean(target));
+
+  const cond = entry.inactiveWhen;
+  const source = FLEX_SCHEMA.find((e) => e.jsProp === cond.prop);
+
+  store.dispatch({ container: { [cond.prop]: cond.equals } });
+  check(`${entry.prop} — 조건 충족 시 aria-disabled="true"`,
+    target.getAttribute('aria-disabled') === 'true',
+    `${source.prop}=${cond.equals}`);
+  check('사유와 안내가 화면에 나온다',
+    walk(target).some((n) => n.textContent === cond.reason)
+    && walk(target).some((n) => n.textContent === cond.hint));
+
+  const other = source.values.find((v) => v.val !== cond.equals).val;
+  store.dispatch({ container: { [cond.prop]: other } });
+  check(`${entry.prop} — 조건이 풀리면 aria-disabled="false"`,
+    target.getAttribute('aria-disabled') === 'false', `${source.prop}=${other}`);
+
+  check('disabled 속성은 쓰지 않는다',
+    walk(target).every((n) => n.disabled !== true),
+    '눌러도 아무 일이 없다는 것을 직접 보여 준다');
+
+  // 문제를 고를 때마다 갱신된다 — 답안이 기본값으로 돌아가므로 다시 죽어야 한다
+  const acChallenge = FLEX_CHALLENGES.find((ch) => 'alignContent' in ch.target);
+  const api2 = build({ store: createStore({ flex: FLEX_SCHEMA }) });
+  const t2 = walk(api2.root).find((el) =>
+    el.className.split(' ').includes('fgp-control')
+    && walk(el).some((n) => n.className.split(' ').includes('fgp-control__prop') && n.textContent === entry.prop));
+  api2.api.select(acChallenge.id);
+  check('align-content 문제를 열면 그 컨트롤이 죽어 있다',
+    t2.getAttribute('aria-disabled') === 'true',
+    `#${acChallenge.id} — 답안이 ${source.prop}=${cond.equals} 로 시작한다`);
+
+  api2.store.dispatch({ container: { [cond.prop]: acChallenge.target[cond.prop] } });
+  check('정답 방향으로 바꾸면 살아난다', t2.getAttribute('aria-disabled') === 'false',
+    `${source.prop}=${acChallenge.target[cond.prop]}`);
+
+  const src = codeOnly(read('../js/ui/challenge.js'));
+  check('판정을 직접 하지 않고 isInactive에 맡긴다',
+    /isInactive\(/.test(src) && !/inactiveWhen/.test(src));
 }
 
 /* ==========================================================================
