@@ -71,6 +71,13 @@
  * 가려야 할 결함이 아니라 가르쳐야 할 현상이다 (PRD 5.5).
  */
 @media (min-width: 600px) {
+  /* body의 overflow는 뷰포트로 전파되지만, 모바일 사파리 계열은 이를 무시하고
+     페이지를 튕기듯 움직인다. 루트에도 걸어 그 경로를 막는다. */
+  html {
+    height: 100%;
+    overflow: hidden;
+  }
+
   body {
     height: 100vh;
     height: 100dvh;
@@ -106,6 +113,13 @@
  * 스크린리더 낭독 순서가 구간마다 달라지지 않게 한다.
  */
 @media (min-width: 600px) and (max-width: 1023px) {
+  /* 프리뷰는 제 높이(components.css의 32vh)를 갖고 패널이 나머지를 가져간다.
+     1fr을 그냥 두면 자동 최솟값이 패널의 min-content라 행이 셸보다 커진다.
+     minmax(0, 1fr)로 바닥을 0으로 내려 패널이 실제로 줄어들게 한다. */
+  .fgp-shell {
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
   .fgp-panel > .fgp-panel__section:has(#fgp-view-controls) {
     order: 1;
   }
