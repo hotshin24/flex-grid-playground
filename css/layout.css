@@ -107,9 +107,12 @@
     padding: var(--sp-4);
   }
 
-  /* 스크롤은 여기서만 일어난다. contain을 걸어 끝에 닿아도 페이지로
-     넘어가지 않게 한다 — 터치 기기에서 페이지가 밀리는 주된 경로다. */
-  .fgp-panel {
+  /* 스크롤은 두 열 안에서만 일어난다. contain을 걸어 끝에 닿아도 페이지로
+     넘어가지 않게 한다 — 터치 기기에서 페이지가 밀리는 주된 경로다.
+     프리뷰 열도 스크롤한다. 코드 블록이 붙으면서 열 높이가 셸을 넘어섰고,
+     페이지가 밀리지 않으니 넘친 만큼 닿을 수 없게 됐다. */
+  .fgp-panel,
+  .fgp-preview {
     min-height: 0;
     overflow-y: auto;
     overscroll-behavior: contain;
@@ -165,7 +168,9 @@
     align-items: stretch;
   }
 
+  /* 열 높이를 꽉 채워야 그 안에서 스크롤이 생긴다. start로 두면 열이
+     내용만큼 늘어나 셸 밖으로 나간다. */
   .fgp-preview {
-    align-self: start;
+    align-self: stretch;
   }
 }
