@@ -85,6 +85,10 @@
   .fgp-panel > .fgp-panel__section:has(#fgp-item-size) {
     order: 3;
   }
+
+  .fgp-panel > .fgp-panel__section:has(#fgp-item-controls) {
+    order: 4;
+  }
 }
 
 /* 1024px ~ — 컨트롤 좌 · 프리뷰 우 2컬럼 */

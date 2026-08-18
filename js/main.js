@@ -14,7 +14,7 @@
 import { createStore } from './core/store.js';
 import { createRenderer } from './core/renderer.js';
 import { createControl, createRangeControl } from './ui/controls.js';
-import { isInactive, deriveState } from './core/schema-spec.js';
+import { isInactive, deriveState, partitionByScope } from './core/schema-spec.js';
 import { FLEX_SCHEMA } from './topics/flex/schema.js';
 
 const SCHEMAS = { flex: FLEX_SCHEMA };
@@ -62,8 +62,10 @@ createRenderer({ store, schemas: SCHEMAS, root: stage });
 const panel = document.getElementById('fgp-controls');
 const initial = store.getState();
 
-const containerControls = FLEX_SCHEMA
-  .filter((entry) => entry.scope === 'container')
+/** 컨테이너와 아이템의 차이는 scope 하나뿐이다. 목록은 여기서 한 번에 나온다. */
+const SCOPED = partitionByScope(FLEX_SCHEMA);
+
+const containerControls = SCOPED.container
   .map((entry) => {
     const { root, sync, setInactive } = createControl(entry, {
       value: initial.container[entry.jsProp],
@@ -86,6 +88,44 @@ function syncContainerControls(state) {
 
   containerControls.forEach(({ entry, sync, setInactive }) => {
     sync(state.container[entry.jsProp]);
+    setInactive(isInactive(entry, { container: state.container, state: derived }));
+  });
+}
+
+/* --------------------------------------------------------------------------
+   아이템 속성 — 선택된 아이템 하나에 적용 (M2)
+
+   컨테이너와 같은 경로다. createControl로 만들고, 차이는 값을 어디서 읽고
+   어디에 쓰는지뿐이다. 스키마의 item scope를 그대로 순회하므로 속성이 늘어도
+   여기는 손대지 않는다.
+   -------------------------------------------------------------------------- */
+
+const itemPanel = document.getElementById('fgp-item-controls');
+const itemPanelSection = itemPanel.closest('.fgp-panel__section');
+const itemTargetLabel = document.getElementById('fgp-item-props-target');
+
+const itemControls = SCOPED.item.map((entry) => {
+  const { root, sync, setInactive } = createControl(entry, {
+    value: selectedItem(initial)?.[entry.jsProp],
+    onChange: patchSelectedItem,
+  });
+  itemPanel.appendChild(root);
+  return { entry, sync, setInactive };
+});
+
+function syncItemControls(state) {
+  const target = selectedItem(state);
+  const derived = deriveState(state);
+
+  // 고를 아이템이 없으면 보여줄 것도 없다. UI로는 도달하지 않지만
+  // 상태만 놓고 보면 가능한 경우라 막아 둔다 (최소 개수는 아래에서 지킨다).
+  itemPanelSection.hidden = !target;
+  if (!target) return;
+
+  itemTargetLabel.textContent = `${state.items.indexOf(target) + 1}번 아이템`;
+
+  itemControls.forEach(({ entry, sync, setInactive }) => {
+    sync(target[entry.jsProp]);
     setInactive(isInactive(entry, { container: state.container, state: derived }));
   });
 }
@@ -211,7 +251,8 @@ function selectedItem(state) {
   return state.items.find((item) => item.id === state.selectedId) ?? state.items[0];
 }
 
-function setSelectedItemSize(key, value) {
+/** 선택된 아이템 하나의 필드를 갈아끼운다. 속성이든 기하값이든 경로는 같다. */
+function patchSelectedItem(key, value) {
   const state = store.getState();
   const target = selectedItem(state);
   if (!target) return;
@@ -225,7 +266,7 @@ const itemSizeControls = ITEM_SIZE_CONTROLS.map((config) => {
   const control = createRangeControl({
     ...config,
     value: selectedItem(initial)?.[config.key],
-    onChange: setSelectedItemSize,
+    onChange: patchSelectedItem,
   });
   itemSizePanel.appendChild(control.root);
   return { key: config.key, control };
@@ -275,6 +316,7 @@ function syncHistoryButtons() {
 function sync(state) {
   syncItembar(state);
   syncItemSize(state);
+  syncItemControls(state);
   applyView(state.view);
   syncViewControls(state.view);
   syncContainerControls(state);
