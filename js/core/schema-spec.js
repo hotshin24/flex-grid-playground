@@ -102,11 +102,27 @@ export const CONTROL_TYPES = {
      urlKey:    'j'        // URL 해시 축약 키. 토픽 내 유일해야 함
      demo:      { itemCount, itemSizes?, containerStyle? }  // 속성 설명 탭 데모 설정
      relatedTo: ['align-items']  // 대조 뷰(GR-09)에서 연결할 속성
+
+     // --- 조건부 비활성 (F-13) — 둘 다 선택 필드 ---
+     inactiveWhen: {             // 유형 A. 다른 속성의 값만으로 판정한다
+       prop:   'flexWrap',       // 판정 대상 속성의 jsProp. 같은 스키마 안에 있어야 한다
+       equals: 'nowrap',         // equals | notEquals | in 중 정확히 하나
+       reason: '...',            // 비활성 사유 문장. 화면에 그대로 나간다
+       hint:   '...'             // 선택. 해결 방법 안내
+     }
+     measuredInactive: 'hasFreeSpace'   // 유형 B·C. renderer 측정 키 이름만 담는다.
+                                        // 판정 로직은 renderer가 소유하며 스키마는 키만 안다
    }
 */
 
 const REQUIRED_FIELDS = ['prop', 'jsProp', 'scope', 'control', 'default', 'desc', 'urlKey'];
 const VALID_SCOPES = ['container', 'item'];
+
+/** inactiveWhen 이 가질 수 있는 비교 연산자. 정확히 하나만 쓴다. */
+const INACTIVE_OPERATORS = ['equals', 'notEquals', 'in'];
+
+/** inactiveWhen 에 허용된 키. 오타를 잡기 위해 화이트리스트로 검사한다. */
+const INACTIVE_FIELDS = ['prop', ...INACTIVE_OPERATORS, 'reason', 'hint'];
 
 /**
  * 스키마 전체를 검증한다. 실패 항목을 배열로 반환하며, 빈 배열이면 통과.
@@ -116,6 +132,7 @@ export function validateSchema(schema, topicName) {
   const errors = [];
   const seenUrlKeys = new Map();
   const seenProps = new Set();
+  const byJsProp = new Map(schema.filter((e) => e.jsProp).map((e) => [e.jsProp, e]));
 
   schema.forEach((entry, i) => {
     const at = `${topicName}[${i}] ${entry.prop ?? '(prop 없음)'}`;
@@ -160,9 +177,134 @@ export function validateSchema(schema, topicName) {
       if (seenProps.has(entry.prop)) errors.push(`${at}: prop 중복`);
       seenProps.add(entry.prop);
     }
+
+    validateInactive(entry, at, byJsProp, errors);
   });
 
   return errors;
+}
+
+/**
+ * 조건부 비활성 선언을 검사한다 (F-13 유형 A).
+ *
+ * 선택 필드이므로 없으면 아무것도 하지 않는다. 선언이 있으면 참조 무결성까지
+ * 본다 — 없는 속성을 가리키거나 enum에 없는 값을 비교하면 판정이 영원히
+ * 거짓이 되고, 그건 화면에 아무 증상 없이 조용히 틀린다.
+ */
+function validateInactive(entry, at, byJsProp, errors) {
+  if (entry.measuredInactive !== undefined) {
+    if (typeof entry.measuredInactive !== 'string' || entry.measuredInactive.trim() === '') {
+      errors.push(`${at}: measuredInactive 는 비어 있지 않은 문자열이어야 함`);
+    }
+    if (entry.inactiveWhen !== undefined) {
+      errors.push(`${at}: inactiveWhen 과 measuredInactive 를 함께 쓸 수 없음 (유형 A vs B·C)`);
+    }
+  }
+
+  const rule = entry.inactiveWhen;
+  if (rule === undefined) return;
+
+  if (rule === null || typeof rule !== 'object' || Array.isArray(rule)) {
+    errors.push(`${at}: inactiveWhen 은 객체여야 함`);
+    return;
+  }
+
+  Object.keys(rule).forEach((k) => {
+    if (!INACTIVE_FIELDS.includes(k)) {
+      errors.push(`${at}: inactiveWhen 에 알 수 없는 필드 '${k}'`);
+    }
+  });
+
+  if (typeof rule.reason !== 'string' || rule.reason.trim() === '') {
+    errors.push(`${at}: inactiveWhen.reason 이 비어 있음`);
+  }
+
+  if (rule.hint !== undefined && (typeof rule.hint !== 'string' || rule.hint.trim() === '')) {
+    errors.push(`${at}: inactiveWhen.hint 는 비어 있지 않은 문자열이어야 함`);
+  }
+
+  const used = INACTIVE_OPERATORS.filter((op) => rule[op] !== undefined);
+  if (used.length !== 1) {
+    errors.push(
+      `${at}: inactiveWhen 에 ${INACTIVE_OPERATORS.join(' | ')} 중 정확히 하나가 필요함 (현재 ${used.length}개${used.length ? ': ' + used.join(', ') : ''})`
+    );
+  }
+
+  if (typeof rule.prop !== 'string' || rule.prop.trim() === '') {
+    errors.push(`${at}: inactiveWhen.prop 이 없음`);
+    return;
+  }
+
+  if (rule.prop === entry.jsProp) {
+    errors.push(`${at}: inactiveWhen.prop 이 자기 자신을 가리킴`);
+    return;
+  }
+
+  const target = byJsProp.get(rule.prop);
+  if (!target) {
+    errors.push(`${at}: inactiveWhen.prop '${rule.prop}' 가 스키마에 없음`);
+    return;
+  }
+
+  if (rule.in !== undefined && !Array.isArray(rule.in)) {
+    errors.push(`${at}: inactiveWhen.in 은 배열이어야 함`);
+    return;
+  }
+  if (Array.isArray(rule.in) && rule.in.length === 0) {
+    errors.push(`${at}: inactiveWhen.in 이 비어 있음`);
+    return;
+  }
+
+  // 비교 대상이 enum이면 실재하는 값인지까지 본다
+  if (target.control === 'enum' && Array.isArray(target.values)) {
+    const allowed = target.values.map((v) => v.val);
+    const compared = [];
+    if (rule.equals !== undefined) compared.push(rule.equals);
+    if (rule.notEquals !== undefined) compared.push(rule.notEquals);
+    if (Array.isArray(rule.in)) compared.push(...rule.in);
+
+    compared.forEach((v) => {
+      if (!allowed.includes(v)) {
+        errors.push(`${at}: inactiveWhen 이 비교하는 값 '${v}' 가 '${target.prop}' 의 values 에 없음`);
+      }
+    });
+  }
+}
+
+/* ==========================================================================
+   조건부 비활성 판정 (F-13 유형 A)
+   ========================================================================== */
+
+/**
+ * 스키마 선언만으로 비활성 여부를 판정한다.
+ *
+ * 속성명 분기가 이 함수 안에 없다는 점이 핵심이다. 어떤 속성이 어떤 조건에서
+ * 죽는지는 전적으로 schema.js 의 inactiveWhen 이 정한다. 여기에
+ * if (prop === 'align-content') 같은 줄이 생기면 설계가 무너진 것이다.
+ *
+ * 유형 B·C(measuredInactive)는 렌더 측정이 필요하므로 renderer 가 판정한다.
+ * 이 함수는 관여하지 않는다.
+ *
+ * @param {Object} entry           스키마 항목
+ * @param {Object} [containerState] 판정 근거가 되는 현재 값들 { [jsProp]: value }
+ * @returns {{inactive: boolean, reason?: string, hint?: string}}
+ */
+export function isInactive(entry, containerState = {}) {
+  const rule = entry?.inactiveWhen;
+  if (!rule) return { inactive: false };
+
+  const actual = containerState[rule.prop];
+  let matched = false;
+
+  if (rule.equals !== undefined) matched = actual === rule.equals;
+  else if (rule.notEquals !== undefined) matched = actual !== rule.notEquals;
+  else if (Array.isArray(rule.in)) matched = rule.in.includes(actual);
+
+  if (!matched) return { inactive: false };
+
+  const result = { inactive: true, reason: rule.reason };
+  if (rule.hint !== undefined) result.hint = rule.hint;
+  return result;
 }
 
 /** scope 별로 나눈다. controls.js 가 패널을 그릴 때 사용. */
