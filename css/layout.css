@@ -65,6 +65,28 @@
   }
 }
 
+/**
+ * 600 ~ 1023px — 패널 안의 섹션 순서를 바꾼다.
+ *
+ * 마크업은 컨테이너 속성 → 프리뷰 크기 → 아이템 순이지만, 이 구간에서는
+ * 프리뷰 바로 아래에 크기 조절이 오는 편이 손에 가깝다. 패널이 flex
+ * 컨테이너이므로 order로 바꾼다. HTML 순서는 그대로 두어 탭 이동과
+ * 스크린리더 낭독 순서가 구간마다 달라지지 않게 한다.
+ */
+@media (min-width: 600px) and (max-width: 1023px) {
+  .fgp-panel > .fgp-panel__section:has(#fgp-view-controls) {
+    order: 1;
+  }
+
+  .fgp-panel > .fgp-panel__section:has(#fgp-controls) {
+    order: 2;
+  }
+
+  .fgp-panel > .fgp-panel__section:has(#fgp-item-size) {
+    order: 3;
+  }
+}
+
 /* 1024px ~ — 컨트롤 좌 · 프리뷰 우 2컬럼 */
 @media (min-width: 1024px) {
   .fgp-shell {
