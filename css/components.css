@@ -1010,3 +1010,256 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* --------------------------------------------------------------------------
+   챌린지 (F-09)
+   -------------------------------------------------------------------------- */
+
+.fgp-challenge {
+  display: grid;
+  grid-template-columns: minmax(0, 16rem) minmax(0, 1fr);
+  gap: var(--sp-4);
+  align-items: start;
+  padding: var(--sp-4);
+}
+
+.fgp-challenge__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+.fgp-challenge__listitem {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  text-align: left;
+}
+
+.fgp-challenge__listitem__num {
+  color: var(--fgp-text-muted);
+  font-family: var(--p-font-code);
+  font-size: var(--fs-3xs);
+  font-weight: var(--fw-bold);
+}
+
+.fgp-challenge__listitem__title {
+  flex: 1;
+  min-width: 0;
+  color: var(--fgp-text-secondary);
+  font-size: var(--fs-2xs);
+}
+
+.fgp-challenge__listitem__diff {
+  font-size: var(--fs-3xs);
+}
+
+.fgp-challenge__listitem:hover .fgp-challenge__listitem__title {
+  color: var(--fgp-text-primary);
+}
+
+.fgp-challenge__listitem.is-selected {
+  background: var(--fgp-accent-faint);
+  border-color: var(--fgp-accent-quiet);
+}
+
+.fgp-challenge__listitem.is-selected .fgp-challenge__listitem__title {
+  color: var(--fgp-accent-text);
+}
+
+/* 클리어 표시는 색만으로 하지 않는다. 앞에 표식을 붙인다 */
+.fgp-challenge__listitem.is-solved .fgp-challenge__listitem__num::after {
+  content: '✔';
+  margin-left: var(--sp-1);
+  color: var(--fgp-state-correct);
+}
+
+.fgp-challenge__work {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+
+.fgp-challenge__work__head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+}
+
+.fgp-challenge__work__title {
+  margin: var(--sp-0);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  color: var(--fgp-text-primary);
+}
+
+.fgp-challenge__progress {
+  margin-left: auto;
+  padding: var(--sp-0) var(--sp-2);
+  border: 1px solid var(--fgp-border-default);
+  border-radius: var(--radius-pill);
+  color: var(--fgp-text-muted);
+  font-size: var(--fs-3xs);
+  font-weight: var(--fw-semibold);
+}
+
+.fgp-challenge__work__desc {
+  margin: var(--sp-0);
+  color: var(--fgp-text-secondary);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-base);
+}
+
+.fgp-challenge__goal-wrap {
+  padding: var(--sp-3);
+  background: var(--fgp-surface-panel);
+  border: 1px solid var(--fgp-border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.fgp-challenge__goal__label {
+  margin: var(--sp-0) var(--sp-0) var(--sp-2);
+  color: var(--fgp-text-muted);
+  font-size: var(--fs-3xs);
+  font-weight: var(--fw-semibold);
+}
+
+/* 판의 나머지는 문제 데이터가 정한다. 여기 있는 것은 어느 문제에나 같은 값이다 */
+.fgp-challenge__goal {
+  display: flex;
+  gap: var(--sp-1);
+  padding: var(--sp-1);
+  background: var(--fgp-preview-bg);
+  border: 1px dashed var(--fgp-preview-container-edge);
+  border-radius: var(--radius-sm);
+}
+
+.fgp-challenge__goalitem {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: var(--sp-6);
+  height: var(--sp-6);
+  border: 1px solid var(--fgp-item-accent);
+  border-radius: var(--radius-xs);
+  background: color-mix(in srgb, var(--fgp-item-accent) 20%, transparent);
+  color: var(--fgp-item-accent);
+  font-family: var(--p-font-code);
+  font-size: var(--fs-3xs);
+  font-weight: var(--fw-bold);
+}
+
+.fgp-challenge__tagbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+}
+
+.fgp-challenge__tag {
+  padding: var(--sp-0) var(--sp-2);
+  border: 1px solid var(--fgp-border-default);
+  border-radius: var(--radius-pill);
+  color: var(--fgp-text-muted);
+  font-family: var(--p-font-code);
+  font-size: var(--fs-3xs);
+}
+
+/* 맞고 틀림을 색만으로 알리지 않는다. 앞에 기호를 붙인다 */
+.fgp-challenge__tag.is-match {
+  border-color: var(--fgp-state-correct);
+  color: var(--fgp-state-correct);
+}
+
+.fgp-challenge__tag.is-match::before {
+  content: '✔ ';
+}
+
+.fgp-challenge__tag.is-mismatch {
+  border-color: var(--fgp-state-incorrect);
+  color: var(--fgp-state-incorrect);
+}
+
+.fgp-challenge__tag.is-mismatch::before {
+  content: '✘ ';
+}
+
+.fgp-challenge__controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+  background: var(--fgp-surface-panel);
+  border: 1px solid var(--fgp-border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.fgp-challenge__preview {
+  display: flex;
+  min-height: var(--sp-16);
+  padding: var(--sp-3);
+  background: var(--fgp-preview-bg);
+  border: 1px solid var(--fgp-border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.fgp-challenge__work__actions {
+  display: flex;
+  gap: var(--sp-2);
+}
+
+.fgp-challenge__hint {
+  margin: var(--sp-0);
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--fgp-accent-faint);
+  border-left: 3px solid var(--fgp-state-hint);
+  border-radius: var(--radius-sm);
+  color: var(--fgp-text-secondary);
+  font-size: var(--fs-2xs);
+  line-height: var(--lh-base);
+}
+
+.fgp-challenge__hint[hidden] {
+  display: none;
+}
+
+.fgp-challenge__result {
+  margin: var(--sp-0);
+  min-height: var(--sp-4);
+  color: var(--fgp-text-muted);
+  font-size: var(--fs-2xs);
+}
+
+.fgp-challenge__result.is-match {
+  color: var(--fgp-state-correct);
+  font-weight: var(--fw-semibold);
+}
+
+.fgp-challenge__result.is-mismatch {
+  color: var(--fgp-state-incorrect);
+}
+
+/* 좁은 화면에서는 목록을 위로 눕힌다 */
+@media (max-width: 1023px) {
+  .fgp-challenge {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .fgp-challenge__list {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .fgp-challenge__listitem {
+    border-color: var(--fgp-border-subtle);
+  }
+
+  .fgp-challenge__listitem__title {
+    flex: none;
+  }
+}

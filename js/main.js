@@ -17,9 +17,11 @@ import { createControl, createRangeControl } from './ui/controls.js';
 import { createTabs, panelId } from './ui/tabs.js';
 import { createExplain } from './ui/explain.js';
 import { createExamples } from './ui/examples.js';
+import { createChallenge } from './ui/challenge.js';
 import { FLEX_EXPLAIN_NOTES, FLEX_EXPLAIN_SAMPLES, AXIS_LABELS } from './topics/flex/explain.js';
 import { FLEX_PRESETS } from './topics/flex/presets.js';
 import { FLEX_EXAMPLES } from './topics/flex/examples.js';
+import { FLEX_CHALLENGES } from './topics/flex/challenges.js';
 import { isInactive, deriveState, partitionByScope, defaultsFrom } from './core/schema-spec.js';
 import { generateCode } from './core/codegen.js';
 import { FLEX_SCHEMA } from './topics/flex/schema.js';
@@ -29,6 +31,7 @@ const SCHEMAS = { flex: FLEX_SCHEMA };
 /** 토픽에서 주입받는다. M3의 Grid는 자기 목록을 여기에 더한다. */
 const PRESETS = { flex: FLEX_PRESETS };
 const EXAMPLES = { flex: FLEX_EXAMPLES };
+const CHALLENGES = { flex: FLEX_CHALLENGES };
 
 /** 아이템 개수 한계. 스키마와 무관한 프리뷰 구성값이다. */
 const MIN_ITEMS = 1;
@@ -358,6 +361,25 @@ createExamples({
   root: document.getElementById(panelId('examples')),
   onCopy: (text, button) => copyText(text, button),
 });
+
+/* --------------------------------------------------------------------------
+   챌린지 (F-09 · F-10)
+
+   저장소를 하나 더 만든다. 챌린지에서 속성을 만져도 플레이그라운드 탭은 그대로
+   여야 하므로, 같은 인스턴스를 나눠 쓸 수 없다. 프리뷰는 같은 renderer 를
+   붙인다 — 그리는 규칙은 어느 탭이든 같아야 한다.
+   -------------------------------------------------------------------------- */
+
+const challengeStore = createStore(SCHEMAS);
+
+const challenge = createChallenge({
+  challenges: CHALLENGES[initial.topic],
+  schema: SCHEMAS[initial.topic],
+  store: challengeStore,
+  root: document.getElementById(panelId('challenge')),
+});
+
+createRenderer({ store: challengeStore, schemas: SCHEMAS, root: challenge.previewRoot });
 
 /* --------------------------------------------------------------------------
    아이템 추가 · 제거
