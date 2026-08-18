@@ -1,0 +1,291 @@
+/* ==========================================================================
+   tokens.css — Flex & Grid Playground v1.0
+   --------------------------------------------------------------------------
+   2계층 토큰 체계
+     1) Primitive : 순수 값. 의미 없음. 컴포넌트에서 직접 참조 금지.
+     2) Semantic  : 역할 이름. 컴포넌트는 이 계층만 참조한다.
+
+   규칙
+     - components.css / layout.css 는 --fgp-* semantic 토큰만 사용한다.
+     - primitive(--p-*)를 컴포넌트에서 쓰면 테마 전환이 깨진다.
+     - 하드코딩 색상값은 이 파일 밖에 존재하지 않는다.
+   ========================================================================== */
+
+:root {
+  /* ======================================================================
+     1. PRIMITIVE — 색
+     ====================================================================== */
+
+  /* 잉크 (배경 · 표면 · 테두리) — 기존 v0.1 다크 팔레트를 램프로 정규화 */
+  --p-ink-950: #0a0c14;
+  --p-ink-900: #0f1117;
+  --p-ink-850: #161927;
+  --p-ink-800: #1a1d2e;
+  --p-ink-700: #1e2233;
+  --p-ink-600: #2d3152;
+  --p-ink-500: #334155;
+  --p-ink-400: #475569;
+  --p-ink-300: #64748b;
+  --p-ink-200: #94a3b8;
+  --p-ink-100: #cbd5e1;
+  --p-ink-050: #e2e8f0;
+  --p-ink-000: #f8fafc;
+
+  /* 브랜드 인디고 */
+  --p-indigo-700: #3b35cc;
+  --p-indigo-500: #6c63ff;
+  --p-indigo-300: #a78bfa;
+  --p-indigo-200: #c4b5fd;
+
+  /* 보조 색상 */
+  --p-sky-400:    #48b0f1;
+  --p-sky-300:    #7dd3fc;
+  --p-mint-400:   #48f1b0;
+  --p-amber-400:  #f1c948;
+  --p-coral-400:  #f16c48;
+  --p-rose-400:   #f1486c;
+  --p-orchid-400: #c948f1;
+  --p-cyan-400:   #48f1f1;
+  --p-violet-300: #c792ea;
+
+  /* 아이템 팔레트 — 프리뷰 아이템 8색 순환 (표면 / 테두리 쌍) */
+  --p-item-1: #6c63ff;  --p-item-1-deep: #3b35cc;
+  --p-item-2: #48b0f1;  --p-item-2-deep: #2580c0;
+  --p-item-3: #f16c48;  --p-item-3-deep: #c03525;
+  --p-item-4: #48f1b0;  --p-item-4-deep: #25c07c;
+  --p-item-5: #f1c948;  --p-item-5-deep: #c09925;
+  --p-item-6: #c948f1;  --p-item-6-deep: #9025c0;
+  --p-item-7: #f1486c;  --p-item-7-deep: #c0253b;
+  --p-item-8: #48f1f1;  --p-item-8-deep: #25c0c0;
+
+  /* 투명도 단계 — 알파는 color-mix로 합성한다. 하드코딩 #6c63ff44 금지 */
+  --p-alpha-05: 5%;
+  --p-alpha-10: 10%;
+  --p-alpha-20: 20%;
+  --p-alpha-35: 35%;
+  --p-alpha-60: 60%;
+
+  /* ======================================================================
+     2. PRIMITIVE — 치수 · 타이포 · 모션
+     ====================================================================== */
+
+  /* 간격 4px 기준 (JW Anderson --sp 체계 승계) */
+  --sp-0:  0;
+  --sp-1:  4px;
+  --sp-2:  8px;
+  --sp-3:  12px;
+  --sp-4:  16px;
+  --sp-5:  20px;
+  --sp-6:  24px;
+  --sp-8:  32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
+  --sp-16: 64px;
+
+  /* 서체 — v0.1의 4가지 중복 선언을 2개 역할로 통합 */
+  --p-font-ui:   system-ui, -apple-system, 'Segoe UI', 'Pretendard', sans-serif;
+  --p-font-code: 'Fira Code', 'Cascadia Code', 'SFMono-Regular', ui-monospace, monospace;
+
+  /* 타입 스케일 */
+  --fs-3xs: 10px;
+  --fs-2xs: 11px;
+  --fs-xs:  12px;
+  --fs-sm:  13px;
+  --fs-md:  14px;
+  --fs-lg:  16px;
+  --fs-xl:  20px;
+  --fs-2xl: 26px;
+
+  --lh-tight: 1.25;
+  --lh-base:  1.6;
+
+  --fw-normal:   400;
+  --fw-medium:   500;
+  --fw-semibold: 600;
+  --fw-bold:     800;
+
+  /* 모서리 */
+  --radius-xs:   4px;
+  --radius-sm:   6px;
+  --radius-md:   10px;
+  --radius-lg:   14px;
+  --radius-pill: 100px;
+
+  /* 모션 — 프리뷰 트랜지션은 학습 효과의 일부다. 속성 변화가 눈에 보여야 한다 */
+  --ease-out:      cubic-bezier(0.4, 0, 0.2, 1);
+  --dur-instant:   0ms;
+  --dur-fast:      150ms;
+  --dur-preview:   350ms;
+
+  /* 레이어 */
+  --z-base:    0;
+  --z-sticky:  10;
+  --z-overlay: 100;
+  --z-modal:   1000;
+  --z-toast:   1100;
+}
+
+/* ==========================================================================
+   3. SEMANTIC — 다크 (기본 테마)
+   ========================================================================== */
+
+:root,
+[data-theme='dark'] {
+  color-scheme: dark;
+
+  /* 표면 */
+  --fgp-surface-page:    var(--p-ink-900);
+  --fgp-surface-panel:   var(--p-ink-800);
+  --fgp-surface-raised:  var(--p-ink-700);
+  --fgp-surface-sunken:  var(--p-ink-950);
+  --fgp-surface-overlay: color-mix(in srgb, var(--p-ink-950) 85%, transparent);
+
+  /* 테두리 */
+  --fgp-border-subtle: color-mix(in srgb, var(--p-ink-600) 50%, transparent);
+  --fgp-border-default: var(--p-ink-600);
+  --fgp-border-strong:  var(--p-ink-400);
+
+  /* 텍스트 */
+  --fgp-text-primary:   var(--p-ink-050);
+  --fgp-text-secondary: var(--p-ink-200);
+  --fgp-text-muted:     var(--p-ink-300);
+  --fgp-text-inverse:   var(--p-ink-950);
+  --fgp-text-onaccent:  var(--p-ink-000);
+
+  /* 강조 */
+  --fgp-accent:        var(--p-indigo-500);
+  --fgp-accent-hover:  var(--p-indigo-300);
+  --fgp-accent-quiet:  color-mix(in srgb, var(--p-indigo-500) var(--p-alpha-20), transparent);
+  --fgp-accent-faint:  color-mix(in srgb, var(--p-indigo-500) var(--p-alpha-05), transparent);
+  --fgp-accent-text:   var(--p-indigo-200);
+
+  /* 포커스 — 접근성 기준상 전 인터랙티브 요소에 적용 */
+  --fgp-focus-ring:        var(--p-sky-300);
+  --fgp-focus-ring-width:  2px;
+  --fgp-focus-ring-offset: 2px;
+
+  /* 상태 */
+  --fgp-state-correct:   var(--p-mint-400);
+  --fgp-state-incorrect: var(--p-rose-400);
+  --fgp-state-hint:      var(--p-amber-400);
+
+  /* --- 프리뷰 (Flex · Grid 공통) --- */
+  --fgp-preview-bg:            var(--p-ink-950);
+  --fgp-preview-container-bg:  color-mix(in srgb, var(--p-indigo-500) var(--p-alpha-05), transparent);
+  --fgp-preview-container-edge: color-mix(in srgb, var(--p-indigo-500) var(--p-alpha-35), transparent);
+  --fgp-preview-item-selected: var(--p-ink-000);
+  --fgp-preview-freespace:     color-mix(in srgb, var(--p-ink-300) var(--p-alpha-10), transparent);
+
+  /* --- 프리뷰 (Grid 전용) ---
+     GR-05 라인 번호 오버레이 · GR-06 암시적 트랙 구분에 사용.
+     명시/암시 구분은 색상만이 아니라 실선/점선으로도 표현한다 (색각 이상 대응). */
+  --fgp-grid-line-explicit:  var(--p-sky-400);
+  --fgp-grid-line-implicit:  var(--p-orchid-400);
+  --fgp-grid-line-style-explicit: solid;
+  --fgp-grid-line-style-implicit: dashed;
+  --fgp-grid-line-number-bg: var(--p-ink-850);
+  --fgp-grid-line-number-fg: var(--p-ink-100);
+  --fgp-grid-gap-fill:       color-mix(in srgb, var(--p-amber-400) var(--p-alpha-10), transparent);
+  --fgp-grid-area-fill:      color-mix(in srgb, var(--p-mint-400) var(--p-alpha-20), transparent);
+  --fgp-grid-area-edge:      var(--p-mint-400);
+  --fgp-grid-track-marker:   var(--p-violet-300);
+
+  /* --- 코드 하이라이트 --- */
+  --fgp-code-bg:       var(--p-ink-950);
+  --fgp-code-text:     var(--p-ink-100);
+  --fgp-code-selector: var(--p-amber-400);
+  --fgp-code-property: var(--p-sky-300);
+  --fgp-code-value:    var(--p-mint-400);
+  --fgp-code-comment:  var(--p-ink-300);
+  --fgp-code-tag:      var(--p-coral-400);
+  --fgp-code-attr:     var(--p-violet-300);
+}
+
+/* ==========================================================================
+   4. SEMANTIC — 라이트 (F-12)
+   semantic 매핑만 교체한다. 컴포넌트 CSS는 한 줄도 바뀌지 않는다.
+   ========================================================================== */
+
+[data-theme='light'] {
+  color-scheme: light;
+
+  --fgp-surface-page:    var(--p-ink-000);
+  --fgp-surface-panel:   #ffffff;
+  --fgp-surface-raised:  var(--p-ink-050);
+  --fgp-surface-sunken:  #eef2f7;
+  --fgp-surface-overlay: color-mix(in srgb, var(--p-ink-000) 85%, transparent);
+
+  --fgp-border-subtle:  color-mix(in srgb, var(--p-ink-200) 40%, transparent);
+  --fgp-border-default: var(--p-ink-100);
+  --fgp-border-strong:  var(--p-ink-300);
+
+  --fgp-text-primary:   var(--p-ink-900);
+  --fgp-text-secondary: var(--p-ink-400);
+  --fgp-text-muted:     var(--p-ink-300);
+  --fgp-text-inverse:   var(--p-ink-000);
+  --fgp-text-onaccent:  var(--p-ink-000);
+
+  --fgp-accent:       var(--p-indigo-700);
+  --fgp-accent-hover: var(--p-indigo-500);
+  --fgp-accent-text:  var(--p-indigo-700);
+
+  --fgp-focus-ring: var(--p-indigo-700);
+
+  --fgp-preview-bg:            var(--p-ink-050);
+  --fgp-preview-item-selected: var(--p-ink-900);
+
+  --fgp-grid-line-number-bg: var(--p-ink-100);
+  --fgp-grid-line-number-fg: var(--p-ink-900);
+
+  --fgp-code-bg:      #f4f6fa;
+  --fgp-code-text:    var(--p-ink-800);
+  --fgp-code-comment: var(--p-ink-300);
+}
+
+/* ==========================================================================
+   5. 사용자 환경 대응
+   ========================================================================== */
+
+/* 저장된 테마가 없을 때만 OS 설정을 따른다 */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    color-scheme: light;
+    --fgp-surface-page:   var(--p-ink-000);
+    --fgp-surface-panel:  #ffffff;
+    --fgp-surface-raised: var(--p-ink-050);
+    --fgp-surface-sunken: #eef2f7;
+    --fgp-border-default: var(--p-ink-100);
+    --fgp-text-primary:   var(--p-ink-900);
+    --fgp-text-secondary: var(--p-ink-400);
+    --fgp-accent:         var(--p-indigo-700);
+    --fgp-preview-bg:     var(--p-ink-050);
+    --fgp-code-bg:        #f4f6fa;
+    --fgp-code-text:      var(--p-ink-800);
+  }
+}
+
+/* 프리뷰 트랜지션은 학습 도구의 핵심이지만, 사용자 설정이 우선한다 */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast:    var(--dur-instant);
+    --dur-preview: var(--dur-instant);
+  }
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --fgp-border-default: var(--p-ink-200);
+    --fgp-text-secondary: var(--p-ink-100);
+    --fgp-text-muted:     var(--p-ink-200);
+  }
+}
+
+/* ==========================================================================
+   6. 브레이크포인트 (참조용)
+   미디어 쿼리 조건부에는 커스텀 프로퍼티를 쓸 수 없다. layout.css에서
+   아래 값을 리터럴로 사용하며, 이 주석이 단일 기준이다.
+
+     sm   ~ 599px    프리뷰 상단 고정 · 컨트롤 하단 스크롤
+     md   600~1023px 프리뷰 상 · 컨트롤 하 2단
+     lg   1024px ~   컨트롤 좌 · 프리뷰 우 2컬럼
+   ========================================================================== */
