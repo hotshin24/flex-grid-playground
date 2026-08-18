@@ -15,6 +15,8 @@ import { createStore, TABS } from './core/store.js';
 import { createRenderer } from './core/renderer.js';
 import { createControl, createRangeControl } from './ui/controls.js';
 import { createTabs, panelId } from './ui/tabs.js';
+import { createExplain } from './ui/explain.js';
+import { FLEX_EXPLAIN_NOTES, FLEX_EXPLAIN_SAMPLES, AXIS_LABELS } from './topics/flex/explain.js';
 import { isInactive, deriveState, partitionByScope } from './core/schema-spec.js';
 import { generateCode } from './core/codegen.js';
 import { FLEX_SCHEMA } from './topics/flex/schema.js';
@@ -192,6 +194,18 @@ const tabs = createTabs({
   value: initial.tab,
   root: document.getElementById('fgp-tabs'),
   onSelect: (tab) => store.dispatch({ tab }),
+});
+
+/**
+ * 속성 설명 탭. 한 번만 만들고 이후에는 손대지 않는다 — 데모는 정적이며
+ * 메인 상태와 무관하다. store를 건드리지 않는다.
+ */
+createExplain({
+  schema: FLEX_SCHEMA,
+  notes: FLEX_EXPLAIN_NOTES,
+  samples: FLEX_EXPLAIN_SAMPLES,
+  axisLabels: AXIS_LABELS,
+  root: document.getElementById(panelId('explain')),
 });
 
 function syncTabs(state) {

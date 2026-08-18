@@ -559,3 +559,208 @@
   font-size: var(--fs-xs);
   color: var(--fgp-text-muted);
 }
+
+/* --------------------------------------------------------------------------
+   속성 설명 탭 (ui/explain.js)
+
+   데모 요소에는 인라인 스타일이 붙는다. 어떤 속성의 어떤 값을 보여줄지가
+   스키마에서 오므로 CSS 규칙으로 미리 적을 수 없다. renderer가 프리뷰에
+   값을 얹는 것과 같은 성격이다.
+   -------------------------------------------------------------------------- */
+
+.fgp-explain {
+  display: grid;
+  grid-template-columns: minmax(0, 14rem) minmax(0, 1fr);
+  gap: var(--sp-4);
+  align-items: start;
+  padding: var(--sp-4);
+}
+
+.fgp-explain__nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding: var(--sp-2);
+  background: var(--fgp-surface-panel);
+  border: 1px solid var(--fgp-border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.fgp-explain__navitem {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-0);
+  padding: var(--sp-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  text-align: left;
+}
+
+.fgp-explain__navitem code {
+  font-family: var(--p-font-code);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--fgp-text-secondary);
+}
+
+.fgp-explain__navitem span {
+  font-size: var(--fs-3xs);
+  color: var(--fgp-text-muted);
+}
+
+.fgp-explain__navitem:hover code {
+  color: var(--fgp-text-primary);
+}
+
+.fgp-explain__navitem.is-selected {
+  background: var(--fgp-accent-faint);
+  border-color: var(--fgp-accent-quiet);
+}
+
+.fgp-explain__navitem.is-selected code {
+  color: var(--fgp-accent-text);
+}
+
+.fgp-explain__detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.fgp-explain__detail[hidden] {
+  display: none;
+}
+
+.fgp-explain__detail__heading {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  font-size: var(--fs-lg);
+}
+
+.fgp-explain__detail__heading code {
+  font-family: var(--p-font-code);
+  color: var(--fgp-text-primary);
+}
+
+.fgp-explain__detail__label {
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-normal);
+  color: var(--fgp-text-muted);
+}
+
+.fgp-explain__detail__desc,
+.fgp-explain__detail__tip,
+.fgp-explain__detail__note {
+  font-size: var(--fs-xs);
+  line-height: var(--lh-base);
+  color: var(--fgp-text-secondary);
+}
+
+.fgp-explain__detail__tip,
+.fgp-explain__detail__note {
+  padding: var(--sp-2);
+  border-left: 2px solid var(--fgp-accent-quiet);
+  border-radius: var(--radius-xs);
+  background: var(--fgp-surface-sunken);
+  color: var(--fgp-text-muted);
+}
+
+.fgp-explain__detail__desc code,
+.fgp-explain__detail__tip code,
+.fgp-explain__detail__note code {
+  font-family: var(--p-font-code);
+  color: var(--fgp-accent-text);
+}
+
+.fgp-explain__detail__desc strong,
+.fgp-explain__detail__tip strong {
+  color: var(--fgp-text-primary);
+  font-weight: var(--fw-semibold);
+}
+
+.fgp-explain__detail__mdn {
+  align-self: flex-start;
+  font-size: var(--fs-2xs);
+  color: var(--fgp-accent-text);
+}
+
+.fgp-explain__detail__cases {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: var(--sp-3);
+}
+
+.fgp-explain__case {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+  background: var(--fgp-surface-panel);
+  border: 1px solid var(--fgp-border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.fgp-explain__case__name {
+  font-family: var(--p-font-code);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+  color: var(--fgp-accent-text);
+}
+
+.fgp-explain__case__desc {
+  font-size: var(--fs-3xs);
+  line-height: var(--lh-base);
+  color: var(--fgp-text-muted);
+}
+
+.fgp-explain__axis {
+  font-family: var(--p-font-code);
+  font-size: var(--fs-3xs);
+  color: var(--fgp-text-muted);
+}
+
+/* 데모 판 — 속성 값은 explain.js가 인라인으로 얹는다 */
+.fgp-explain__demo {
+  display: flex;
+  gap: var(--sp-1);
+  min-height: calc(var(--sp-16) + var(--sp-4));
+  padding: var(--sp-2);
+  background: var(--fgp-preview-bg);
+  border: 1px dashed var(--fgp-preview-container-edge);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.fgp-explain__demoitem {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  border: 1px solid var(--fgp-item-accent);
+  border-radius: var(--radius-xs);
+  background: color-mix(in srgb, var(--fgp-item-accent) 20%, transparent);
+  color: var(--fgp-item-accent);
+  font-family: var(--p-font-code);
+  font-size: var(--fs-3xs);
+  font-weight: var(--fw-bold);
+}
+
+/* 값이 걸린 아이템을 눈에 띄게 한다 */
+.fgp-explain__demoitem[data-target='true'] {
+  border-width: 2px;
+  border-style: solid;
+}
+
+@media (max-width: 599px) {
+  .fgp-explain {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .fgp-explain__nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+}

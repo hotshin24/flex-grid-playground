@@ -1,0 +1,335 @@
+/**
+ * explain.js — 속성 설명 탭 (F-02 / PRD 7.1 회귀 대상)
+ *
+ * 속성 목록과 값별 데모를 스키마에서 만든다. 설명 문장은 schema.js의
+ * desc · tip · values[].desc 를 그대로 쓰고, 스키마에 없는 보충만
+ * 토픽별 explain.js 에서 받는다. 이 파일에 문장이 없다.
+ *
+ * 데모는 renderer.js를 쓰지 않는다. 근거는 아래 buildDemo 주석에 적었다.
+ * 값 → CSS 문자열 변환만 renderer의 toCssValue를 재사용해, 데모와 프리뷰가
+ * 같은 표기를 내도록 맞춘다.
+ *
+ * store를 import하지 않는다. 데모는 메인 상태와 무관한 정적 스냅숏이다.
+ */
+
+import { toCssValue } from '../core/renderer.js';
+
+export const ROOT_CLASS = 'fgp-explain';
+export const NAV_CLASS = 'fgp-explain__nav';
+export const NAV_ITEM_CLASS = 'fgp-explain__navitem';
+export const DETAIL_CLASS = 'fgp-explain__detail';
+export const CASE_CLASS = 'fgp-explain__case';
+export const DEMO_CLASS = 'fgp-explain__demo';
+export const DEMO_ITEM_CLASS = 'fgp-explain__demoitem';
+export const AXIS_CLASS = 'fgp-explain__axis';
+export const SELECTED_CLASS = 'is-selected';
+
+/** 데모 아이템 크기 갈래. 스키마 demo.itemSizes 가 고른다. */
+const ITEM_SIZES = {
+  default: [{ w: 56, h: 44 }],
+  wide: [{ w: 92, h: 40 }],
+  varied: [{ w: 56, h: 28 }, { w: 56, h: 52 }, { w: 56, h: 40 }],
+};
+
+const AXES = ['row', 'column'];
+
+const NEXT_KEYS = new Set(['ArrowRight', 'ArrowDown']);
+const PREV_KEYS = new Set(['ArrowLeft', 'ArrowUp']);
+
+/* --------------------------------------------------------------------------
+   문장 — 스키마의 desc·tip 에는 <strong>·<code> 같은 인라인 표기가 섞여 있다.
+   innerHTML 없이 그 강조를 살리려고 최소 파서를 둔다.
+   -------------------------------------------------------------------------- */
+
+const INLINE_TAGS = new Set(['strong', 'code', 'em', 'b', 'i']);
+
+function appendRich(target, text, doc) {
+  const source = String(text ?? '');
+  const pattern = /<(\/?)([a-z]+)>/gi;
+  let at = 0;
+  let open = null;
+
+  const put = (chunk) => {
+    if (chunk === '') return;
+    if (open) {
+      const el = doc.createElement(open);
+      el.textContent = chunk;
+      target.appendChild(el);
+    } else {
+      const span = doc.createElement('span');
+      span.textContent = chunk;
+      target.appendChild(span);
+    }
+  };
+
+  let match = pattern.exec(source);
+  while (match) {
+    put(source.slice(at, match.index));
+    const [, closing, tag] = match;
+    if (INLINE_TAGS.has(tag.toLowerCase())) open = closing ? null : tag.toLowerCase();
+    at = match.index + match[0].length;
+    match = pattern.exec(source);
+  }
+  put(source.slice(at));
+
+  return target;
+}
+
+/* --------------------------------------------------------------------------
+   데모
+
+   renderer.js를 쓰지 않는 이유:
+   renderer는 store를 구독해 값이 바뀔 때마다 DOM을 재사용하며 갱신하는 물건이다.
+   여기 데모는 값이 고정된 스냅숏이라 구독도 diffing도 필요 없고, 재사용하려면
+   데모 하나마다 store를 하나씩 만들어야 한다. 속성 12개 × 값 3~7개 × 축 2개면
+   store가 100개 가까이 생긴다. 게다가 renderer는 컨테이너 크기 같은 메인 프리뷰
+   전용 상태를 함께 다룬다. 정적 스냅숏에는 맞지 않는 도구다.
+   -------------------------------------------------------------------------- */
+
+function sizeAt(kind, index) {
+  const set = ITEM_SIZES[kind] ?? ITEM_SIZES.default;
+  return set[index % set.length];
+}
+
+function buildDemo(entry, value, axis, doc) {
+  const demo = entry.demo ?? {};
+  const count = demo.itemCount ?? 3;
+
+  const box = doc.createElement('div');
+  box.className = DEMO_CLASS;
+
+  // 컨테이너 스타일: 데모 설정 → 축 → 속성 값 순으로 얹는다
+  Object.entries(demo.containerStyle ?? {}).forEach(([k, v]) => { box.style[k] = v; });
+  if (axis) box.style.flexDirection = axis;
+  if (entry.scope === 'container') box.style[entry.jsProp] = toCssValue(entry, value);
+
+  for (let i = 0; i < count; i += 1) {
+    const item = doc.createElement('div');
+    item.className = DEMO_ITEM_CLASS;
+    item.textContent = String(i + 1);
+
+    const { w, h } = sizeAt(demo.itemSizes, i);
+    item.style.width = `${w}px`;
+    item.style.height = `${h}px`;
+    item.style.setProperty('--fgp-item-accent', `var(--fgp-item-${(i % 8) + 1})`);
+
+    // 아이템 속성은 첫 아이템에만 준다. 전부 같은 값을 주면 비교가 되지 않는다.
+    if (entry.scope === 'item' && i === 0) {
+      item.style[entry.jsProp] = toCssValue(entry, value);
+      item.setAttribute('data-target', 'true');
+    }
+
+    box.appendChild(item);
+  }
+
+  return box;
+}
+
+/* --------------------------------------------------------------------------
+   상세
+   -------------------------------------------------------------------------- */
+
+function buildCase(entry, sample, axisLabels, doc) {
+  const wrap = doc.createElement('div');
+  wrap.className = CASE_CLASS;
+  wrap.setAttribute('data-value', String(sample.val));
+
+  const name = doc.createElement('code');
+  name.className = `${CASE_CLASS}__name`;
+  name.textContent = sample.label ?? `${entry.prop}: ${sample.val}`;
+  wrap.appendChild(name);
+
+  // axisAware 속성은 주축 방향별로 결과가 달라진다. 양쪽을 나란히 둔다.
+  const axes = entry.axisAware ? AXES : [null];
+
+  axes.forEach((axis) => {
+    if (axis) {
+      const label = doc.createElement('p');
+      label.className = AXIS_CLASS;
+      label.textContent = axisLabels[axis] ?? axis;
+      wrap.appendChild(label);
+    }
+    wrap.appendChild(buildDemo(entry, sample.val, axis, doc));
+  });
+
+  const desc = doc.createElement('p');
+  desc.className = `${CASE_CLASS}__desc`;
+  appendRich(desc, sample.desc, doc);
+  wrap.appendChild(desc);
+
+  return wrap;
+}
+
+function buildDetail(entry, config, doc) {
+  const { notes = {}, samples = {}, axisLabels = {} } = config;
+
+  const detail = doc.createElement('section');
+  detail.className = DETAIL_CLASS;
+  detail.setAttribute('aria-labelledby', `fgp-explain-${entry.urlKey}`);
+
+  const heading = doc.createElement('h3');
+  heading.className = `${DETAIL_CLASS}__heading`;
+  heading.setAttribute('id', `fgp-explain-${entry.urlKey}`);
+
+  const propName = doc.createElement('code');
+  propName.textContent = entry.prop;
+  heading.appendChild(propName);
+
+  if (entry.label) {
+    const label = doc.createElement('span');
+    label.className = `${DETAIL_CLASS}__label`;
+    label.textContent = entry.label;
+    heading.appendChild(label);
+  }
+  detail.appendChild(heading);
+
+  const desc = doc.createElement('p');
+  desc.className = `${DETAIL_CLASS}__desc`;
+  appendRich(desc, entry.desc, doc);
+  detail.appendChild(desc);
+
+  if (entry.tip) {
+    const tip = doc.createElement('p');
+    tip.className = `${DETAIL_CLASS}__tip`;
+    appendRich(tip, entry.tip, doc);
+    detail.appendChild(tip);
+  }
+
+  const note = notes[entry.prop];
+  if (note) {
+    const el = doc.createElement('p');
+    el.className = `${DETAIL_CLASS}__note`;
+    el.textContent = note;
+    detail.appendChild(el);
+  }
+
+  if (entry.mdn) {
+    const link = doc.createElement('a');
+    link.className = `${DETAIL_CLASS}__mdn`;
+    link.setAttribute('href', entry.mdn);
+    link.setAttribute('target', '_blank');
+    link.setAttribute('rel', 'noreferrer');
+    link.textContent = `MDN에서 ${entry.prop} 보기`;
+    detail.appendChild(link);
+  }
+
+  const cases = doc.createElement('div');
+  cases.className = `${DETAIL_CLASS}__cases`;
+
+  // enum이면 스키마의 values, 아니면 explain.js가 준 표본
+  const list = entry.values ?? samples[entry.prop] ?? [];
+  list.forEach((sample) => cases.appendChild(buildCase(entry, sample, axisLabels, doc)));
+  detail.appendChild(cases);
+
+  return detail;
+}
+
+/* --------------------------------------------------------------------------
+   진입점
+   -------------------------------------------------------------------------- */
+
+/**
+ * @param {Object}   config
+ * @param {Array}    config.schema      토픽 스키마
+ * @param {Object}   [config.notes]     { [prop]: 보충 문장 }
+ * @param {Object}   [config.samples]   { [prop]: [{val, desc, label?}] } — enum 아닌 속성
+ * @param {Object}   [config.axisLabels]
+ * @param {Element}  config.root
+ * @param {Document} [config.doc]
+ * @returns {{root, select, selected}}
+ */
+export function createExplain(config) {
+  const { schema, root, doc = globalThis.document } = config;
+
+  if (!Array.isArray(schema) || schema.length === 0) throw new Error('createExplain: 스키마가 필요합니다');
+  if (!root) throw new Error('createExplain: root 요소가 필요합니다');
+  if (!doc) throw new Error('createExplain: document를 찾을 수 없습니다');
+
+  root.classList.add(ROOT_CLASS);
+
+  const nav = doc.createElement('nav');
+  nav.className = NAV_CLASS;
+  nav.setAttribute('aria-label', '속성 목록');
+  root.appendChild(nav);
+
+  const stage = doc.createElement('div');
+  stage.className = `${DETAIL_CLASS}-stage`;
+  root.appendChild(stage);
+
+  const buttons = schema.map((entry) => {
+    const button = doc.createElement('button');
+    button.className = NAV_ITEM_CLASS;
+    button.setAttribute('type', 'button');
+    button.setAttribute('data-prop', entry.prop);
+
+    const name = doc.createElement('code');
+    name.textContent = entry.prop;
+    button.appendChild(name);
+
+    if (entry.label) {
+      const label = doc.createElement('span');
+      label.textContent = entry.label;
+      button.appendChild(label);
+    }
+
+    nav.appendChild(button);
+    return button;
+  });
+
+  // 상세는 미리 만들어 두고 보이기만 바꾼다. 고를 때마다 다시 만들면 데모
+  // 수십 개를 매번 새로 그리게 된다.
+  const details = schema.map((entry) => {
+    const detail = buildDetail(entry, config, doc);
+    stage.appendChild(detail);
+    return detail;
+  });
+
+  let current = schema[0].prop;
+
+  function select(prop) {
+    const at = schema.findIndex((e) => e.prop === prop);
+    if (at === -1) return;
+    current = prop;
+
+    buttons.forEach((button, i) => {
+      const on = i === at;
+      button.setAttribute('aria-current', on ? 'true' : 'false');
+      button.setAttribute('tabindex', on ? '0' : '-1');
+      button.classList.toggle(SELECTED_CLASS, on);
+    });
+
+    details.forEach((detail, i) => { detail.hidden = i !== at; });
+  }
+
+  const closestItem = (target) => {
+    let node = target;
+    while (node && node !== nav) {
+      if (node.getAttribute && node.getAttribute('data-prop')) return node;
+      node = node.parentNode;
+    }
+    return null;
+  };
+
+  nav.addEventListener('click', (e) => {
+    const button = closestItem(e.target);
+    if (button) select(button.getAttribute('data-prop'));
+  });
+
+  nav.addEventListener('keydown', (e) => {
+    if (!NEXT_KEYS.has(e.key) && !PREV_KEYS.has(e.key)) return;
+
+    const at = schema.findIndex((entry) => entry.prop === current);
+    const step = NEXT_KEYS.has(e.key) ? 1 : -1;
+    const next = (at + step + schema.length) % schema.length;
+
+    if (e.preventDefault) e.preventDefault();
+    select(schema[next].prop);
+    if (typeof buttons[next].focus === 'function') buttons[next].focus();
+  });
+
+  select(current);
+
+  return { root, select, selected: () => current };
+}
+
+export default createExplain;
