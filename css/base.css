@@ -1,0 +1,87 @@
+/**
+ * base.css — 리셋 · 타이포그래피
+ *
+ * 색은 --fgp-* semantic 토큰만, 간격은 --sp-* 만 쓴다.
+ * 서체는 --p-font-* 를 참조한다. tokens.css에 --fgp-font-* 별칭이 없어서이며,
+ * 별칭이 생기면 이 두 곳을 그쪽으로 바꾼다.
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--fgp-surface-page);
+  color: var(--fgp-text-primary);
+  font-family: var(--p-font-ui);
+  font-size: var(--fs-md);
+  line-height: var(--lh-base);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+p,
+figure {
+  margin: 0;
+}
+
+code,
+kbd,
+samp,
+pre {
+  font-family: var(--p-font-code);
+  font-size: var(--fs-xs);
+}
+
+button,
+input,
+select,
+output {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+/* 전 인터랙티브 요소에 보이는 포커스 링. outline: none 단독 사용 금지. */
+:focus-visible {
+  outline: var(--fgp-focus-ring-width) solid var(--fgp-focus-ring);
+  outline-offset: var(--fgp-focus-ring-offset);
+}
+
+/* 타이포 역할 */
+
+.fgp-title {
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-tight);
+}
+
+.fgp-subtitle {
+  font-size: var(--fs-3xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--fgp-text-muted);
+}
+
+.fgp-mono {
+  font-family: var(--p-font-code);
+}
