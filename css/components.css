@@ -334,11 +334,13 @@
   color: var(--fgp-preview-item-selected);
 }
 
-/* 600 ~ 1023px — 프리뷰가 상단 절반을 쓴다 */
+/* 600 ~ 1023px — 프리뷰 아래에 컨트롤 패널이 통째로 오므로 높이를 낮게 잡는다.
+   하한을 고정 px로 두면 화면이 낮을 때 하한이 이겨 32vh가 무시된다.
+   하한도 같은 식으로 두어 지정값이 있으면 그 값이, 없으면 32vh가 그대로 산다. */
 @media (min-width: 600px) {
   .fgp-preview__container {
-    height: var(--fgp-view-height, 46vh);
-    min-height: var(--fgp-view-height, calc(var(--sp-16) * 4));
+    height: var(--fgp-view-height, 32vh);
+    min-height: var(--fgp-view-height, 32vh);
   }
 }
 
