@@ -102,12 +102,26 @@
     flex: none;
   }
 
-  /* 자리표시 탭도 남은 높이를 갖고 그 안에서 스크롤한다 */
-  .fgp-placeholder {
+  /**
+   * 탭 내용은 남은 높이를 받고, 기본적으로 패널 자체가 스크롤한다.
+   *
+   * 클래스가 아니라 role로 잡는다. 탭이 늘어날 때마다 스크롤 규칙을 다시
+   * 쓰는 일이 없도록 — 실제로 속성 설명 탭을 붙였을 때 그 규칙이 없어
+   * 아래쪽 내용에 닿을 수 없었다.
+   */
+  [role='tabpanel'] {
     flex: 1;
     min-height: 0;
     overflow-y: auto;
     overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* 안에 스크롤 영역을 따로 둔 탭은 패널이 아니라 그 안에서 스크롤한다.
+     패널까지 스크롤하면 스크롤바가 둘 겹친다. */
+  .fgp-shell,
+  .fgp-explain {
+    overflow: hidden;
   }
 
   .fgp-shell {

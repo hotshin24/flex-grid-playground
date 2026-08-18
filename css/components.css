@@ -572,8 +572,25 @@
   display: grid;
   grid-template-columns: minmax(0, 14rem) minmax(0, 1fr);
   gap: var(--sp-4);
-  align-items: start;
+  align-items: stretch;
   padding: var(--sp-4);
+}
+
+/**
+ * 목록과 본문이 각각 스크롤한다. 둘 다 화면을 넘기므로 한쪽에 묶으면
+ * 속성을 고르러 갈 때마다 본문을 스크롤해서 되돌아와야 한다.
+ *
+ * 모바일은 제외한다. 그 구간은 페이지가 스크롤되므로 안쪽에 또 스크롤을
+ * 만들면 손가락이 어느 쪽을 움직일지 알 수 없다.
+ */
+@media (min-width: 600px) {
+  .fgp-explain__nav,
+  .fgp-explain__detail-stage {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
 .fgp-explain__nav {
