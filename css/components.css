@@ -76,12 +76,12 @@
   font-weight: var(--fw-medium);
 }
 
-/* 수치 컨트롤. 값이 없으면 readout이 '기본값'을 흐리게 보여준다 */
-.fgp-control--range .fgp-control__readout {
+/* 뷰 설정 컨트롤. 값이 없으면 readout이 '기본값'을 흐리게 보여준다 */
+.fgp-control--view .fgp-control__readout {
   min-width: calc(var(--sp-10) + var(--sp-4));
 }
 
-.fgp-control--range[data-default='true'] .fgp-control__readout {
+.fgp-control--view[data-default='true'] .fgp-control__readout {
   color: var(--fgp-text-muted);
   font-weight: var(--fw-normal);
 }
@@ -115,26 +115,6 @@
   display: flex;
   flex-direction: column;
   gap: var(--sp-4);
-}
-
-/* 너비·높이처럼 짝을 이루는 수치 컨트롤은 한 줄에 둘씩 놓는다.
-   패널이 좁으므로 최소 폭을 낮게 잡아야 2열이 유지된다. */
-.fgp-control-list--pair {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--sp-3) var(--sp-3);
-}
-
-/* 좁은 화면에서는 슬라이더가 눌러 쓸 수 없을 만큼 짧아지므로 되돌린다 */
-@media (max-width: 599px) {
-  .fgp-control-list--pair {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
-/* 짝 컨트롤 안에서는 readout이 자리를 덜 차지해야 슬라이더가 산다 */
-.fgp-control-list--pair .fgp-control__readout {
-  min-width: var(--sp-10);
 }
 
 .fgp-control {

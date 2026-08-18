@@ -57,27 +57,11 @@
   }
 }
 
-/* 600 ~ 1023px — 고정 해제. 프리뷰 상 · 컨트롤 하 2단.
-   패널이 한 줄로 길게 늘어지면 프리뷰 크기 조절이 화면 밖으로 밀린다.
-   섹션을 2열로 깔아 패널 안에서 보이게 한다. */
+/* 600 ~ 1023px — 고정 해제. 프리뷰 상 · 컨트롤 하 2단 */
 @media (min-width: 600px) {
   .fgp-shell {
     gap: var(--sp-4);
     padding: var(--sp-4);
-  }
-}
-
-@media (min-width: 600px) and (max-width: 1023px) {
-  .fgp-panel {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    align-items: start;
-    gap: var(--sp-4);
-  }
-
-  /* 속성 목록은 길어서 한 열을 통째로 쓴다 */
-  .fgp-panel > .fgp-panel__section:first-child {
-    grid-row: span 2;
   }
 }
 
