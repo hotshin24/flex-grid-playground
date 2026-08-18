@@ -71,19 +71,29 @@
  * 가려야 할 결함이 아니라 가르쳐야 할 현상이다 (PRD 5.5).
  */
 @media (min-width: 600px) {
-  /* body의 overflow는 뷰포트로 전파되지만, 모바일 사파리 계열은 이를 무시하고
-     페이지를 튕기듯 움직인다. 루트에도 걸어 그 경로를 막는다. */
+  /**
+   * iOS(사파리·아이패드 크롬 모두 WebKit)에서는 html·body에 overflow: hidden을
+   * 걸어도 페이지가 움직인다. 높이를 100vh로 잡으면 주소 표시줄이 접힌 상태의
+   * 높이라 실제 보이는 영역보다 커서, 그 차이만큼 페이지가 밀린다.
+   *
+   * body를 흐름에서 빼내 뷰포트에 고정하면 페이지 스크롤 영역 자체가 생기지
+   * 않는다. inset이 높이를 정하므로 vh 계산도 필요 없다.
+   * overscroll-behavior는 패널 끝에서 스크롤이 페이지로 넘어가는 연쇄와
+   * 고무줄 튕김을 막는다.
+   */
   html {
     height: 100%;
     overflow: hidden;
+    overscroll-behavior: none;
   }
 
   body {
-    height: 100vh;
-    height: 100dvh;
+    position: fixed;
+    inset: 0;
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    overscroll-behavior: none;
   }
 
   .fgp-header {
@@ -97,10 +107,13 @@
     padding: var(--sp-4);
   }
 
-  /* 스크롤은 여기서만 일어난다 */
+  /* 스크롤은 여기서만 일어난다. contain을 걸어 끝에 닿아도 페이지로
+     넘어가지 않게 한다 — 터치 기기에서 페이지가 밀리는 주된 경로다. */
   .fgp-panel {
     min-height: 0;
     overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
   }
 }
 
