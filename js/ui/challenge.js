@@ -21,8 +21,15 @@
  */
 
 import { createControl } from './controls.js';
+import {
+  PANE_CLASS, PANE_SIDE_CLASS, PANE_ITEM_CLASS, PANE_NAME_CLASS, PANE_META_CLASS, PANE_STAGE_CLASS,
+} from './explain.js';
 import { partitionByScope, defaultsFrom } from '../core/schema-spec.js';
 
+/**
+ * 좌우 2열 틀은 속성 설명 탭이 기준이다. 클래스 이름을 여기 다시 적지 않고
+ * 그쪽에서 가져온다 — 두 곳에 적어 두면 언젠가 갈라진다.
+ */
 export const ROOT_CLASS = 'fgp-challenge';
 export const LIST_CLASS = 'fgp-challenge__list';
 export const LIST_ITEM_CLASS = 'fgp-challenge__listitem';
@@ -166,6 +173,7 @@ export function createChallenge(config) {
   if (!doc) throw new Error('createChallenge: document를 찾을 수 없습니다');
 
   root.classList.add(ROOT_CLASS);
+  root.classList.add(PANE_CLASS);
 
   const entries = partitionByScope(schema).container;
   const byProp = new Map(schema.map((e) => [e.jsProp, e]));
@@ -174,30 +182,26 @@ export function createChallenge(config) {
 
   /* ---- 문제 목록 ---- */
   const nav = doc.createElement('nav');
-  nav.className = LIST_CLASS;
+  nav.className = `${PANE_SIDE_CLASS} ${LIST_CLASS}`;
   nav.setAttribute('aria-label', '문제 목록');
   root.appendChild(nav);
 
   const listItems = challenges.map((challenge) => {
     const button = doc.createElement('button');
-    button.className = LIST_ITEM_CLASS;
+    button.className = `${PANE_ITEM_CLASS} ${LIST_ITEM_CLASS}`;
     button.setAttribute('type', 'button');
     button.setAttribute('data-challenge', String(challenge.id));
 
-    const num = doc.createElement('span');
-    num.className = `${LIST_ITEM_CLASS}__num`;
-    num.textContent = `#${challenge.id}`;
-    button.appendChild(num);
+    // 이름 줄과 설명 줄. 속성 설명 탭과 같은 두 줄 구조다.
+    const name = doc.createElement('span');
+    name.className = PANE_NAME_CLASS;
+    name.textContent = `#${challenge.id} ${challenge.title}`;
+    button.appendChild(name);
 
-    const title = doc.createElement('span');
-    title.className = `${LIST_ITEM_CLASS}__title`;
-    title.textContent = challenge.title;
-    button.appendChild(title);
-
-    const diff = doc.createElement('span');
-    diff.className = `${LIST_ITEM_CLASS}__diff`;
-    diff.textContent = challenge.difficulty;
-    button.appendChild(diff);
+    const meta = doc.createElement('span');
+    meta.className = PANE_META_CLASS;
+    meta.textContent = challenge.difficulty;
+    button.appendChild(meta);
 
     nav.appendChild(button);
     return button;
@@ -205,7 +209,7 @@ export function createChallenge(config) {
 
   /* ---- 작업 영역 ---- */
   const work = doc.createElement('section');
-  work.className = WORK_CLASS;
+  work.className = `${PANE_STAGE_CLASS} ${WORK_CLASS}`;
   root.appendChild(work);
 
   const head = doc.createElement('header');

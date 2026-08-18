@@ -1043,74 +1043,10 @@ code.fgp-pane__item__name {
    챌린지 (F-09)
    -------------------------------------------------------------------------- */
 
-.fgp-challenge {
-  display: grid;
-  grid-template-columns: minmax(0, 16rem) minmax(0, 1fr);
-  gap: var(--sp-4);
-  align-items: start;
-  padding: var(--sp-4);
-}
-
-.fgp-challenge__list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-1);
-}
-
-.fgp-challenge__listitem {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-  padding: var(--sp-2);
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  text-align: left;
-}
-
-.fgp-challenge__listitem__num {
-  color: var(--fgp-text-muted);
-  font-family: var(--p-font-code);
-  font-size: var(--fs-3xs);
-  font-weight: var(--fw-bold);
-}
-
-.fgp-challenge__listitem__title {
-  flex: 1;
-  min-width: 0;
-  color: var(--fgp-text-secondary);
-  font-size: var(--fs-2xs);
-}
-
-.fgp-challenge__listitem__diff {
-  font-size: var(--fs-3xs);
-}
-
-.fgp-challenge__listitem:hover .fgp-challenge__listitem__title {
-  color: var(--fgp-text-primary);
-}
-
-.fgp-challenge__listitem.is-selected {
-  background: var(--fgp-accent-faint);
-  border-color: var(--fgp-accent-quiet);
-}
-
-.fgp-challenge__listitem.is-selected .fgp-challenge__listitem__title {
-  color: var(--fgp-accent-text);
-}
-
-/* 클리어 표시는 색만으로 하지 않는다. 앞에 표식을 붙인다 */
-.fgp-challenge__listitem.is-solved .fgp-challenge__listitem__num::after {
-  content: '✔';
-  margin-left: var(--sp-1);
+/* 클리어 표시는 색만으로 하지 않는다. 이름 줄 끝에 표식을 붙인다 */
+.fgp-challenge__listitem.is-solved .fgp-pane__item__name::after {
+  content: ' ✔';
   color: var(--fgp-state-correct);
-}
-
-.fgp-challenge__work {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-3);
-  min-width: 0;
 }
 
 .fgp-challenge__work__head {
@@ -1270,24 +1206,4 @@ code.fgp-pane__item__name {
 
 .fgp-challenge__result.is-mismatch {
   color: var(--fgp-state-incorrect);
-}
-
-/* 좁은 화면에서는 목록을 위로 눕힌다 */
-@media (max-width: 1023px) {
-  .fgp-challenge {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .fgp-challenge__list {
-    flex-direction: row;
-    flex-wrap: wrap;
-  }
-
-  .fgp-challenge__listitem {
-    border-color: var(--fgp-border-subtle);
-  }
-
-  .fgp-challenge__listitem__title {
-    flex: none;
-  }
 }
