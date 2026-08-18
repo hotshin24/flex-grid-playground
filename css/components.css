@@ -1,0 +1,212 @@
+/**
+ * components.css — 컨트롤 · 패널 · 프리뷰
+ *
+ * controls.js와 renderer.js가 붙인 클래스에 대응한다.
+ * 두 파일은 색·간격을 모르며, 여기서만 정해진다.
+ *
+ * 알파 합성은 color-mix에 퍼센트를 넘겨서 한다. 색 리터럴을 쓰지 않는다.
+ */
+
+/* --------------------------------------------------------------------------
+   패널 · 공통 조각
+   -------------------------------------------------------------------------- */
+
+.fgp-badge {
+  padding: var(--sp-1) var(--sp-2);
+  border-radius: var(--radius-pill);
+  background: var(--fgp-accent-faint);
+  border: 1px solid var(--fgp-accent-quiet);
+  color: var(--fgp-accent-text);
+  font-family: var(--p-font-code);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+}
+
+.fgp-panel__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  background: var(--fgp-surface-panel);
+  border: 1px solid var(--fgp-border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.fgp-panel__title {
+  font-size: var(--fs-3xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--fgp-text-muted);
+}
+
+.fgp-btn {
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--fgp-border-default);
+  border-radius: var(--radius-sm);
+  background: var(--fgp-surface-raised);
+  color: var(--fgp-text-secondary);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  transition: background var(--dur-fast) var(--ease-out),
+              border-color var(--dur-fast) var(--ease-out),
+              color var(--dur-fast) var(--ease-out);
+}
+
+.fgp-btn:hover:not(:disabled) {
+  border-color: var(--fgp-accent);
+  color: var(--fgp-accent-text);
+}
+
+.fgp-itembar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+.fgp-itembar__count {
+  margin-left: auto;
+  color: var(--fgp-text-muted);
+  font-family: var(--p-font-code);
+  font-size: var(--fs-2xs);
+}
+
+/* --------------------------------------------------------------------------
+   컨트롤 (controls.js)
+   -------------------------------------------------------------------------- */
+
+/* 컨트롤 마운트 지점. 개수는 스키마가 정하므로 간격만 책임진다. */
+.fgp-control-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.fgp-control {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.fgp-control__label {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--fgp-text-secondary);
+}
+
+.fgp-control__values {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+}
+
+.fgp-control__option {
+  padding: var(--sp-1) var(--sp-2);
+  border: 1px solid var(--fgp-border-default);
+  border-radius: var(--radius-sm);
+  background: var(--fgp-surface-sunken);
+  color: var(--fgp-text-muted);
+  font-family: var(--p-font-code);
+  font-size: var(--fs-2xs);
+  transition: background var(--dur-fast) var(--ease-out),
+              border-color var(--dur-fast) var(--ease-out),
+              color var(--dur-fast) var(--ease-out);
+}
+
+.fgp-control__option:hover {
+  border-color: var(--fgp-accent-quiet);
+  color: var(--fgp-text-primary);
+}
+
+.fgp-control__option.is-checked {
+  background: var(--fgp-accent-faint);
+  border-color: var(--fgp-accent);
+  color: var(--fgp-accent-text);
+}
+
+.fgp-control__field {
+  flex: 1;
+  min-width: 0;
+  padding: var(--sp-1) var(--sp-2);
+  border: 1px solid var(--fgp-border-default);
+  border-radius: var(--radius-sm);
+  background: var(--fgp-surface-sunken);
+  color: var(--fgp-text-primary);
+  font-size: var(--fs-xs);
+  accent-color: var(--fgp-accent);
+}
+
+.fgp-control__readout {
+  min-width: var(--sp-8);
+  text-align: right;
+  color: var(--fgp-accent-text);
+  font-family: var(--p-font-code);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+}
+
+.fgp-control__unit {
+  padding: var(--sp-1) var(--sp-2);
+  border: 1px solid var(--fgp-border-default);
+  border-radius: var(--radius-sm);
+  background: var(--fgp-surface-sunken);
+  color: var(--fgp-text-secondary);
+  font-family: var(--p-font-code);
+  font-size: var(--fs-2xs);
+}
+
+/* M3 대기 컨트롤 — 자리만 있고 조작 수단은 없다 */
+.fgp-control__values[data-pending] {
+  padding: var(--sp-2);
+  border: 1px dashed var(--fgp-border-default);
+  border-radius: var(--radius-sm);
+  color: var(--fgp-text-muted);
+  font-size: var(--fs-2xs);
+}
+
+/* --------------------------------------------------------------------------
+   프리뷰 (renderer.js)
+
+   트랜지션은 장식이 아니라 기능이다. 속성이 바뀌는 과정이 보여야 학습이 된다.
+   duration은 prefers-reduced-motion에서 tokens.css가 0으로 바꾼다.
+   -------------------------------------------------------------------------- */
+
+.fgp-preview__stage {
+  padding: var(--sp-4);
+  background: var(--fgp-preview-bg);
+  border: 1px solid var(--fgp-border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.fgp-preview__container {
+  min-height: calc(var(--sp-16) * 5);
+  padding: var(--sp-3);
+  background: var(--fgp-preview-container-bg);
+  border: 1px dashed var(--fgp-preview-container-edge);
+  border-radius: var(--radius-md);
+  transition: all var(--dur-preview) var(--ease-out);
+}
+
+.fgp-preview__item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--fgp-item-accent);
+  background: color-mix(in srgb, var(--fgp-item-accent) 20%, transparent);
+  color: var(--fgp-item-accent);
+  font-family: var(--p-font-code);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
+  transition: all var(--dur-preview) var(--ease-out);
+}
+
+.fgp-preview__item.is-selected {
+  border-color: var(--fgp-preview-item-selected);
+  color: var(--fgp-preview-item-selected);
+}
