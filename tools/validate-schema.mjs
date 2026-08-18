@@ -5,7 +5,10 @@
  * 스키마를 수정한 뒤 반드시 실행할 것:  node tools/validate-schema.mjs
  * 종료 코드가 0이 아니면 계약 위반이다.
  */
-import { validateSchema, partitionByScope, defaultsFrom, parseAreaGrid, isInactive } from '../js/core/schema-spec.js';
+import {
+  validateSchema, partitionByScope, defaultsFrom, parseAreaGrid,
+  isInactive, deriveState, INACTIVE_STATE_KEYS,
+} from '../js/core/schema-spec.js';
 import FLEX from '../js/topics/flex/schema.js';
 import GRID from '../js/topics/grid/schema.js';
 
@@ -48,7 +51,7 @@ for (const [name, schema] of [['flex', FLEX], ['grid', GRID]]) {
   );
   check(
     '선언 없는 속성은 전부 활성',
-    schema.filter((e) => !e.inactiveWhen).every((e) => isInactive(e, {}).inactive === false),
+    schema.filter((e) => !e.inactiveWhen).every((e) => isInactive(e).inactive === false),
     `${schema.length - declared.length}개 확인`
   );
 
@@ -157,6 +160,36 @@ catches('measuredInactive 와 동시 선언',
 catches('measuredInactive 가 빈 문자열',
   fixture(null, { measuredInactive: '' }), 'measuredInactive');
 
+// --- source: 'state' ---
+
+check(
+  "source: 'state' 정상 선언 통과",
+  validateSchema(fixture({ source: 'state', prop: 'hasMultipleItems', equals: false, reason: REASON }), 'fixture').length === 0
+);
+
+catches('화이트리스트에 없는 상태 키',
+  fixture({ source: 'state', prop: '없는상태키', equals: true, reason: REASON }), '허용된 상태 키가 아님');
+
+catches('Boolean 상태 키에 문자열 비교',
+  fixture({ source: 'state', prop: 'hasMultipleItems', equals: 'false', reason: REASON }), 'Boolean 이므로');
+
+catches('알 수 없는 source',
+  fixture({ source: 'measured', prop: 'hasMultipleItems', equals: false, reason: REASON }), 'container | state 중 하나여야 함');
+
+check(
+  "source 생략 시 container 로 동작",
+  validateSchema(fixture({ prop: 'flexWrap', equals: 'nowrap', reason: REASON }), 'fixture').length === 0
+);
+
+catches("source 생략 시 상태 키를 쓰면 잡힘",
+  fixture({ prop: 'hasMultipleItems', equals: false, reason: REASON }), '스키마에 없음');
+
+check(
+  '화이트리스트가 키를 추가할 수 있는 모양인가',
+  Object.entries(INACTIVE_STATE_KEYS).every(([, v]) => v.type && v.desc && typeof v.from === 'function'),
+  Object.keys(INACTIVE_STATE_KEYS).join(', ')
+);
+
 console.log('\n── isInactive 판정 ──');
 
 const ENTRY = (rule) => ({ prop: 'align-content', jsProp: 'alignContent', inactiveWhen: rule });
@@ -165,8 +198,8 @@ check('선언 없으면 항상 활성', isInactive({ prop: 'gap' }, { flexWrap: 
 
 {
   const e = ENTRY({ prop: 'flexWrap', equals: 'nowrap', reason: REASON, hint: 'wrap으로 바꿔보세요' });
-  const hit = isInactive(e, { flexWrap: 'nowrap' });
-  const miss = isInactive(e, { flexWrap: 'wrap' });
+  const hit = isInactive(e, { container: { flexWrap: 'nowrap' } });
+  const miss = isInactive(e, { container: { flexWrap: 'wrap' } });
   check('equals 일치 → 비활성', hit.inactive === true && hit.reason === REASON);
   check('사유와 함께 힌트도 전달', hit.hint === 'wrap으로 바꿔보세요');
   check('equals 불일치 → 활성', miss.inactive === false);
@@ -175,19 +208,19 @@ check('선언 없으면 항상 활성', isInactive({ prop: 'gap' }, { flexWrap: 
 
 {
   const e = ENTRY({ prop: 'flexWrap', notEquals: 'wrap', reason: REASON });
-  check('notEquals — 다르면 비활성', isInactive(e, { flexWrap: 'nowrap' }).inactive === true);
-  check('notEquals — 같으면 활성', isInactive(e, { flexWrap: 'wrap' }).inactive === false);
-  check('hint 없으면 결과에도 없음', isInactive(e, { flexWrap: 'nowrap' }).hint === undefined);
+  check('notEquals — 다르면 비활성', isInactive(e, { container: { flexWrap: 'nowrap' } }).inactive === true);
+  check('notEquals — 같으면 활성', isInactive(e, { container: { flexWrap: 'wrap' } }).inactive === false);
+  check('hint 없으면 결과에도 없음', isInactive(e, { container: { flexWrap: 'nowrap' } }).hint === undefined);
 }
 
 {
   const e = ENTRY({ prop: 'flexWrap', in: ['nowrap', 'wrap-reverse'], reason: REASON });
-  check('in — 포함되면 비활성', isInactive(e, { flexWrap: 'wrap-reverse' }).inactive === true);
-  check('in — 빠지면 활성', isInactive(e, { flexWrap: 'wrap' }).inactive === false);
+  check('in — 포함되면 비활성', isInactive(e, { container: { flexWrap: 'wrap-reverse' } }).inactive === true);
+  check('in — 빠지면 활성', isInactive(e, { container: { flexWrap: 'wrap' } }).inactive === false);
 }
 
-check('상태에 값이 없으면 활성', isInactive(ENTRY({ prop: 'flexWrap', equals: 'nowrap', reason: REASON }), {}).inactive === false);
-check('containerState 를 안 넘겨도 죽지 않음', isInactive(ENTRY({ prop: 'flexWrap', equals: 'nowrap', reason: REASON })).inactive === false);
+check('참조 값이 없으면 활성', isInactive(ENTRY({ prop: 'flexWrap', equals: 'nowrap', reason: REASON }), { container: {} }).inactive === false);
+check('인자를 안 넘겨도 죽지 않음', isInactive(ENTRY({ prop: 'flexWrap', equals: 'nowrap', reason: REASON })).inactive === false);
 
 /* ==========================================================================
    실제 스키마에 선언된 조건부 비활성 (F-13 2단계)
@@ -208,20 +241,46 @@ check('전 선언에 reason 존재', declaredInactive.every((e) => e.inactiveWhe
   const ac = FLEX.find((e) => e.prop === 'align-content');
   check('align-content 에 선언 있음', Boolean(ac?.inactiveWhen));
 
-  const nowrap = isInactive(ac, { flexWrap: 'nowrap' });
+  const nowrap = isInactive(ac, { container: { flexWrap: 'nowrap' } });
   check('flex-wrap: nowrap → 비활성', nowrap.inactive === true);
   check('사유 전달', Boolean(nowrap.reason), nowrap.reason);
   check('힌트 전달', Boolean(nowrap.hint), nowrap.hint);
 
-  check('flex-wrap: wrap → 활성', isInactive(ac, { flexWrap: 'wrap' }).inactive === false);
-  check('flex-wrap: wrap-reverse → 활성', isInactive(ac, { flexWrap: 'wrap-reverse' }).inactive === false);
+  check('flex-wrap: wrap → 활성', isInactive(ac, { container: { flexWrap: 'wrap' } }).inactive === false);
+  check('flex-wrap: wrap-reverse → 활성', isInactive(ac, { container: { flexWrap: 'wrap-reverse' } }).inactive === false);
 
   const defaults = defaultsFrom(FLEX, 'container');
-  check('기본 상태(nowrap)에서는 비활성', isInactive(ac, defaults).inactive === true,
+  check('기본 상태(nowrap)에서는 비활성', isInactive(ac, { container: defaults }).inactive === true,
     `flexWrap=${defaults.flexWrap}`);
 }
 
+{
+  const order = FLEX.find((e) => e.prop === 'order');
+  check('order 에 선언 있음', Boolean(order?.inactiveWhen));
+  check("order 는 source: 'state'", order.inactiveWhen.source === 'state');
+
+  const one = deriveState({ items: [{ id: 1 }] });
+  const two = deriveState({ items: [{ id: 1 }, { id: 2 }] });
+  check('deriveState — 아이템 1개면 hasMultipleItems false', one.hasMultipleItems === false);
+  check('deriveState — 아이템 2개면 true', two.hasMultipleItems === true);
+  check('deriveState — 빈 상태도 죽지 않음', deriveState({}).hasMultipleItems === false);
+
+  const hit = isInactive(order, { state: one });
+  check('아이템 1개 → 비활성', hit.inactive === true);
+  check('사유 전달', Boolean(hit.reason), hit.reason);
+  check('힌트 전달', Boolean(hit.hint), hit.hint);
+  check('아이템 2개 → 활성', isInactive(order, { state: two }).inactive === false);
+  check('아이템 4개 → 활성', isInactive(order, { state: deriveState({ items: [1, 2, 3, 4] }) }).inactive === false);
+
+  check('container 만 넘기면 상태 참조는 활성으로 떨어짐',
+    isInactive(order, { container: { flexWrap: 'nowrap' } }).inactive === false);
+}
+
 check('선언이 항목 수를 늘리지 않음', FLEX.length === EXPECTED.flex.total, `${FLEX.length}/${EXPECTED.flex.total}`);
+check('선언 없는 속성은 여전히 활성 (기존 무영향)',
+  [...FLEX, ...GRID].filter((e) => !e.inactiveWhen)
+    .every((e) => isInactive(e, { container: defaultsFrom(FLEX, 'container'), state: deriveState({ items: [1] }) }).inactive === false),
+  `${[...FLEX, ...GRID].filter((e) => !e.inactiveWhen).length}개 확인`);
 
 console.log(failures === 0 ? '\n전체 통과\n' : `\n실패 ${failures}건\n`);
 process.exit(failures === 0 ? 0 : 1);

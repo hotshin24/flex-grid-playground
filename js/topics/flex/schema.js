@@ -182,6 +182,13 @@ export const FLEX_SCHEMA = [
     label: '배치 순서',
     desc: 'HTML 소스 순서를 바꾸지 않고 <strong>시각적</strong> 배치 순서만 바꿉니다. 값이 작을수록 앞입니다.',
     tip: '화면 순서와 DOM 순서가 달라지면 키보드 탭 이동과 스크린 리더 읽기 순서가 어긋납니다. 접근성상 남용하면 안 되는 속성입니다.',
+    inactiveWhen: {
+      source: 'state',
+      prop: 'hasMultipleItems',
+      equals: false,
+      reason: '아이템이 하나뿐이라 앞뒤를 다툴 상대가 없습니다.',
+      hint: '아이템을 하나 더 추가한 뒤 값을 바꿔 보세요.',
+    },
     mdn: MDN + 'order',
     relatedTo: ['order'],
     demo: { itemCount: 4 },

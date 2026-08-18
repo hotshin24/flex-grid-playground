@@ -104,8 +104,11 @@ export const CONTROL_TYPES = {
      relatedTo: ['align-items']  // 대조 뷰(GR-09)에서 연결할 속성
 
      // --- 조건부 비활성 (F-13) — 둘 다 선택 필드 ---
-     inactiveWhen: {             // 유형 A. 다른 속성의 값만으로 판정한다
-       prop:   'flexWrap',       // 판정 대상 속성의 jsProp. 같은 스키마 안에 있어야 한다
+     inactiveWhen: {             // 유형 A. 렌더 전에 알 수 있는 값만으로 판정한다
+       source: 'container',      // 'container'(기본) | 'state'
+                                 //   container — 같은 스키마의 다른 속성 값
+                                 //   state     — INACTIVE_STATE_KEYS 의 파생 상태
+       prop:   'flexWrap',       // source 에 따라 jsProp 또는 상태 키
        equals: 'nowrap',         // equals | notEquals | in 중 정확히 하나
        reason: '...',            // 비활성 사유 문장. 화면에 그대로 나간다
        hint:   '...'             // 선택. 해결 방법 안내
@@ -122,7 +125,30 @@ const VALID_SCOPES = ['container', 'item'];
 const INACTIVE_OPERATORS = ['equals', 'notEquals', 'in'];
 
 /** inactiveWhen 에 허용된 키. 오타를 잡기 위해 화이트리스트로 검사한다. */
-const INACTIVE_FIELDS = ['prop', ...INACTIVE_OPERATORS, 'reason', 'hint'];
+const INACTIVE_FIELDS = ['source', 'prop', ...INACTIVE_OPERATORS, 'reason', 'hint'];
+
+/** inactiveWhen.source 가 가질 수 있는 값. 생략하면 'container'. */
+const INACTIVE_SOURCES = ['container', 'state'];
+const DEFAULT_INACTIVE_SOURCE = 'container';
+
+/**
+ * source: 'state' 가 참조할 수 있는 파생 상태 키.
+ *
+ * 스키마 속성이 아니지만 렌더 전에 알 수 있는 값들이다. 연산자는 3종
+ * (equals·notEquals·in)으로 고정하고, "아이템이 2개 이상인가" 같은 판정은
+ * 이쪽에서 Boolean 으로 계산해 넘긴다. 연산자를 늘리기 시작하면 케이스마다
+ * 계속 부풀기 때문이다.
+ *
+ * 키를 늘릴 때는 여기에 한 줄, deriveState 에 한 줄만 더한다.
+ * (예정: hasNamedAreas — grid-area 가 grid-template-areas 의 이름을 참조하는지)
+ */
+export const INACTIVE_STATE_KEYS = {
+  hasMultipleItems: {
+    type: 'boolean',
+    desc: '아이템이 2개 이상인가',
+    from: (state) => (state.items?.length ?? 0) >= 2,
+  },
+};
 
 /**
  * 스키마 전체를 검증한다. 실패 항목을 배열로 반환하며, 빈 배열이면 통과.
@@ -230,8 +256,46 @@ function validateInactive(entry, at, byJsProp, errors) {
     );
   }
 
+  const source = rule.source ?? DEFAULT_INACTIVE_SOURCE;
+  if (!INACTIVE_SOURCES.includes(source)) {
+    errors.push(`${at}: inactiveWhen.source '${source}' 는 ${INACTIVE_SOURCES.join(' | ')} 중 하나여야 함`);
+    return;
+  }
+
   if (typeof rule.prop !== 'string' || rule.prop.trim() === '') {
     errors.push(`${at}: inactiveWhen.prop 이 없음`);
+    return;
+  }
+
+  if (rule.in !== undefined && !Array.isArray(rule.in)) {
+    errors.push(`${at}: inactiveWhen.in 은 배열이어야 함`);
+    return;
+  }
+  if (Array.isArray(rule.in) && rule.in.length === 0) {
+    errors.push(`${at}: inactiveWhen.in 이 비어 있음`);
+    return;
+  }
+
+  const compared = [];
+  if (rule.equals !== undefined) compared.push(rule.equals);
+  if (rule.notEquals !== undefined) compared.push(rule.notEquals);
+  if (Array.isArray(rule.in)) compared.push(...rule.in);
+
+  if (source === 'state') {
+    const spec = INACTIVE_STATE_KEYS[rule.prop];
+    if (!spec) {
+      errors.push(
+        `${at}: inactiveWhen.prop '${rule.prop}' 는 허용된 상태 키가 아님 (허용: ${Object.keys(INACTIVE_STATE_KEYS).join(', ')})`
+      );
+      return;
+    }
+    if (spec.type === 'boolean') {
+      compared.forEach((v) => {
+        if (typeof v !== 'boolean') {
+          errors.push(`${at}: 상태 키 '${rule.prop}' 는 Boolean 이므로 '${v}' 와 비교할 수 없음`);
+        }
+      });
+    }
     return;
   }
 
@@ -258,11 +322,6 @@ function validateInactive(entry, at, byJsProp, errors) {
   // 비교 대상이 enum이면 실재하는 값인지까지 본다
   if (target.control === 'enum' && Array.isArray(target.values)) {
     const allowed = target.values.map((v) => v.val);
-    const compared = [];
-    if (rule.equals !== undefined) compared.push(rule.equals);
-    if (rule.notEquals !== undefined) compared.push(rule.notEquals);
-    if (Array.isArray(rule.in)) compared.push(...rule.in);
-
     compared.forEach((v) => {
       if (!allowed.includes(v)) {
         errors.push(`${at}: inactiveWhen 이 비교하는 값 '${v}' 가 '${target.prop}' 의 values 에 없음`);
@@ -276,6 +335,27 @@ function validateInactive(entry, at, byJsProp, errors) {
    ========================================================================== */
 
 /**
+ * 상태에서 파생 값을 계산한다.
+ *
+ * 화이트리스트 바로 옆에 두는 이유는 둘이 어긋나면 판정이 조용히 실패하기
+ * 때문이다. 키를 늘릴 때 한 곳만 보면 되게 한다.
+ *
+ * 파생값은 store 에 담지 않는다. items 로부터 언제든 계산되는 값이라
+ * 상태에 넣으면 진실이 둘이 되고 어긋날 수 있다. PRD 4.4 상태 모델도
+ * 그대로 유지된다.
+ *
+ * @param {Object} state  store.getState() 결과
+ * @returns {Object} { [상태 키]: 값 }
+ */
+export function deriveState(state = {}) {
+  const out = {};
+  for (const [key, spec] of Object.entries(INACTIVE_STATE_KEYS)) {
+    out[key] = spec.from(state);
+  }
+  return out;
+}
+
+/**
  * 스키마 선언만으로 비활성 여부를 판정한다.
  *
  * 속성명 분기가 이 함수 안에 없다는 점이 핵심이다. 어떤 속성이 어떤 조건에서
@@ -285,15 +365,22 @@ function validateInactive(entry, at, byJsProp, errors) {
  * 유형 B·C(measuredInactive)는 렌더 측정이 필요하므로 renderer 가 판정한다.
  * 이 함수는 관여하지 않는다.
  *
- * @param {Object} entry           스키마 항목
- * @param {Object} [containerState] 판정 근거가 되는 현재 값들 { [jsProp]: value }
+ * 두 번째 인자는 source 와 같은 모양으로 받는다. 'container'는 container,
+ * 'state'는 state를 본다. 위치 인자를 늘리는 대신 이렇게 둔 것은, 참조원이
+ * 더 생겨도 호출부 모양이 바뀌지 않기 때문이다.
+ *
+ * @param {Object} entry   스키마 항목
+ * @param {Object} [scopes]
+ * @param {Object} [scopes.container] { [jsProp]: value }
+ * @param {Object} [scopes.state]     deriveState() 결과
  * @returns {{inactive: boolean, reason?: string, hint?: string}}
  */
-export function isInactive(entry, containerState = {}) {
+export function isInactive(entry, { container = {}, state = {} } = {}) {
   const rule = entry?.inactiveWhen;
   if (!rule) return { inactive: false };
 
-  const actual = containerState[rule.prop];
+  const source = rule.source ?? DEFAULT_INACTIVE_SOURCE;
+  const actual = source === 'state' ? state[rule.prop] : container[rule.prop];
   let matched = false;
 
   if (rule.equals !== undefined) matched = actual === rule.equals;
