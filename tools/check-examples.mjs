@@ -18,6 +18,7 @@ import { FLEX_EXAMPLES } from '../js/topics/flex/examples.js';
 import {
   createExamples, categoriesFrom, ALL,
   CARD_CLASS, CAT_CLASS, FRAME_CLASS, CODE_CLASS, FILTER_ITEM_CLASS, COUNT_CLASS,
+  LIST_ITEM_CLASS, FILTER_CLASS, STAGE_CLASS,
 } from '../js/ui/examples.js';
 
 let failed = 0;
@@ -224,9 +225,19 @@ section('화면');
 {
   const { root, api } = build();
   const cards = byClass(root, CARD_CLASS);
+  const items = byClass(root, LIST_ITEM_CLASS);
 
   check('카드 18개', cards.length === 18, `${cards.length}개`);
-  check('전부 보임', cards.every((c) => c.hidden === false), `${api.visible()}건`);
+  check('목록 항목 18개', items.length === 18, `${items.length}개`);
+  check('목록은 전부 보임', items.every((b) => b.hidden === false), `${api.visible()}건`);
+  check('본문은 고른 것 하나만', cards.filter((c) => !c.hidden).length === 1);
+  check('처음에는 첫 예제', api.selected() === FLEX_EXAMPLES[0].id, String(api.selected()));
+  check('좌우 두 영역', byClass(root, 'fgp-pane__side').length === 1
+    && byClass(root, STAGE_CLASS).length === 1);
+  // root 는 classList 로 붙는다. 스텁은 className 문자열을 갱신하지 않는다
+  check('속성 설명 탭과 같은 공통 틀',
+    root.classList.contains('fgp-pane')
+    && items.every((b) => b.className.split(' ').includes('fgp-pane__item')));
   check('카드마다 프리뷰 액자', byClass(root, FRAME_CLASS).length === 18);
   check('카드마다 코드 블록 2개', byClass(root, CODE_CLASS).length === 36,
     `${byClass(root, CODE_CLASS).length}개 (CSS·HTML)`);
@@ -263,26 +274,30 @@ section('필터');
   check('칩은 전체 + 카테고리', chips.length === cats.length + 1, `${chips.length}개`);
   check('칩 이름이 데이터 순서 그대로',
     JSON.stringify(chips.map((c) => c.textContent)) === JSON.stringify([ALL, ...cats]));
-  check('radiogroup', root.children[0].getAttribute('role') === 'radiogroup'
+  check('radiogroup', byClass(root, FILTER_CLASS)[0].getAttribute('role') === 'radiogroup'
     && chips.every((c) => c.getAttribute('role') === 'radio'));
-  check('처음에는 전체', api.selected() === ALL && chips[0].getAttribute('aria-checked') === 'true');
+  check('처음에는 전체', api.filtered() === ALL && chips[0].getAttribute('aria-checked') === 'true');
 
   cats.forEach((cat) => {
     const expected = FLEX_EXAMPLES.filter((e) => e.category === cat).length;
     api.filter(cat);
-    const shown = byClass(root, CARD_CLASS).filter((c) => !c.hidden);
+    const shown = byClass(root, LIST_ITEM_CLASS).filter((b) => !b.hidden);
     check(`${cat} — ${expected}건`, shown.length === expected && api.visible() === expected,
       `${shown.length}건 · "${count.textContent}"`);
-    check(`${cat} — 남은 카드는 전부 그 카테고리`,
-      shown.every((c) => FLEX_EXAMPLES.find((e) => e.id === c.getAttribute('data-example')).category === cat));
+    check(`${cat} — 남은 항목은 전부 그 카테고리`,
+      shown.every((b) => FLEX_EXAMPLES.find((e) => e.id === b.getAttribute('data-example')).category === cat));
+    check(`${cat} — 고른 예제도 그 카테고리로 옮겨진다`,
+      FLEX_EXAMPLES.find((e) => e.id === api.selected()).category === cat,
+      String(api.selected()));
   });
 
   api.filter(ALL);
   check('전체로 돌아오면 18건', api.visible() === 18, count.textContent);
+  check('전체로 돌아와도 고른 예제는 그대로', Boolean(api.selected()));
 
   // 칩 클릭
   fire(chips[1], 'click', { target: chips[1] });
-  check('칩 클릭이 먹는다', api.selected() === chips[1].textContent);
+  check('칩 클릭이 먹는다', api.filtered() === chips[1].textContent);
   check('선택된 칩만 aria-checked',
     chips.filter((c) => c.getAttribute('aria-checked') === 'true').length === 1);
   check('선택된 칩만 tabindex 0',
@@ -290,17 +305,54 @@ section('필터');
 
   // 키보드
   fire(chips[1], 'keydown', { key: 'ArrowRight', target: chips[1] });
-  check('오른쪽 화살표로 다음 칩', api.selected() === chips[2].textContent);
+  check('오른쪽 화살표로 다음 칩', api.filtered() === chips[2].textContent);
   fire(chips[2], 'keydown', { key: 'ArrowLeft', target: chips[2] });
-  check('왼쪽 화살표로 이전 칩', api.selected() === chips[1].textContent);
+  check('왼쪽 화살표로 이전 칩', api.filtered() === chips[1].textContent);
 
   // 이동 기준은 focus 가 아니라 현재 선택이다. 전체로 되돌린 뒤 확인한다
   api.filter(ALL);
   fire(chips[0], 'keydown', { key: 'ArrowLeft', target: chips[0] });
-  check('처음에서 왼쪽이면 끝으로 돈다', api.selected() === chips[chips.length - 1].textContent,
-    api.selected());
+  check('처음에서 왼쪽이면 끝으로 돈다', api.filtered() === chips[chips.length - 1].textContent,
+    api.filtered());
   fire(chips[chips.length - 1], 'keydown', { key: 'ArrowRight', target: chips[chips.length - 1] });
-  check('끝에서 오른쪽이면 처음으로 돈다', api.selected() === ALL);
+  check('끝에서 오른쪽이면 처음으로 돈다', api.filtered() === ALL);
+}
+
+/* ==========================================================================
+   목록 — 18건 전부에 닿을 수 있어야 한다
+   ========================================================================== */
+section('목록');
+
+{
+  const { root, api } = build();
+  const items = byClass(root, LIST_ITEM_CLASS);
+  const cards = byClass(root, CARD_CLASS);
+
+  const reachable = FLEX_EXAMPLES.filter((ex) => {
+    api.select(ex.id);
+    const card = cards.find((c) => c.getAttribute('data-example') === ex.id);
+    return api.selected() === ex.id && card.hidden === false
+      && cards.filter((c) => !c.hidden).length === 1;
+  });
+  check('18건 전부 고를 수 있다', reachable.length === 18, `${reachable.length}건`);
+
+  api.select(FLEX_EXAMPLES[0].id);
+  fire(items[2], 'click', { target: items[2] });
+  check('목록 클릭이 먹는다', api.selected() === FLEX_EXAMPLES[2].id);
+
+  fire(items[2], 'keydown', { key: 'ArrowDown', target: items[2] });
+  check('아래 화살표로 다음 예제', api.selected() === FLEX_EXAMPLES[3].id);
+  fire(items[3], 'keydown', { key: 'ArrowUp', target: items[3] });
+  check('위 화살표로 이전 예제', api.selected() === FLEX_EXAMPLES[2].id);
+
+  // 필터가 걸려 있으면 걸린 것들 사이에서만 돈다
+  const cat = FLEX_EXAMPLES[0].category;
+  const inCat = FLEX_EXAMPLES.filter((e) => e.category === cat);
+  api.filter(cat);
+  api.select(inCat[inCat.length - 1].id);
+  fire(items[0], 'keydown', { key: 'ArrowDown', target: items[0] });
+  check('숨은 항목으로 넘어가지 않는다',
+    inCat.some((e) => e.id === api.selected()), `${cat} · ${api.selected()}`);
 }
 
 /* ==========================================================================
@@ -313,9 +365,12 @@ section('카테고리 색');
   const { root } = build();
 
   const cards = byClass(root, CARD_CLASS);
-  const wrong = cards.filter((card, i) =>
-    card.getAttribute('data-category') !== String((cats.indexOf(FLEX_EXAMPLES[i].category) % 8) + 1));
+  const items = byClass(root, LIST_ITEM_CLASS);
+  const expected = (i) => String((cats.indexOf(FLEX_EXAMPLES[i].category) % 8) + 1);
+  const wrong = cards.filter((card, i) => card.getAttribute('data-category') !== expected(i));
+  const wrongItem = items.filter((el, i) => el.getAttribute('data-category') !== expected(i));
   check('카드의 순번이 카테고리와 맞음', wrong.length === 0, `${cards.length}개 일치`);
+  check('목록 항목의 순번도 맞음', wrongItem.length === 0, `${items.length}개 일치`);
 
   const same = cats.map((c) => {
     const of = cards.filter((_, i) => FLEX_EXAMPLES[i].category === c).map((el) => el.getAttribute('data-category'));
@@ -341,7 +396,8 @@ section('복사');
   const cards = byClass(root, CARD_CLASS);
 
   const buttons = walk(cards[0]).filter((el) => el.getAttribute('data-copy'));
-  check('카드마다 복사 버튼 2개', buttons.length === 2, buttons.map((b) => b.textContent).join(' · '));
+  check('카드마다 복사 버튼 2개', buttons.length === 2,
+    walk(cards[0]).filter((el) => el.className.includes('__code__name')).map((el) => el.textContent).join(' · '));
 
   fire(buttons[0], 'click', { target: buttons[0] });
   check('CSS 복사가 그 예제의 css를 넘긴다',
@@ -373,7 +429,9 @@ section('방어');
 
   const { api } = build();
   api.filter('없는 카테고리');
-  check('없는 카테고리는 무시', api.selected() === ALL && api.visible() === 18);
+  check('없는 카테고리는 무시', api.filtered() === ALL && api.visible() === 18);
+  api.select('없는 예제');
+  check('없는 예제 id는 무시', api.selected() === FLEX_EXAMPLES[0].id);
 }
 
 /* ========================================================================== */

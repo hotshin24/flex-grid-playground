@@ -1,11 +1,15 @@
 /**
  * examples.js — 실전 예제 탭 (F-08 / PRD 7.1 회귀 대상)
  *
+ * 좌측 목록 + 우측 본문. 속성 설명 · 챌린지 탭과 같은 fgp-pane 틀을 쓴다.
+ * 목록 상단에 카테고리 필터가 있고, 필터는 목록만 줄인다 — 어떤 필터에서도
+ * 18건 전부에 닿을 수 있어야 하므로 카드는 지우지 않고 목록에서만 숨긴다.
+ *
  * 예제 목록과 카테고리는 전부 데이터에서 나온다. 이 파일에 카테고리 이름이 없고,
  * 예제 제목도 설명도 없다. 토픽별 examples.js 가 늘거나 줄면 화면이 따라간다.
  *
  * 프리뷰는 iframe srcdoc 이다. v0.1 이 쓰던 방식 그대로다. 예제 CSS 는 .card 나
- * .container 처럼 흔한 이름을 쓰므로, 한 문서 안에 18건을 풀어 놓으면 서로
+ * .container 처럼 흔한 이름을 쓰므로, 한 문서 안에 여러 건을 풀어 놓으면 서로
  * 덮어쓰고 앱 스타일까지 건드린다. iframe 은 문서가 통째로 갈리므로 그럴 일이
  * 없고, html·body 를 겨냥한 규칙도 예제가 의도한 대로 먹는다.
  *
@@ -16,11 +20,18 @@
  * 주고 색은 components.css 가 고른다. 여기에 색 값이 없다.
  */
 
+import {
+  PANE_CLASS, PANE_SIDE_CLASS, PANE_ITEM_CLASS, PANE_NAME_CLASS, PANE_META_CLASS, PANE_STAGE_CLASS,
+} from './explain.js';
+
 export const ROOT_CLASS = 'fgp-examples';
+export const SIDE_CLASS = 'fgp-examples__side';
 export const FILTER_CLASS = 'fgp-examples__filter';
 export const FILTER_ITEM_CLASS = 'fgp-examples__filteritem';
 export const COUNT_CLASS = 'fgp-examples__count';
 export const LIST_CLASS = 'fgp-examples__list';
+export const LIST_ITEM_CLASS = 'fgp-examples__listitem';
+export const STAGE_CLASS = 'fgp-examples__stage';
 export const CARD_CLASS = 'fgp-example';
 export const CAT_CLASS = 'fgp-example__cat';
 export const FRAME_CLASS = 'fgp-example__frame';
@@ -50,6 +61,8 @@ export function categoriesFrom(examples) {
   return [...new Set(examples.map((ex) => ex.category))];
 }
 
+const accentOf = (index) => String((index % ACCENT_COUNT) + 1);
+
 function frameDoc(example) {
   return `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">`
     + `<style>${FRAME_RESET}${example.css}</style></head>`
@@ -57,17 +70,29 @@ function frameDoc(example) {
 }
 
 /* --------------------------------------------------------------------------
-   카드
+   본문 카드
    -------------------------------------------------------------------------- */
 
 function buildCode(example, kind, label, doc) {
-  const box = doc.createElement('details');
+  const box = doc.createElement('div');
   box.className = `${CODE_CLASS} ${CODE_CLASS}--${kind}`;
 
-  const summary = doc.createElement('summary');
-  summary.className = `${CODE_CLASS}__summary`;
-  summary.textContent = label;
-  box.appendChild(summary);
+  const head = doc.createElement('div');
+  head.className = `${CODE_CLASS}__head`;
+
+  const name = doc.createElement('h4');
+  name.className = `${CODE_CLASS}__name`;
+  name.textContent = label;
+  head.appendChild(name);
+
+  const button = doc.createElement('button');
+  button.className = 'fgp-btn fgp-btn--quiet';
+  button.setAttribute('type', 'button');
+  button.setAttribute('data-copy', kind);
+  button.textContent = '복사';
+  head.appendChild(button);
+
+  box.appendChild(head);
 
   const pre = doc.createElement('pre');
   pre.className = `${CODE_CLASS}__block`;
@@ -85,7 +110,7 @@ function buildCard(example, categoryIndex, doc) {
   card.className = CARD_CLASS;
   card.setAttribute('data-example', example.id);
   // 색이 아니라 순번이다. 어떤 색이 될지는 CSS 가 정한다.
-  card.setAttribute('data-category', String((categoryIndex % ACCENT_COUNT) + 1));
+  card.setAttribute('data-category', accentOf(categoryIndex));
 
   const head = doc.createElement('header');
   head.className = `${CARD_CLASS}__head`;
@@ -100,19 +125,6 @@ function buildCard(example, categoryIndex, doc) {
   title.textContent = example.title;
   head.appendChild(title);
 
-  const tools = doc.createElement('div');
-  tools.className = `${CARD_CLASS}__tools`;
-
-  [['css', 'CSS 복사'], ['html', 'HTML 복사']].forEach(([kind, label]) => {
-    const button = doc.createElement('button');
-    button.className = 'fgp-btn fgp-btn--quiet';
-    button.setAttribute('type', 'button');
-    button.setAttribute('data-copy', kind);
-    button.textContent = label;
-    tools.appendChild(button);
-  });
-
-  head.appendChild(tools);
   card.appendChild(head);
 
   const desc = doc.createElement('p');
@@ -130,8 +142,11 @@ function buildCard(example, categoryIndex, doc) {
   frame.srcdoc = frameDoc(example);
   card.appendChild(frame);
 
-  card.appendChild(buildCode(example, 'css', 'CSS', doc));
-  card.appendChild(buildCode(example, 'html', 'HTML', doc));
+  const codes = doc.createElement('div');
+  codes.className = `${CARD_CLASS}__codes`;
+  codes.appendChild(buildCode(example, 'css', 'CSS', doc));
+  codes.appendChild(buildCode(example, 'html', 'HTML', doc));
+  card.appendChild(codes);
 
   return card;
 }
@@ -146,7 +161,7 @@ function buildCard(example, categoryIndex, doc) {
  * @param {Element}  config.root
  * @param {Function} [config.onCopy]          (text, button) => void
  * @param {Document} [config.doc]
- * @returns {{root, filter, selected, visible}}
+ * @returns {{root, filter, filtered, select, selected, visible}}
  */
 export function createExamples(config) {
   const { examples, root, onCopy, doc = globalThis.document } = config;
@@ -156,16 +171,21 @@ export function createExamples(config) {
   if (!doc) throw new Error('createExamples: document를 찾을 수 없습니다');
 
   root.classList.add(ROOT_CLASS);
+  root.classList.add(PANE_CLASS);
 
   const categories = categoriesFrom(examples);
   const choices = [ALL, ...categories];
 
-  /* 필터 */
+  /* ---- 좌측 ---- */
+  const side = doc.createElement('aside');
+  side.className = SIDE_CLASS;
+  root.appendChild(side);
+
   const bar = doc.createElement('div');
   bar.className = FILTER_CLASS;
   bar.setAttribute('role', 'radiogroup');
   bar.setAttribute('aria-label', '카테고리');
-  root.appendChild(bar);
+  side.appendChild(bar);
 
   const chips = choices.map((name) => {
     const button = doc.createElement('button');
@@ -174,7 +194,7 @@ export function createExamples(config) {
     button.setAttribute('role', 'radio');
     button.setAttribute('data-filter', name);
     // 전체는 순번 밖이다. 카테고리만 색을 받는다.
-    if (name !== ALL) button.setAttribute('data-category', String((categories.indexOf(name) % ACCENT_COUNT) + 1));
+    if (name !== ALL) button.setAttribute('data-category', accentOf(categories.indexOf(name)));
     button.textContent = name;
     bar.appendChild(button);
     return button;
@@ -184,22 +204,64 @@ export function createExamples(config) {
   count.className = COUNT_CLASS;
   bar.appendChild(count);
 
-  /* 목록 */
-  const list = doc.createElement('div');
-  list.className = LIST_CLASS;
-  root.appendChild(list);
+  const nav = doc.createElement('nav');
+  nav.className = `${PANE_SIDE_CLASS} ${LIST_CLASS}`;
+  nav.setAttribute('aria-label', '예제 목록');
+  side.appendChild(nav);
 
-  const cards = examples.map((example) => {
-    const card = buildCard(example, categories.indexOf(example.category), doc);
-    list.appendChild(card);
-    return { example, card };
+  /* ---- 우측 ---- */
+  const stage = doc.createElement('div');
+  stage.className = `${PANE_STAGE_CLASS} ${STAGE_CLASS}`;
+  root.appendChild(stage);
+
+  const entries = examples.map((example) => {
+    const at = categories.indexOf(example.category);
+
+    const button = doc.createElement('button');
+    button.className = `${PANE_ITEM_CLASS} ${LIST_ITEM_CLASS}`;
+    button.setAttribute('type', 'button');
+    button.setAttribute('data-example', example.id);
+    button.setAttribute('data-category', accentOf(at));
+
+    // 이름 줄과 설명 줄. 속성 설명 탭과 같은 두 줄 구조다.
+    const name = doc.createElement('span');
+    name.className = PANE_NAME_CLASS;
+    name.textContent = example.title;
+    button.appendChild(name);
+
+    const meta = doc.createElement('span');
+    meta.className = PANE_META_CLASS;
+    meta.textContent = example.category;
+    button.appendChild(meta);
+
+    nav.appendChild(button);
+
+    // 카드는 미리 만들어 두고 보이기만 바꾼다. 액자는 lazy 라 보일 때 불린다.
+    const card = buildCard(example, at, doc);
+    stage.appendChild(card);
+
+    return { example, button, card };
   });
 
-  let current = ALL;
+  let current = examples[0].id;
+  let currentFilter = ALL;
+
+  function select(id) {
+    const found = entries.find((e) => e.example.id === id);
+    if (!found) return;
+    current = id;
+
+    entries.forEach(({ example, button, card }) => {
+      const on = example.id === id;
+      button.setAttribute('aria-current', on ? 'true' : 'false');
+      button.classList.toggle(SELECTED_CLASS, on);
+      card.hidden = !on;
+    });
+  }
 
   function filter(name) {
     if (!choices.includes(name)) return;
-    current = name;
+    currentFilter = name;
 
     chips.forEach((chip) => {
       const on = chip.getAttribute('data-filter') === name;
@@ -208,14 +270,18 @@ export function createExamples(config) {
       chip.classList.toggle(SELECTED_CLASS, on);
     });
 
-    let shown = 0;
-    cards.forEach(({ example, card }) => {
+    const shown = entries.filter(({ example, button }) => {
       const on = name === ALL || example.category === name;
-      card.hidden = !on;
-      if (on) shown += 1;
+      button.hidden = !on;
+      return on;
     });
 
-    count.textContent = `${examples.length}건 중 ${shown}건`;
+    count.textContent = `${examples.length}건 중 ${shown.length}건`;
+
+    // 보던 예제가 걸러졌으면 남은 것 중 첫 번째로 옮긴다. 본문이 비면 곤란하다.
+    if (shown.length > 0 && !shown.some(({ example }) => example.id === current)) {
+      select(shown[0].example.id);
+    }
   }
 
   const closest = (target, attr, stop) => {
@@ -235,7 +301,7 @@ export function createExamples(config) {
   bar.addEventListener('keydown', (e) => {
     if (!NEXT_KEYS.has(e.key) && !PREV_KEYS.has(e.key)) return;
 
-    const at = choices.indexOf(current);
+    const at = choices.indexOf(currentFilter);
     const step = NEXT_KEYS.has(e.key) ? 1 : -1;
     const next = (at + step + choices.length) % choices.length;
 
@@ -244,18 +310,43 @@ export function createExamples(config) {
     if (typeof chips[next].focus === 'function') chips[next].focus();
   });
 
-  list.addEventListener('click', (e) => {
-    const button = closest(e.target, 'data-copy', list);
+  nav.addEventListener('click', (e) => {
+    const button = closest(e.target, 'data-example', nav);
+    if (button) select(button.getAttribute('data-example'));
+  });
+
+  nav.addEventListener('keydown', (e) => {
+    if (!NEXT_KEYS.has(e.key) && !PREV_KEYS.has(e.key)) return;
+
+    // 필터에 걸린 것들 사이에서만 돈다. 숨은 항목으로 가면 본문이 비어 보인다.
+    const shown = entries.filter(({ button }) => !button.hidden);
+    const at = shown.findIndex(({ example }) => example.id === current);
+    const step = NEXT_KEYS.has(e.key) ? 1 : -1;
+    const next = (at + step + shown.length) % shown.length;
+
+    if (e.preventDefault) e.preventDefault();
+    select(shown[next].example.id);
+    if (typeof shown[next].button.focus === 'function') shown[next].button.focus();
+  });
+
+  stage.addEventListener('click', (e) => {
+    const button = closest(e.target, 'data-copy', stage);
     if (!button || !onCopy) return;
 
-    const card = closest(button, 'data-example', list);
-    const found = cards.find(({ card: el }) => el === card);
+    const card = closest(button, 'data-example', stage);
+    const found = entries.find(({ card: el }) => el === card);
     if (found) onCopy(found.example[button.getAttribute('data-copy')], button);
   });
 
-  filter(current);
+  filter(currentFilter);
+  select(current);
 
-  return { root, filter, selected: () => current, visible: () => cards.filter(({ card }) => !card.hidden).length };
+  return {
+    root, filter, select,
+    filtered: () => currentFilter,
+    selected: () => current,
+    visible: () => entries.filter(({ button }) => !button.hidden).length,
+  };
 }
 
 export default createExamples;

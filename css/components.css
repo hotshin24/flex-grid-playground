@@ -864,15 +864,8 @@ code.fgp-pane__item__name {
 }
 
 /* --------------------------------------------------------------------------
-   실전 예제 (F-08)
+   실전 예제 (F-08) — 틀은 fgp-pane 이 잡는다. 여기는 그 탭에만 있는 것들이다
    -------------------------------------------------------------------------- */
-
-.fgp-examples {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-4);
-  padding: var(--sp-4);
-}
 
 /**
  * 카테고리 색은 여기서 정한다. 데이터는 순번만 넘긴다.
@@ -881,6 +874,7 @@ code.fgp-pane__item__name {
  * 순번으로 받으면 카테고리가 늘어도 데이터에 색을 적을 일이 없다.
  */
 .fgp-example,
+.fgp-examples__listitem,
 .fgp-examples__filteritem {
   --fgp-example-accent: var(--fgp-text-muted);
 }
@@ -894,28 +888,32 @@ code.fgp-pane__item__name {
 [data-category='7'] { --fgp-example-accent: var(--fgp-item-7); }
 [data-category='8'] { --fgp-example-accent: var(--fgp-item-8); }
 
-/* 목록이 길어 필터가 화면 밖으로 밀린다. 위에 붙여 둔다 */
+/* 필터가 목록 위에 오고, 스크롤은 목록 안에서만 일어난다 */
+.fgp-examples__side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-height: 0;
+}
+
+.fgp-examples__side > .fgp-examples__list {
+  flex: 1;
+}
+
 .fgp-examples__filter {
-  position: sticky;
-  top: calc(var(--sp-4) * -1);
-  z-index: 1;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--sp-2);
-  margin: calc(var(--sp-4) * -1) calc(var(--sp-4) * -1) var(--sp-0);
-  padding: var(--sp-4);
-  background: var(--fgp-surface-page);
-  border-bottom: 1px solid var(--fgp-border-subtle);
+  gap: var(--sp-1);
 }
 
 .fgp-examples__filteritem {
-  padding: var(--sp-1) var(--sp-3);
+  padding: var(--sp-0) var(--sp-2);
   border: 1px solid var(--fgp-border-default);
   border-radius: var(--radius-pill);
   background: transparent;
   color: var(--fgp-text-secondary);
-  font-size: var(--fs-2xs);
+  font-size: var(--fs-3xs);
   font-weight: var(--fw-semibold);
 }
 
@@ -931,26 +929,25 @@ code.fgp-pane__item__name {
 }
 
 .fgp-examples__count {
-  margin-left: auto;
+  width: 100%;
   color: var(--fgp-text-muted);
-  font-size: var(--fs-2xs);
+  font-size: var(--fs-3xs);
 }
 
-.fgp-examples__list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(24rem, 1fr));
-  gap: var(--sp-4);
-  align-items: start;
+/* 목록 항목의 설명 줄은 카테고리다. 색으로도 구분한다 */
+.fgp-examples__listitem .fgp-pane__item__meta {
+  color: var(--fgp-example-accent);
+}
+
+.fgp-examples__listitem[hidden] {
+  display: none;
 }
 
 .fgp-example {
   display: flex;
   flex-direction: column;
   gap: var(--sp-2);
-  padding: var(--sp-3);
-  background: var(--fgp-surface-panel);
-  border: 1px solid var(--fgp-border-subtle);
-  border-radius: var(--radius-lg);
+  min-width: 0;
 }
 
 .fgp-example[hidden] {
@@ -976,21 +973,15 @@ code.fgp-pane__item__name {
 
 .fgp-example__title {
   margin: var(--sp-0);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-md);
   font-weight: var(--fw-semibold);
   color: var(--fgp-text-primary);
-}
-
-.fgp-example__tools {
-  display: flex;
-  gap: var(--sp-1);
-  margin-left: auto;
 }
 
 .fgp-example__desc {
   margin: var(--sp-0);
   color: var(--fgp-text-secondary);
-  font-size: var(--fs-2xs);
+  font-size: var(--fs-xs);
   line-height: var(--lh-base);
 }
 
@@ -999,32 +990,47 @@ code.fgp-pane__item__name {
   display: block;
   width: 100%;
   border: 1px solid var(--fgp-border-subtle);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   background: var(--fgp-preview-bg);
+}
+
+/* CSS와 HTML을 나란히 둔다. 플레이그라운드의 코드 영역과 같은 짜임이다 */
+.fgp-example__codes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-3);
+  align-items: start;
 }
 
 .fgp-example__code {
   border: 1px solid var(--fgp-border-subtle);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   background: var(--fgp-code-bg);
 }
 
-.fgp-example__code__summary {
+.fgp-example__code__head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
   padding: var(--sp-1) var(--sp-2);
+  border-bottom: 1px solid var(--fgp-border-subtle);
+}
+
+.fgp-example__code__name {
+  margin: var(--sp-0);
+  margin-right: auto;
   color: var(--fgp-text-muted);
   font-family: var(--p-font-code);
   font-size: var(--fs-3xs);
   font-weight: var(--fw-semibold);
-  cursor: pointer;
 }
 
 .fgp-example__code__block {
   margin: var(--sp-0);
   padding: var(--sp-2);
-  max-height: calc(var(--sp-16) * 4);
+  max-height: calc(var(--sp-16) * 5);
   overflow: auto;
   overscroll-behavior: contain;
-  border-top: 1px solid var(--fgp-border-subtle);
   color: var(--fgp-code-text);
   font-family: var(--p-font-code);
   font-size: var(--fs-3xs);
@@ -1032,10 +1038,21 @@ code.fgp-pane__item__name {
   white-space: pre;
 }
 
-/* 한 줄에 하나면 카드가 화면 폭을 다 먹어 프리뷰가 늘어진다 */
-@media (max-width: 599px) {
-  .fgp-examples__list {
+/* 좁으면 코드 두 열이 읽히지 않는다 */
+@media (max-width: 1023px) {
+  .fgp-example__codes {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* 목록이 가로로 눕는 구간에서는 필터도 한 줄을 통째로 쓴다 */
+@media (max-width: 599px) {
+  .fgp-examples__side {
+    display: block;
+  }
+
+  .fgp-examples__filter {
+    margin-bottom: var(--sp-2);
   }
 }
 
