@@ -197,8 +197,17 @@
   border-radius: var(--radius-lg);
 }
 
+/**
+ * 높이를 고정한다. auto로 두면 column 방향에서 컨테이너가 계속 늘어나
+ * flex-wrap의 효과가 드러나지 않는다. 넘치는 아이템은 잘라내지 않고
+ * 밖으로 삐져나오게 둔다 — nowrap이 왜 위험한지 보이는 것이 학습 내용이다.
+ *
+ * 구간은 layout.css의 브레이크포인트(599 / 1023)를 그대로 따른다.
+ */
 .fgp-preview__container {
-  min-height: calc(var(--sp-16) * 5);
+  height: 40vh;
+  min-height: calc(var(--sp-16) * 3);
+  overflow: visible;
   padding: var(--sp-3);
   background: var(--fgp-preview-container-bg);
   border: 1px dashed var(--fgp-preview-container-edge);
@@ -223,4 +232,20 @@
 .fgp-preview__item.is-selected {
   border-color: var(--fgp-preview-item-selected);
   color: var(--fgp-preview-item-selected);
+}
+
+/* 600 ~ 1023px — 프리뷰가 상단 절반을 쓴다 */
+@media (min-width: 600px) {
+  .fgp-preview__container {
+    height: 46vh;
+    min-height: calc(var(--sp-16) * 4);
+  }
+}
+
+/* 1024px ~ — 프리뷰가 우측 컬럼 전체를 쓴다 */
+@media (min-width: 1024px) {
+  .fgp-preview__container {
+    height: 62vh;
+    min-height: calc(var(--sp-16) * 5);
+  }
 }
