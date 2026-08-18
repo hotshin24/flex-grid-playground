@@ -74,14 +74,15 @@ function createElement(tag) {
     getAttribute(name) { return this.attrs[name] ?? null; },
     removeAttribute(name) { delete this.attrs[name]; },
     addEventListener(type, fn) { (listeners[type] ??= []).push(fn); },
-    focus() { this.focused = true; },
+    focus() { this.focused = true; doc.activeElement = this; },
+    blur() { this.focused = false; if (doc.activeElement === this) doc.activeElement = null; },
   };
 
   Object.defineProperty(el, 'innerHTML', { get: () => '', set: () => { stats.innerHTML = true; } });
   return el;
 }
 
-const doc = { createElement };
+const doc = { createElement, activeElement: null };
 
 /** target에서 위로 올라가며 등록된 핸들러를 호출한다 (버블링 흉내). */
 function fire(el, type, props = {}) {
@@ -579,7 +580,97 @@ section('length 분해·조립');
   check("'-3px'", eq(splitLength('-3px', units), { num: '-3', unit: 'px' }));
   check('조립 수치', joinLength('16', 'px') === '16px');
   check('조립 키워드', joinLength('16', 'auto') === 'auto');
-  check('빈 수치는 0', joinLength('', 'px') === '0px');
+  check('빈 수치는 빈 문자열 (0으로 메우지 않음)', joinLength('', 'px') === '');
+  check('공백뿐인 수치도 빈 문자열', joinLength('   ', 'px') === '');
+  check('빈 수치 + 키워드 단위는 단위만', joinLength('', 'auto') === 'auto');
+}
+
+/* ==========================================================================
+   length 입력 회귀 (0을 지울 수 없던 문제)
+
+   단위를 auto에서 px로 바꾸면 0이 채워지고, 그 0을 지우면 다시 0이 돌아왔다.
+   90을 치면 090이 됐다. 빈 수치를 0으로 메운 뒤 그 값이 저장소를 거쳐 입력란에
+   다시 찍히는 왕복이 원인이었다.
+   ========================================================================== */
+section('length 입력 회귀');
+
+{
+  const entry = byProp(FLEX_SCHEMA, 'flex-basis');
+  const { root, sync, calls } = build(entry, 'auto');
+  const input = findByClass(root, 'fgp-control__field')[0];
+  const select = findByClass(root, 'fgp-control__unit')[0];
+
+  // auto → px
+  select.value = 'px';
+  fire(select, 'change');
+  check('키워드→수치 전환 시 입력란은 빈 칸', input.value === '', `[${input.value}]`);
+  check('전환만으로는 통지하지 않음', calls.length === 0, `${calls.length}회`);
+  check('입력란은 활성화', input.getAttribute('disabled') === null);
+
+  // 저장소는 아직 auto다. 그 값이 되돌아와도 단위가 px에 머물러야 한다
+  sync('auto');
+  check('입력 중 sync가 단위를 되돌리지 않음', select.value === 'px', select.value);
+  check('입력 중 sync가 0을 채우지 않음', input.value === '', `[${input.value}]`);
+
+  // 빈 칸에서 90 입력
+  input.value = '90';
+  fire(input, 'input');
+  check('90 입력 → 90px (090 아님)', eq(calls[0], ['flexBasis', '90px']), JSON.stringify(calls[0]));
+
+  // 값이 생긴 뒤에는 다시 sync가 먹는다
+  sync('90px');
+  check('값 확정 후 sync 정상 동작', input.value === '90' && select.value === 'px');
+
+  // 지우기
+  input.value = '';
+  fire(input, 'input');
+  check('입력란을 비울 수 있음', input.value === '', `[${input.value}]`);
+  check('빈 값은 통지하지 않음 (이전 값 유지)', calls.length === 1, `${calls.length}회`);
+
+  input.focus();
+  sync('90px');
+  check('입력 중(포커스)에는 sync가 덮어쓰지 않음', input.value === '', `[${input.value}]`);
+
+  input.blur();
+  sync('90px');
+  check('포커스가 떠나면 저장된 값으로 되돌아옴', input.value === '90', `[${input.value}]`);
+  input.value = '';
+
+  // 다시 입력하면 정상 통지
+  input.value = '120';
+  fire(input, 'input');
+  check('다시 입력하면 통지 재개', eq(calls[1], ['flexBasis', '120px']), JSON.stringify(calls[1]));
+}
+
+{
+  // gap도 같은 length 타입이다
+  const entry = byProp(FLEX_SCHEMA, 'gap');
+  const { root, calls } = build(entry, '8px');
+  const input = findByClass(root, 'fgp-control__field')[0];
+
+  check('gap 초기값', input.value === '8');
+
+  input.value = '';
+  fire(input, 'input');
+  check('gap 입력란을 비울 수 있음', input.value === '');
+  check('gap 빈 값은 통지하지 않음', calls.length === 0, `${calls.length}회`);
+
+  input.value = '24';
+  fire(input, 'input');
+  check('gap 24 입력 → 24px (024 아님)', eq(calls[0], ['gap', '24px']), JSON.stringify(calls[0]));
+}
+
+{
+  // 키워드로 되돌아갈 때는 즉시 통지한다 — 수치가 필요 없는 값이다
+  const entry = byProp(FLEX_SCHEMA, 'flex-basis');
+  const { root, calls } = build(entry, '140px');
+  const select = findByClass(root, 'fgp-control__unit')[0];
+  const input = findByClass(root, 'fgp-control__field')[0];
+
+  select.value = 'auto';
+  fire(select, 'change');
+  check('수치→키워드 전환은 즉시 통지', eq(calls[0], ['flexBasis', 'auto']), JSON.stringify(calls[0]));
+  check('키워드로 가면 입력란 비활성', input.getAttribute('disabled') === 'disabled');
 }
 
 /* ==========================================================================

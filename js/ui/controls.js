@@ -61,10 +61,18 @@ export function splitLength(value, units) {
   return { num: m[1], unit };
 }
 
-/** 키워드 단위면 단위만, 아니면 수치와 붙여서 돌려준다. */
+/**
+ * 키워드 단위면 단위만, 아니면 수치와 붙여서 돌려준다.
+ *
+ * 수치가 비어 있으면 빈 문자열을 돌려준다. 예전에는 0으로 메웠는데, 그러면
+ * 입력란을 비우는 순간 0px가 저장소로 나가고 그 값이 다시 입력란에 찍혀
+ * 0을 지울 수 없었다. 90을 치면 090이 되던 것도 같은 원인이다.
+ * "아직 값이 없다"와 "0이다"는 다른 상태다.
+ */
 export function joinLength(num, unit) {
   if (!NUMERIC_UNITS.has(unit)) return unit;
-  return `${num === '' ? 0 : num}${unit}`;
+  if (String(num).trim() === '') return '';
+  return `${num}${unit}`;
 }
 
 /* --------------------------------------------------------------------------
@@ -273,6 +281,17 @@ function bindLength(root, entry, state, onChange) {
     else state.input.removeAttribute('disabled');
 
     const value = joinLength(state.input.value, unit);
+
+    // 수치가 비었다. auto에서 px로 막 바꿨거나, 새로 치려고 지운 상태다.
+    // 저장소로 보낼 유효한 길이가 없으므로 아무것도 보내지 않는다. 이전 값이
+    // 그대로 살아 있고, 입력란은 비운 채로 둔다. pendingUnit은 그 사이
+    // sync가 단위를 되돌려 놓지 못하게 막는 표식이다.
+    if (value === '') {
+      state.pendingUnit = unit;
+      return;
+    }
+
+    state.pendingUnit = null;
     state.value = value;
     onChange(entry.jsProp, CONTROL_TYPES.length.parse(value));
   };
@@ -509,10 +528,20 @@ export function createControl(entry, { value, onChange, doc = globalThis.documen
       sync = (next) => {
         const { num, unit } = splitLength(next, entry.units);
         state.value = next;
-        state.input.value = num;
+
+        // 수치를 치는 중이면 건드리지 않는다. 저장소에는 아직 옛 값(키워드)이
+        // 남아 있어서, 그대로 반영하면 방금 고른 단위가 되돌아간다.
+        if (state.pendingUnit && !NUMERIC_UNITS.has(unit)) return;
+        state.pendingUnit = null;
+
         state.select.value = unit;
         if (NUMERIC_UNITS.has(unit)) state.input.removeAttribute('disabled');
         else state.input.setAttribute('disabled', 'disabled');
+
+        // 입력 중인 칸은 덮어쓰지 않는다. 다른 컨트롤이 상태를 바꿀 때마다
+        // 커서가 튀거나 자릿수가 끼어드는 것을 막는다.
+        if (doc.activeElement === state.input) return;
+        state.input.value = num;
       };
       break;
     }
