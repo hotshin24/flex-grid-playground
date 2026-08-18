@@ -33,12 +33,10 @@ const DISPLAY_BY_TOPIC = { flex: 'flex', grid: 'grid' };
 const DEFAULT_DISPLAY = 'flex';
 
 /**
- * 아이템 강조색은 tokens.css의 --p-item-1 ~ --p-item-8을 순환한다.
+ * 아이템 강조색은 tokens.css의 --fgp-item-1 ~ --fgp-item-8을 순환한다.
  *
- * 규칙 5는 컴포넌트가 --p-* primitive를 직접 참조하는 것을 금지한다.
- * tokens.css에 --fgp-item-* semantic 별칭이 아직 없어 아래 한 줄에서만
- * primitive를 참조하고, 나머지 코드와 CSS는 --fgp-item-accent만 본다.
- * tokens.css를 열 수 있게 되면 이 매핑은 그쪽으로 옮기는 것이 맞다.
+ * 인덱스별 semantic 별칭을 --fgp-item-accent에 대입하는 것이 전부다.
+ * 어떤 primitive에 걸리는지는 tokens.css가 정하며, 테마별로 달라질 수 있다.
  */
 const ITEM_ACCENT_COUNT = 8;
 const ITEM_ACCENT_PROP = '--fgp-item-accent';
@@ -162,8 +160,8 @@ export function createRenderer({ store, schemas, root, doc = globalThis.document
 
   function renderItem(el, item, index, schema, selectedId) {
     const accent = (index % ITEM_ACCENT_COUNT) + 1;
-    el.style.setProperty(ITEM_ACCENT_PROP, `var(--p-item-${accent})`);
-    el.style.setProperty(ITEM_ACCENT_DEEP_PROP, `var(--p-item-${accent}-deep)`);
+    el.style.setProperty(ITEM_ACCENT_PROP, `var(--fgp-item-${accent})`);
+    el.style.setProperty(ITEM_ACCENT_DEEP_PROP, `var(--fgp-item-${accent}-deep)`);
 
     const styles = styleBundle(schema, 'item', item);
     styles.width = `${item.width}px`;

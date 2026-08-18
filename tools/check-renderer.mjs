@@ -263,18 +263,18 @@ section('선택 상태');
 /* ==========================================================================
    아이템 색 순환
    ========================================================================== */
-section('아이템 강조색 순환 (--p-item-1~8)');
+section('아이템 강조색 순환 (--fgp-item-1~8)');
 
 {
   const { container, store } = setup();
   withItemCount(store, 9);
 
   const accents = container.children.map((c) => c.style.getPropertyValue('--fgp-item-accent'));
-  check('1~8 순서대로', eq(accents.slice(0, 8), [1, 2, 3, 4, 5, 6, 7, 8].map((n) => `var(--p-item-${n})`)));
-  check('9번째는 1로 순환', accents[8] === 'var(--p-item-1)', accents[8]);
+  check('1~8 순서대로', eq(accents.slice(0, 8), [1, 2, 3, 4, 5, 6, 7, 8].map((n) => `var(--fgp-item-${n})`)));
+  check('9번째는 1로 순환', accents[8] === 'var(--fgp-item-1)', accents[8]);
   check('deep 변형도 함께',
-    container.children[2].style.getPropertyValue('--fgp-item-accent-deep') === 'var(--p-item-3-deep)');
-  check('semantic 이름으로 노출', accents.every((v) => typeof v === 'string' && v.length > 0));
+    container.children[2].style.getPropertyValue('--fgp-item-accent-deep') === 'var(--fgp-item-3-deep)');
+  check('primitive 직접 참조 없음', accents.every((v) => v.startsWith('var(--fgp-')));
 }
 
 /* ==========================================================================
