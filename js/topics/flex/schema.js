@@ -123,7 +123,11 @@ export const FLEX_SCHEMA = [
     desc: '컨테이너에 <strong>남은 공간</strong>이 있을 때, 그 공간을 얼마나 차지할지 비율로 정합니다.',
     tip: '값 자체가 크기가 아니라 남은 공간의 분배 비율입니다. 1과 2를 주면 1:2로 나눠 갖습니다.',
     mdn: MDN + 'flex-grow',
-    demo: { itemCount: 3 },
+    axisAware: true,
+    // 주축을 따라 늘어나므로 row 는 너비가, column 은 높이가 커진다.
+    // column 데모는 높이가 막혀 있어야 "남은 공간"이 생긴다. 아이템 3개 ×
+    // 44px + 간격 8px + 안쪽 여백 16px = 156px 이므로 260px 이면 104px 이 남는다.
+    demo: { itemCount: 3, containerStyle: { height: '260px' } },
   },
   {
     prop: 'flex-shrink', jsProp: 'flexShrink', scope: 'item',
@@ -132,7 +136,11 @@ export const FLEX_SCHEMA = [
     desc: '공간이 <strong>부족할 때</strong> 얼마나 줄어들지 비율로 정합니다. 기본값이 1이라 아이템은 기본적으로 줄어듭니다.',
     tip: '0을 주면 절대 줄어들지 않습니다. 로고나 아이콘이 찌그러질 때 쓰는 해법입니다.',
     mdn: MDN + 'flex-shrink',
-    demo: { itemCount: 4, itemSizes: 'wide' },
+    axisAware: true,
+    // grow 의 반대편. column 데모는 높이가 모자라야 줄어든다. 아이템 4개 ×
+    // 40px + 간격 12px + 안쪽 여백 16px = 188px 이므로 168px 이면 20px 이
+    // 모자라 대상 아이템이 절반으로 줄어든다. 더 줄이면 0 이 되어 사라진다.
+    demo: { itemCount: 4, itemSizes: 'wide', containerStyle: { height: '168px' } },
   },
   {
     prop: 'flex-basis', jsProp: 'flexBasis', scope: 'item',
@@ -153,7 +161,10 @@ export const FLEX_SCHEMA = [
     desc: 'grow · shrink · basis를 한 번에 지정하는 단축 속성입니다.',
     tip: '실무에서는 개별 속성보다 이 단축형을 훨씬 자주 씁니다. flex: 1 을 외워두면 대부분 해결됩니다.',
     mdn: MDN + 'flex',
-    demo: { itemCount: 3 },
+    axisAware: true,
+    // grow · shrink · basis 의 단축이므로 셋과 같은 축을 탄다.
+    // 같은 판에서 비교되도록 flex-grow 와 같은 높이를 쓴다.
+    demo: { itemCount: 3, containerStyle: { height: '260px' } },
     values: [
       { val: '0 1 auto', label: 'flex: 0 1 auto', desc: '기본값. 늘지 않고, 필요하면 줄고, 크기는 auto' },
       { val: '1',        label: 'flex: 1',        desc: '남은 공간을 전부 채움 (= 1 1 0)' },
