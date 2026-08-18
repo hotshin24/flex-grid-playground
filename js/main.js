@@ -20,7 +20,7 @@ const SCHEMAS = { flex: FLEX_SCHEMA };
 
 /** 아이템 개수 한계. 스키마와 무관한 프리뷰 구성값이다. */
 const MIN_ITEMS = 1;
-const MAX_ITEMS = 12;
+const MAX_ITEMS = 20;
 
 /**
  * 뷰 설정 슬라이더 범위 (F-06). 스키마 항목이 아니므로 여기서 정의한다.
