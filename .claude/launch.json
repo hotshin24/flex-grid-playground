@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "flexbox-playground",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [".claude/serve.py", "7788"],
+      "port": 7788
+    }
+  ]
+}

@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flexbox 연습장</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header>
+  <h1>Flexbox 연습장</h1>
+  <span class="badge">display: flex</span>
+  <div style="flex:1"></div>
+  <nav class="panel-tabs">
+    <button class="panel-tab active" id="tab-control" onclick="switchPanelTab('control')">플레이그라운드</button>
+    <button class="panel-tab" id="tab-explain" onclick="switchPanelTab('explain')">속성 설명</button>
+    <button class="panel-tab" id="tab-examples" onclick="switchPanelTab('examples')">실전 예제</button>
+    <button class="panel-tab" id="tab-challenge" onclick="switchPanelTab('challenge')" style="position:relative">챌린지<span id="ch-badge" style="position:absolute;top:-4px;right:-2px;font-size:8px;background:#f1c948;color:#0f1117;border-radius:100px;padding:0 4px;font-weight:800;display:none"></span></button>
+  </nav>
+</header>
+
+<div class="app">
+
+  <!-- ── 사이드 패널 ── -->
+  <aside class="panel">
+
+    <!-- 조작 탭 콘텐츠 -->
+    <div id="panel-control">
+
+    <!-- 퀵 프리셋 -->
+    <div>
+      <div class="section-label">빠른 프리셋</div>
+      <div class="preset-row">
+        <button class="preset-btn" onclick="applyPreset('center')">가운데 정렬</button>
+        <button class="preset-btn" onclick="applyPreset('nav')">네비게이션</button>
+        <button class="preset-btn" onclick="applyPreset('card')">카드 그리드</button>
+        <button class="preset-btn" onclick="applyPreset('sidebar')">사이드바</button>
+        <button class="preset-btn" onclick="applyPreset('space')">양쪽 정렬</button>
+      </div>
+    </div>
+
+    <!-- 부모 요소 섹션 -->
+    <div class="exp-section-header">
+      <span class="exp-section-dot" style="background:#6c63ff"></span>
+      <span class="exp-section-title" style="color:#a78bfa">부모 요소</span>
+      <span class="exp-section-sub">flex 컨테이너</span>
+      <span class="exp-section-line"></span>
+    </div>
+
+    <div class="prop-group">
+
+      <div class="prop-row">
+        <div class="prop-label">flex-direction <span class="val" id="lbl-direction">row</span></div>
+        <div class="btn-group" id="grp-direction">
+          <button onclick="setContainer('flexDirection','row')" class="active">row</button>
+          <button onclick="setContainer('flexDirection','row-reverse')">row-reverse</button>
+          <button onclick="setContainer('flexDirection','column')">column</button>
+          <button onclick="setContainer('flexDirection','column-reverse')">column-reverse</button>
+        </div>
+      </div>
+
+      <div class="prop-row">
+        <div class="prop-label">flex-wrap <span class="val" id="lbl-wrap">nowrap</span></div>
+        <div class="btn-group" id="grp-wrap">
+          <button onclick="setContainer('flexWrap','nowrap')" class="active">nowrap</button>
+          <button onclick="setContainer('flexWrap','wrap')">wrap</button>
+          <button onclick="setContainer('flexWrap','wrap-reverse')">wrap-reverse</button>
+        </div>
+      </div>
+
+      <div class="prop-row">
+        <div class="prop-label">justify-content <span class="val" id="lbl-justify">flex-start</span></div>
+        <div class="btn-group" id="grp-justify">
+          <button onclick="setContainer('justifyContent','flex-start')" class="active">flex-start</button>
+          <button onclick="setContainer('justifyContent','flex-end')">flex-end</button>
+          <button onclick="setContainer('justifyContent','center')">center</button>
+          <button onclick="setContainer('justifyContent','space-between')">space-between</button>
+          <button onclick="setContainer('justifyContent','space-around')">space-around</button>
+          <button onclick="setContainer('justifyContent','space-evenly')">space-evenly</button>
+        </div>
+      </div>
+
+      <div class="prop-row">
+        <div class="prop-label">align-items <span class="val" id="lbl-alignItems">stretch</span></div>
+        <div class="btn-group" id="grp-alignItems">
+          <button onclick="setContainer('alignItems','stretch')" class="active">stretch</button>
+          <button onclick="setContainer('alignItems','flex-start')">flex-start</button>
+          <button onclick="setContainer('alignItems','flex-end')">flex-end</button>
+          <button onclick="setContainer('alignItems','center')">center</button>
+          <button onclick="setContainer('alignItems','baseline')">baseline</button>
+        </div>
+      </div>
+
+      <div class="prop-row">
+        <div class="prop-label">align-content <span class="val" id="lbl-alignContent">normal</span></div>
+        <div class="btn-group" id="grp-alignContent">
+          <button onclick="setContainer('alignContent','normal')" class="active">normal</button>
+          <button onclick="setContainer('alignContent','flex-start')">flex-start</button>
+          <button onclick="setContainer('alignContent','flex-end')">flex-end</button>
+          <button onclick="setContainer('alignContent','center')">center</button>
+          <button onclick="setContainer('alignContent','space-between')">space-between</button>
+          <button onclick="setContainer('alignContent','space-around')">space-around</button>
+          <button onclick="setContainer('alignContent','stretch')">stretch</button>
+        </div>
+      </div>
+
+      <div class="prop-row">
+        <div class="prop-label">gap <span class="val" id="lbl-gap">8px</span></div>
+        <input id="range-gap" type="range" min="0" max="40" value="8" oninput="setGap(this.value)">
+      </div>
+
+    </div>
+
+    <!-- 자식 요소 섹션 -->
+    <div class="exp-section-header" style="margin-top:8px">
+      <span class="exp-section-dot" style="background:#48b0f1"></span>
+      <span class="exp-section-title" style="color:#7dd3fc">자식 요소</span>
+      <span class="exp-section-sub">flex 아이템</span>
+      <span class="exp-section-line"></span>
+    </div>
+
+    <!-- 아이템 목록 -->
+    <div>
+      <div class="items-header">
+        <span style="font-size:11px;color:#64748b">아이템 <span id="item-count" style="color:#475569">(4개)</span></span>
+        <div style="display:flex;gap:6px">
+          <button class="add-btn" onclick="addItem()">+ 추가</button>
+          <button class="remove-btn" onclick="removeItem()">− 제거</button>
+        </div>
+      </div>
+      <div style="margin-top:10px;display:flex;flex-direction:column;gap:8px" id="item-list"></div>
+    </div>
+
+    <!-- 선택된 아이템 속성 -->
+    <div id="item-props-section">
+      <div style="font-size:10px;color:#475569;margin:12px 0 8px;padding:8px 0 0;border-top:1px solid #1e2233;letter-spacing:0.05em;display:flex;align-items:center;gap:6px">
+        ▸ 선택된 아이템 속성
+        <span id="lbl-selected-item" style="font-family:monospace;font-size:10px;color:#6c63ff;background:#6c63ff11;border:1px solid #6c63ff33;border-radius:4px;padding:1px 6px"></span>
+      </div>
+      <div class="prop-group">
+
+        <div class="prop-row">
+          <div class="prop-label">flex-grow <span class="val" id="lbl-grow">0</span></div>
+          <input id="range-grow" type="range" min="0" max="5" value="0" oninput="setItem('flexGrow', this.value)">
+        </div>
+
+        <div class="prop-row">
+          <div class="prop-label">flex-shrink <span class="val" id="lbl-shrink">1</span></div>
+          <input id="range-shrink" type="range" min="0" max="5" value="1" oninput="setItem('flexShrink', this.value)">
+        </div>
+
+        <div class="prop-row">
+          <div class="prop-label">flex-basis <span class="val" id="lbl-basis">auto</span></div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="range" min="0" max="300" value="0" oninput="setItemBasis(this.value)" id="range-basis">
+            <span style="font-size:11px;color:#64748b" id="lbl-basis-unit">auto</span>
+          </div>
+        </div>
+
+        <div class="prop-row">
+          <div class="prop-label">align-self <span class="val" id="lbl-alignSelf">auto</span></div>
+          <div class="btn-group" id="grp-alignSelf">
+            <button onclick="setItem('alignSelf','auto')" class="active">auto</button>
+            <button onclick="setItem('alignSelf','flex-start')">flex-start</button>
+            <button onclick="setItem('alignSelf','flex-end')">flex-end</button>
+            <button onclick="setItem('alignSelf','center')">center</button>
+            <button onclick="setItem('alignSelf','stretch')">stretch</button>
+          </div>
+        </div>
+
+        <div class="prop-row">
+          <div class="prop-label">order <span class="val" id="lbl-order">0</span></div>
+          <input id="range-order" type="range" min="-3" max="6" value="0" oninput="setItem('order', this.value)">
+        </div>
+
+        <div class="prop-row">
+          <div class="prop-label">width (px) <span class="val" id="lbl-width">80</span></div>
+          <input id="range-width" type="range" min="40" max="200" value="80" oninput="setItemSize('width', this.value)">
+        </div>
+
+        <div class="prop-row">
+          <div class="prop-label">height (px) <span class="val" id="lbl-height">60</span></div>
+          <input id="range-height" type="range" min="40" max="200" value="60" oninput="setItemSize('height', this.value)">
+        </div>
+
+      </div>
+    </div>
+
+    </div> <!-- /panel-control -->
+
+    <!-- 설명 탭 콘텐츠 -->
+    <div id="panel-explain" style="display:none" class="explain-panel">
+      <div class="ev-nav-section">
+        <div class="exp-section-header">
+          <span class="exp-section-dot" style="background:#6c63ff"></span>
+          <span class="exp-section-title" style="color:#a78bfa">부모 요소</span>
+          <span class="exp-section-sub">flex 컨테이너</span>
+          <span class="exp-section-line"></span>
+        </div>
+        <button class="ev-nav-btn" id="evnav-direction"   onclick="selectExplainProp('direction')">   <span class="ev-nav-name">flex-direction</span>   <span class="ev-nav-short">주축 방향 설정</span>   </button>
+        <button class="ev-nav-btn" id="evnav-wrap"        onclick="selectExplainProp('wrap')">        <span class="ev-nav-name">flex-wrap</span>        <span class="ev-nav-short">줄 넘김 여부</span>    </button>
+        <button class="ev-nav-btn" id="evnav-justify"     onclick="selectExplainProp('justify')">     <span class="ev-nav-name">justify-content</span>  <span class="ev-nav-short">주축 정렬 방식</span>   </button>
+        <button class="ev-nav-btn" id="evnav-alignItems"  onclick="selectExplainProp('alignItems')">  <span class="ev-nav-name">align-items</span>      <span class="ev-nav-short">교차축 정렬 (1줄)</span></button>
+        <button class="ev-nav-btn" id="evnav-alignContent"onclick="selectExplainProp('alignContent')"><span class="ev-nav-name">align-content</span>    <span class="ev-nav-short">교차축 정렬 (여러줄)</span></button>
+        <button class="ev-nav-btn" id="evnav-gap"         onclick="selectExplainProp('gap')">         <span class="ev-nav-name">gap</span>              <span class="ev-nav-short">아이템 간격</span>    </button>
+      </div>
+      <div class="ev-nav-section">
+        <div class="exp-section-header" style="margin-top:4px">
+          <span class="exp-section-dot" style="background:#48b0f1"></span>
+          <span class="exp-section-title" style="color:#7dd3fc">자식 요소</span>
+          <span class="exp-section-sub">flex 아이템</span>
+          <span class="exp-section-line"></span>
+        </div>
+        <button class="ev-nav-btn" id="evnav-grow"          onclick="selectExplainProp('grow')">         <span class="ev-nav-name" style="color:#7dd3fc">flex-grow</span>          <span class="ev-nav-short">남은 공간 차지 비율</span>   </button>
+        <button class="ev-nav-btn" id="evnav-shrink"        onclick="selectExplainProp('shrink')">       <span class="ev-nav-name" style="color:#7dd3fc">flex-shrink</span>        <span class="ev-nav-short">줄어드는 비율</span>          </button>
+        <button class="ev-nav-btn" id="evnav-basis"         onclick="selectExplainProp('basis')">        <span class="ev-nav-name" style="color:#7dd3fc">flex-basis</span>         <span class="ev-nav-short">아이템 기본 크기</span>      </button>
+        <button class="ev-nav-btn" id="evnav-flexShorthand" onclick="selectExplainProp('flexShorthand')"><span class="ev-nav-name" style="color:#7dd3fc">flex</span>               <span class="ev-nav-short">단축 속성</span>             </button>
+        <button class="ev-nav-btn" id="evnav-alignSelf"     onclick="selectExplainProp('alignSelf')">    <span class="ev-nav-name" style="color:#7dd3fc">align-self</span>         <span class="ev-nav-short">개별 아이템 정렬</span>      </button>
+        <button class="ev-nav-btn" id="evnav-order"         onclick="selectExplainProp('order')">        <span class="ev-nav-name" style="color:#7dd3fc">order</span>              <span class="ev-nav-short">배치 순서 변경</span>       </button>
+      </div>
+    </div> <!-- /panel-explain -->
+
+    <!-- 실전 예제 탭 콘텐츠 -->
+    <div id="panel-examples" style="display:none" class="examples-panel"></div>
+
+    <!-- 챌린지 탭 콘텐츠 -->
+    <div id="panel-challenge" style="display:none" class="challenge-panel">
+      <div class="challenge-intro">
+        <strong>목표 레이아웃을 맞춰보세요!</strong><br>
+        아래 챌린지를 선택하면 오른쪽 미리보기에 타깃 레이아웃이 표시됩니다. 오른쪽 상단 컨트롤로 flexbox 속성을 조작해 일치시킨 뒤 <strong>제출</strong>을 눌러보세요.
+      </div>
+      <div id="challenge-list"></div>
+    </div>
+
+  </aside>
+
+  <!-- ── 프리뷰 + 코드 ── -->
+  <div class="preview-area">
+
+    <!-- ── 플레이그라운드 뷰 ── -->
+    <div id="playground-view" style="display:contents">
+
+      <!-- 챌린지 전용 컨트롤 바 (챌린지 탭일 때만 표시) -->
+      <div id="ch-control-bar" style="display:none;flex-direction:column;gap:8px;padding:14px 20px;background:#0d1117;border-bottom:1px solid #2d3152;flex-shrink:0;overflow-y:auto;max-height:260px">
+        <div style="font-size:11px;font-weight:700;color:#a78bfa;margin-bottom:2px;letter-spacing:0.5px">컨테이너 속성 조작</div>
+
+        <div class="ch-prop-row">
+          <span class="ch-prop-label">flex-direction</span>
+          <div class="btn-group" id="ch-grp-direction">
+            <button onclick="setContainer('flexDirection','row')" class="active">row</button>
+            <button onclick="setContainer('flexDirection','row-reverse')">row-reverse</button>
+            <button onclick="setContainer('flexDirection','column')">column</button>
+            <button onclick="setContainer('flexDirection','column-reverse')">column-reverse</button>
+          </div>
+        </div>
+
+        <div class="ch-prop-row">
+          <span class="ch-prop-label">flex-wrap</span>
+          <div class="btn-group" id="ch-grp-wrap">
+            <button onclick="setContainer('flexWrap','nowrap')" class="active">nowrap</button>
+            <button onclick="setContainer('flexWrap','wrap')">wrap</button>
+            <button onclick="setContainer('flexWrap','wrap-reverse')">wrap-reverse</button>
+          </div>
+        </div>
+
+        <div class="ch-prop-row">
+          <span class="ch-prop-label">justify-content</span>
+          <div class="btn-group" id="ch-grp-justify">
+            <button onclick="setContainer('justifyContent','flex-start')" class="active">flex-start</button>
+            <button onclick="setContainer('justifyContent','flex-end')">flex-end</button>
+            <button onclick="setContainer('justifyContent','center')">center</button>
+            <button onclick="setContainer('justifyContent','space-between')">space-between</button>
+            <button onclick="setContainer('justifyContent','space-around')">space-around</button>
+            <button onclick="setContainer('justifyContent','space-evenly')">space-evenly</button>
+          </div>
+        </div>
+
+        <div class="ch-prop-row">
+          <span class="ch-prop-label">align-items</span>
+          <div class="btn-group" id="ch-grp-alignItems">
+            <button onclick="setContainer('alignItems','stretch')" class="active">stretch</button>
+            <button onclick="setContainer('alignItems','flex-start')">flex-start</button>
+            <button onclick="setContainer('alignItems','flex-end')">flex-end</button>
+            <button onclick="setContainer('alignItems','center')">center</button>
+            <button onclick="setContainer('alignItems','baseline')">baseline</button>
+          </div>
+        </div>
+
+        <div class="ch-prop-row">
+          <span class="ch-prop-label">align-content</span>
+          <div class="btn-group" id="ch-grp-alignContent">
+            <button onclick="setContainer('alignContent','normal')" class="active">normal</button>
+            <button onclick="setContainer('alignContent','flex-start')">flex-start</button>
+            <button onclick="setContainer('alignContent','flex-end')">flex-end</button>
+            <button onclick="setContainer('alignContent','center')">center</button>
+            <button onclick="setContainer('alignContent','space-between')">space-between</button>
+            <button onclick="setContainer('alignContent','space-around')">space-around</button>
+            <button onclick="setContainer('alignContent','stretch')">stretch</button>
+          </div>
+        </div>
+
+        <div class="ch-prop-row">
+          <span class="ch-prop-label">gap <span class="val" id="ch-lbl-gap">8px</span></span>
+          <input id="ch-range-gap" type="range" min="0" max="40" value="8" oninput="setGap(this.value)" style="width:140px;accent-color:#6c63ff">
+        </div>
+      </div>
+
+      <div class="preview-toolbar">
+        <span id="pg-toolbar-title">미리보기</span>
+        <span style="color:#6c63ff">•</span>
+        <span id="pg-toolbar-hint" style="color:#475569;font-size:11px">아이템 클릭 → 개별 속성 변경</span>
+        <div style="flex:1"></div>
+        <!-- 컨테이너 너비 -->
+        <div class="toolbar-width-slider">
+          <span style="font-size:10px;color:#475569">너비</span>
+          <input type="range" id="container-width-slider" min="200" max="800" value="800" step="10" oninput="setContainerWidth(this.value)">
+          <span class="toolbar-lbl" id="container-width-lbl">100%</span>
+        </div>
+        <div class="toolbar-sep"></div>
+        <!-- Undo / Redo -->
+        <button class="toolbar-btn" id="btn-undo" onclick="undo()" title="실행 취소 (Ctrl+Z)" disabled>↩ 취소</button>
+        <button class="toolbar-btn" id="btn-redo" onclick="redo()" title="다시 실행 (Ctrl+Shift+Z)" disabled>↪ 재실행</button>
+        <div class="toolbar-sep"></div>
+        <button class="toolbar-btn" onclick="resetAll()" title="초기 상태로 되돌리기">⟳ 초기화</button>
+      </div>
+
+      <div class="preview-container">
+        <div style="width:100%;max-width:800px;position:relative">
+          <div class="flex-container" id="flex-container"></div>
+          <span class="size-badge" id="size-badge"></span>
+        </div>
+      </div>
+
+      <!-- 코드 영역: CSS / HTML 좌우 2분할 -->
+      <div id="pg-code-panels" style="display:flex;flex-shrink:0;max-height:240px;border-top:1px solid #2d3152;min-height:0">
+
+        <!-- CSS 패널 -->
+        <div style="flex:1;display:flex;flex-direction:column;min-width:0;border-right:1px solid #2d3152">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 12px;background:#0d1117;border-bottom:1px solid #1e2233;flex-shrink:0">
+            <span style="font-size:11px;font-weight:700;color:#c792ea;font-family:monospace">CSS</span>
+            <button class="copy-btn" id="copy-btn-css" onclick="copyPlaygroundCode('css')" style="margin-left:0">복사</button>
+          </div>
+          <div class="code-area" style="border-top:none;max-height:none;flex:1;overflow-y:auto;padding:12px 16px">
+            <div id="code-output-css"></div>
+          </div>
+        </div>
+
+        <!-- HTML 패널 -->
+        <div style="flex:1;display:flex;flex-direction:column;min-width:0">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 12px;background:#0d1117;border-bottom:1px solid #1e2233;flex-shrink:0">
+            <span style="font-size:11px;font-weight:700;color:#61dafb;font-family:monospace">HTML</span>
+            <button class="copy-btn" id="copy-btn-html" onclick="copyPlaygroundCode('html')" style="margin-left:0">복사</button>
+          </div>
+          <div class="code-area" style="border-top:none;max-height:none;flex:1;overflow-y:auto;padding:12px 16px">
+            <div id="code-output-html"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── 실전 예제 뷰 ── -->
+    <div id="example-view" style="display:none;flex-direction:column;flex:1;overflow:hidden;min-height:0">
+
+      <!-- 툴바: 돌아가기 + 제목만 -->
+      <div class="preview-toolbar">
+        <button id="ex-back-btn" onclick="closeExampleView()"
+          style="display:flex;align-items:center;gap:5px;padding:5px 12px;border-radius:7px;border:1px solid #2d3152;background:#0f1117;color:#94a3b8;font-size:12px;cursor:pointer;transition:all .15s"
+          onmouseover="this.style.borderColor='#6c63ff';this.style.color='#a78bfa'"
+          onmouseout="this.style.borderColor='#2d3152';this.style.color='#94a3b8'">
+          ← 돌아가기
+        </button>
+        <span style="color:#2d3152">|</span>
+        <span id="ex-view-category" style="font-size:10px;padding:2px 8px;border-radius:100px;font-weight:700"></span>
+        <span id="ex-view-title" style="font-size:13px;font-weight:700;color:#e2e8f0"></span>
+      </div>
+
+      <div style="flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0">
+        <!-- 라이브 iframe -->
+        <div style="flex:1;min-height:0;overflow:hidden;background:#0a0c14">
+          <iframe id="ex-view-iframe"
+            style="width:100%;height:100%;border:none;display:block"
+            frameborder="0"></iframe>
+        </div>
+
+        <!-- 코드 영역: CSS / HTML 좌우 2분할 -->
+        <div style="display:flex;flex-shrink:0;max-height:280px;border-top:1px solid #2d3152;min-height:0">
+
+          <!-- CSS 패널 -->
+          <div style="flex:1;display:flex;flex-direction:column;min-width:0;border-right:1px solid #2d3152">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 12px;background:#0d1117;border-bottom:1px solid #1e2233;flex-shrink:0">
+              <span style="font-size:11px;font-weight:700;color:#c792ea;font-family:monospace">CSS</span>
+              <button class="copy-btn" id="ex-view-copy-css" onclick="copyExViewCode('css')" style="margin-left:0">복사</button>
+            </div>
+            <div class="code-area" style="border-top:none;max-height:none;flex:1;overflow-y:auto;padding:12px 16px">
+              <div id="ex-view-code-css" style="font-family:'Fira Code','Cascadia Code',monospace;font-size:11.5px;line-height:1.7"></div>
+            </div>
+          </div>
+
+          <!-- HTML 패널 -->
+          <div style="flex:1;display:flex;flex-direction:column;min-width:0">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 12px;background:#0d1117;border-bottom:1px solid #1e2233;flex-shrink:0">
+              <span style="font-size:11px;font-weight:700;color:#61dafb;font-family:monospace">HTML</span>
+              <button class="copy-btn" id="ex-view-copy-html" onclick="copyExViewCode('html')" style="margin-left:0">복사</button>
+            </div>
+            <div class="code-area" style="border-top:none;max-height:none;flex:1;overflow-y:auto;padding:12px 16px">
+              <div id="ex-view-code-html" style="font-family:'Fira Code','Cascadia Code',monospace;font-size:11.5px;line-height:1.7"></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── 실전 예제 그리드 뷰 ── -->
+    <div id="examples-grid-view" style="display:none;flex-direction:column;flex:1;overflow:hidden;min-height:0">
+
+      <!-- 툴바 -->
+      <div class="preview-toolbar">
+        <span>실전 예제</span>
+        <span style="color:#6c63ff">•</span>
+        <span style="color:#475569;font-size:11px">Flexbox가 사용된 실제 UI 패턴들</span>
+        <div style="flex:1"></div>
+        <div id="exgv-filter-row" style="display:flex;gap:5px;flex-wrap:wrap"></div>
+      </div>
+
+      <!-- 그리드 본문 -->
+      <div class="exgv-body" id="exgv-body"></div>
+
+    </div>
+
+    <!-- ── 속성 설명 뷰 ── -->
+    <div id="explain-view" style="display:none;flex-direction:column;flex:1;overflow:hidden;min-height:0">
+
+      <!-- 툴바 -->
+      <div class="preview-toolbar">
+        <span id="expv-category" class="expv-category-badge">부모 요소</span>
+        <code id="expv-prop-name" style="font-size:15px;font-weight:800;color:#e2e8f0;font-family:monospace"></code>
+        <div style="flex:1"></div>
+        <button onclick="switchPanelTab('control')"
+          style="display:flex;align-items:center;gap:5px;padding:5px 12px;border-radius:7px;border:1px solid #2d3152;background:#0f1117;color:#94a3b8;font-size:12px;cursor:pointer;transition:all .15s"
+          onmouseover="this.style.borderColor='#6c63ff';this.style.color='#a78bfa'"
+          onmouseout="this.style.borderColor='#2d3152';this.style.color='#94a3b8'">
+          ↩ 플레이그라운드로
+        </button>
+      </div>
+
+      <!-- 본문 (스크롤) -->
+      <div class="expv-body" id="expv-body">
+        <div class="expv-placeholder">
+          <div style="font-size:32px;margin-bottom:12px">←</div>
+          <div style="font-size:14px;color:#475569;font-weight:600">왼쪽에서 속성을 선택하세요</div>
+          <div style="font-size:12px;color:#334155;margin-top:6px">12가지 Flexbox 속성의 시각적 설명과 예시를 확인할 수 있습니다</div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
