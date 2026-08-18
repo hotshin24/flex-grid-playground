@@ -11,7 +11,7 @@
 import { readFileSync } from 'node:fs';
 import {
   createControl, splitLength, joinLength,
-  CONTROL_CLASS, LABEL_CLASS, OPTION_CLASS, VALUES_CLASS, CHECKED_CLASS,
+  CONTROL_CLASS, LABEL_CLASS, PROP_CLASS, HINT_CLASS, OPTION_CLASS, VALUES_CLASS, CHECKED_CLASS,
 } from '../js/ui/controls.js';
 import { FLEX_SCHEMA } from '../js/topics/flex/schema.js';
 import { GRID_SCHEMA } from '../js/topics/grid/schema.js';
@@ -153,15 +153,29 @@ section('Flex 스키마 12개 생성');
   check('data-prop 반영', roots.every((r, i) => r.getAttribute('data-prop') === targets[i].prop));
   check('data-control 반영', roots.every((r, i) => r.getAttribute('data-control') === targets[i].control));
 
-  const labels = roots.map((r) => findByClass(r, LABEL_CLASS)[0]);
-  check('라벨은 스키마 label 사용',
-    labels.every((l, i) => l.textContent === targets[i].label),
-    labels.map((l) => l.textContent).slice(0, 3).join(', ') + ' …');
+  const props = roots.map((r) => findByClass(r, PROP_CLASS)[0]);
+  const hints = roots.map((r) => findByClass(r, HINT_CLASS)[0]);
+
+  check('1행은 CSS 속성명',
+    props.every((el, i) => el && el.textContent === targets[i].prop),
+    props.map((el) => el.textContent).slice(0, 3).join(', ') + ' …');
+  check('1행은 code 요소', props.every((el) => el.tagName === 'CODE'));
+  check('2행은 스키마 label',
+    hints.every((el, i) => el && el.textContent === targets[i].label),
+    hints.map((el) => el.textContent).slice(0, 3).join(', ') + ' …');
+  check('두 줄 모두 라벨 요소 안에',
+    roots.every((r) => {
+      const label = findByClass(r, LABEL_CLASS)[0];
+      return label.children.length === 2 &&
+        label.children[0].className === PROP_CLASS &&
+        label.children[1].className === HINT_CLASS;
+    }));
 
   const noLabel = { ...byProp(FLEX_SCHEMA, 'gap') };
   delete noLabel.label;
   const fallback = build(noLabel).root;
-  check('label 없으면 prop으로 대체', findByClass(fallback, LABEL_CLASS)[0].textContent === 'gap');
+  check('label 없으면 속성명만', findByClass(fallback, PROP_CLASS)[0].textContent === 'gap');
+  check('label 없으면 2행 생략', findByClass(fallback, HINT_CLASS).length === 0);
 }
 
 /* ==========================================================================
@@ -180,7 +194,10 @@ section('enum 컨트롤');
   const group = findByClass(root, VALUES_CLASS)[0];
 
   check('role=radiogroup', group.getAttribute('role') === 'radiogroup');
-  check('aria-labelledby가 라벨 id', group.getAttribute('aria-labelledby') === findByClass(root, LABEL_CLASS)[0].getAttribute('id'));
+  const labelEl = findByClass(root, LABEL_CLASS)[0];
+  check('aria-labelledby가 라벨 id', group.getAttribute('aria-labelledby') === labelEl.getAttribute('id'));
+  check('가리키는 요소가 속성명과 설명을 모두 포함',
+    findByClass(labelEl, PROP_CLASS).length === 1 && findByClass(labelEl, HINT_CLASS).length === 1);
   check('옵션 role=radio', optionsOf(root).every((o) => o.getAttribute('role') === 'radio'));
   check('옵션 type=button', optionsOf(root).every((o) => o.getAttribute('type') === 'button'));
 }
@@ -349,7 +366,7 @@ section('M3 보류 컨트롤');
   check('오류 없이 자리만 생성', roots.every((r) => r && r.children.length === 2));
   check('data-pending=M3 표시', roots.every((r) => findByClass(r, VALUES_CLASS)[0].getAttribute('data-pending') === 'M3'));
   check('조작 요소 없음', roots.every((r) => optionsOf(r).length === 0));
-  check('라벨은 그대로 생성', roots.every((r) => findByClass(r, LABEL_CLASS)[0].textContent.length > 0));
+  check('라벨은 그대로 생성', roots.every((r) => findByClass(r, PROP_CLASS)[0].textContent.length > 0));
 }
 
 /* ==========================================================================

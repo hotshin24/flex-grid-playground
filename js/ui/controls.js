@@ -20,6 +20,8 @@ import { CONTROL_TYPES } from '../core/schema-spec.js';
 
 export const CONTROL_CLASS = 'fgp-control';
 export const LABEL_CLASS = 'fgp-control__label';
+export const PROP_CLASS = 'fgp-control__prop';
+export const HINT_CLASS = 'fgp-control__hint';
 export const VALUES_CLASS = 'fgp-control__values';
 export const OPTION_CLASS = 'fgp-control__option';
 export const FIELD_CLASS = 'fgp-control__field';
@@ -64,6 +66,35 @@ export function joinLength(num, unit) {
 /* --------------------------------------------------------------------------
    컨트롤별 본문
    -------------------------------------------------------------------------- */
+
+/**
+ * 라벨은 두 줄이다.
+ *   1행 CSS 속성명 — 이 도구에서 익혀야 할 대상이므로 주(主)로 둔다
+ *   2행 우리말 설명 — 보조. entry.label이 없으면 생략한다
+ *
+ * aria-labelledby가 가리키는 것은 두 줄을 감싼 이 요소이므로,
+ * 보조 설명까지 읽힌다.
+ */
+function buildLabel(entry, doc, state) {
+  const label = doc.createElement(entry.control === 'enum' ? 'div' : 'label');
+  label.className = LABEL_CLASS;
+  label.setAttribute('id', state.labelId);
+  if (entry.control !== 'enum') label.setAttribute('for', state.inputId);
+
+  const prop = doc.createElement('code');
+  prop.className = PROP_CLASS;
+  prop.textContent = entry.prop;
+  label.appendChild(prop);
+
+  if (entry.label) {
+    const hint = doc.createElement('span');
+    hint.className = HINT_CLASS;
+    hint.textContent = entry.label;
+    label.appendChild(hint);
+  }
+
+  return label;
+}
 
 function buildEnum(entry, value, doc, state) {
   const group = doc.createElement('div');
@@ -140,7 +171,7 @@ function buildLength(entry, value, doc, state) {
 
   const select = doc.createElement('select');
   select.className = UNIT_CLASS;
-  select.setAttribute('aria-label', `${state.labelText} 단위`);
+  select.setAttribute('aria-label', `${entry.prop} 단위`);
 
   entry.units.forEach((u) => {
     const option = doc.createElement('option');
@@ -268,7 +299,6 @@ export function createControl(entry, { value, onChange, doc = globalThis.documen
   }
 
   const current = value === undefined ? entry.default : value;
-  const labelText = entry.label ?? entry.prop;
 
   const root = doc.createElement('div');
   root.className = `${CONTROL_CLASS} ${CONTROL_CLASS}--${entry.control}`;
@@ -278,16 +308,10 @@ export function createControl(entry, { value, onChange, doc = globalThis.documen
   const state = {
     labelId: nextId(`${entry.prop}-label`),
     inputId: nextId(entry.prop),
-    labelText,
     value: current,
   };
 
-  const label = doc.createElement(entry.control === 'enum' ? 'div' : 'label');
-  label.className = LABEL_CLASS;
-  label.setAttribute('id', state.labelId);
-  label.textContent = labelText;
-  if (entry.control !== 'enum') label.setAttribute('for', state.inputId);
-  root.appendChild(label);
+  root.appendChild(buildLabel(entry, doc, state));
 
   if (PENDING_CONTROLS.has(entry.control)) {
     root.appendChild(buildPending(entry, doc));
