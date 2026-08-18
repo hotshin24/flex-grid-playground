@@ -16,8 +16,10 @@ import { createRenderer } from './core/renderer.js';
 import { createControl, createRangeControl } from './ui/controls.js';
 import { createTabs, panelId } from './ui/tabs.js';
 import { createExplain } from './ui/explain.js';
+import { createExamples } from './ui/examples.js';
 import { FLEX_EXPLAIN_NOTES, FLEX_EXPLAIN_SAMPLES, AXIS_LABELS } from './topics/flex/explain.js';
 import { FLEX_PRESETS } from './topics/flex/presets.js';
+import { FLEX_EXAMPLES } from './topics/flex/examples.js';
 import { isInactive, deriveState, partitionByScope, defaultsFrom } from './core/schema-spec.js';
 import { generateCode } from './core/codegen.js';
 import { FLEX_SCHEMA } from './topics/flex/schema.js';
@@ -26,6 +28,7 @@ const SCHEMAS = { flex: FLEX_SCHEMA };
 
 /** 토픽에서 주입받는다. M3의 Grid는 자기 목록을 여기에 더한다. */
 const PRESETS = { flex: FLEX_PRESETS };
+const EXAMPLES = { flex: FLEX_EXAMPLES };
 
 /** 아이템 개수 한계. 스키마와 무관한 프리뷰 구성값이다. */
 const MIN_ITEMS = 1;
@@ -342,6 +345,19 @@ async function copyText(text, button) {
   button.textContent = ok ? '복사됨' : '복사 실패';
   setTimeout(() => { button.textContent = label; }, 1200);
 }
+
+/* --------------------------------------------------------------------------
+   실전 예제 (F-08)
+
+   속성 설명 탭과 같다. 한 번 만들고 두지 않는다 — 예제는 고정 콘텐츠라
+   store 와 무관하다. 복사는 플레이그라운드와 같은 copyText 를 쓴다.
+   -------------------------------------------------------------------------- */
+
+createExamples({
+  examples: EXAMPLES[initial.topic],
+  root: document.getElementById(panelId('examples')),
+  onCopy: (text, button) => copyText(text, button),
+});
 
 /* --------------------------------------------------------------------------
    아이템 추가 · 제거

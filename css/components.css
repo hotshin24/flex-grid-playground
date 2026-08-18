@@ -834,3 +834,179 @@
   line-height: var(--lh-tight);
   color: var(--fgp-text-muted);
 }
+
+/* --------------------------------------------------------------------------
+   실전 예제 (F-08)
+   -------------------------------------------------------------------------- */
+
+.fgp-examples {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  padding: var(--sp-4);
+}
+
+/**
+ * 카테고리 색은 여기서 정한다. 데이터는 순번만 넘긴다.
+ *
+ * v0.1 은 hex 값을 데이터에 박아 뒀고 그 표가 카테고리와 어긋나 있었다.
+ * 순번으로 받으면 카테고리가 늘어도 데이터에 색을 적을 일이 없다.
+ */
+.fgp-example,
+.fgp-examples__filteritem {
+  --fgp-example-accent: var(--fgp-text-muted);
+}
+
+[data-category='1'] { --fgp-example-accent: var(--fgp-item-1); }
+[data-category='2'] { --fgp-example-accent: var(--fgp-item-2); }
+[data-category='3'] { --fgp-example-accent: var(--fgp-item-3); }
+[data-category='4'] { --fgp-example-accent: var(--fgp-item-4); }
+[data-category='5'] { --fgp-example-accent: var(--fgp-item-5); }
+[data-category='6'] { --fgp-example-accent: var(--fgp-item-6); }
+[data-category='7'] { --fgp-example-accent: var(--fgp-item-7); }
+[data-category='8'] { --fgp-example-accent: var(--fgp-item-8); }
+
+/* 목록이 길어 필터가 화면 밖으로 밀린다. 위에 붙여 둔다 */
+.fgp-examples__filter {
+  position: sticky;
+  top: calc(var(--sp-4) * -1);
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: calc(var(--sp-4) * -1) calc(var(--sp-4) * -1) var(--sp-0);
+  padding: var(--sp-4);
+  background: var(--fgp-surface-page);
+  border-bottom: 1px solid var(--fgp-border-subtle);
+}
+
+.fgp-examples__filteritem {
+  padding: var(--sp-1) var(--sp-3);
+  border: 1px solid var(--fgp-border-default);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--fgp-text-secondary);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+}
+
+.fgp-examples__filteritem:hover {
+  color: var(--fgp-text-primary);
+  border-color: var(--fgp-border-strong);
+}
+
+.fgp-examples__filteritem[aria-checked='true'] {
+  border-color: var(--fgp-example-accent);
+  background: color-mix(in srgb, var(--fgp-example-accent) 18%, transparent);
+  color: var(--fgp-example-accent);
+}
+
+.fgp-examples__count {
+  margin-left: auto;
+  color: var(--fgp-text-muted);
+  font-size: var(--fs-2xs);
+}
+
+.fgp-examples__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(24rem, 1fr));
+  gap: var(--sp-4);
+  align-items: start;
+}
+
+.fgp-example {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+  background: var(--fgp-surface-panel);
+  border: 1px solid var(--fgp-border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.fgp-example[hidden] {
+  display: none;
+}
+
+.fgp-example__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.fgp-example__cat {
+  padding: var(--sp-0) var(--sp-2);
+  border: 1px solid color-mix(in srgb, var(--fgp-example-accent) 40%, transparent);
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--fgp-example-accent) 15%, transparent);
+  color: var(--fgp-example-accent);
+  font-size: var(--fs-3xs);
+  font-weight: var(--fw-bold);
+}
+
+.fgp-example__title {
+  margin: var(--sp-0);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--fgp-text-primary);
+}
+
+.fgp-example__tools {
+  display: flex;
+  gap: var(--sp-1);
+  margin-left: auto;
+}
+
+.fgp-example__desc {
+  margin: var(--sp-0);
+  color: var(--fgp-text-secondary);
+  font-size: var(--fs-2xs);
+  line-height: var(--lh-base);
+}
+
+/* 높이는 데이터가 정한다. height 속성으로 들어오므로 여기서 잡지 않는다 */
+.fgp-example__frame {
+  display: block;
+  width: 100%;
+  border: 1px solid var(--fgp-border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--fgp-preview-bg);
+}
+
+.fgp-example__code {
+  border: 1px solid var(--fgp-border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--fgp-code-bg);
+}
+
+.fgp-example__code__summary {
+  padding: var(--sp-1) var(--sp-2);
+  color: var(--fgp-text-muted);
+  font-family: var(--p-font-code);
+  font-size: var(--fs-3xs);
+  font-weight: var(--fw-semibold);
+  cursor: pointer;
+}
+
+.fgp-example__code__block {
+  margin: var(--sp-0);
+  padding: var(--sp-2);
+  max-height: calc(var(--sp-16) * 4);
+  overflow: auto;
+  overscroll-behavior: contain;
+  border-top: 1px solid var(--fgp-border-subtle);
+  color: var(--fgp-code-text);
+  font-family: var(--p-font-code);
+  font-size: var(--fs-3xs);
+  line-height: var(--lh-base);
+  white-space: pre;
+}
+
+/* 한 줄에 하나면 카드가 화면 폭을 다 먹어 프리뷰가 늘어진다 */
+@media (max-width: 599px) {
+  .fgp-examples__list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
