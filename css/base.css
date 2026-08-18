@@ -21,7 +21,7 @@ body {
   min-height: 100%;
   background: var(--fgp-surface-page);
   color: var(--fgp-text-primary);
-  font-family: var(--p-font-ui);
+  font-family: var(--fgp-font-ui);
   font-size: var(--fs-md);
   line-height: var(--lh-base);
   -webkit-font-smoothing: antialiased;
@@ -39,7 +39,7 @@ code,
 kbd,
 samp,
 pre {
-  font-family: var(--p-font-code);
+  font-family: var(--fgp-font-code);
   font-size: var(--fs-xs);
 }
 
@@ -83,5 +83,5 @@ button:disabled {
 }
 
 .fgp-mono {
-  font-family: var(--p-font-code);
+  font-family: var(--fgp-font-numeric);
 }
