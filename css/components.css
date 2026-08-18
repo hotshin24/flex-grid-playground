@@ -327,12 +327,10 @@
     display: grid;
     /* 좌우를 반씩 나눈다. 양쪽 모두 제 칸을 꽉 채운다 */
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    /* 선택 안내는 버튼 아래, 왼쪽 열에 둔다.
-       오른쪽 열은 크기 컨트롤이 두 행을 통째로 쓴다. */
     grid-template-areas:
       'title title'
-      'bar   size'
-      'hint  size';
+      'bar   hint'
+      'bar   size';
     align-items: start;
     column-gap: var(--sp-4);
   }
@@ -347,7 +345,7 @@
 
   .fgp-panel__section:has(#fgp-item-size) > .fgp-control__hint {
     grid-area: hint;
-    align-self: start;
+    align-self: end;
   }
 
   .fgp-panel__section:has(#fgp-item-size) > #fgp-item-size {
