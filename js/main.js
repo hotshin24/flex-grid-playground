@@ -15,6 +15,7 @@ import { createStore } from './core/store.js';
 import { createRenderer } from './core/renderer.js';
 import { createControl, createRangeControl } from './ui/controls.js';
 import { isInactive, deriveState, partitionByScope } from './core/schema-spec.js';
+import { generateCode } from './core/codegen.js';
 import { FLEX_SCHEMA } from './topics/flex/schema.js';
 
 const SCHEMAS = { flex: FLEX_SCHEMA };
@@ -165,6 +166,58 @@ function syncViewControls(view) {
 }
 
 /* --------------------------------------------------------------------------
+   코드 출력 (F-04)
+
+   상태가 바뀔 때마다 다시 만든다. 어떤 속성을 넣고 뺄지는 codegen이 스키마를
+   보고 정하므로 여기는 문자열을 붙여 넣는 일만 한다.
+   -------------------------------------------------------------------------- */
+
+const codeOut = {
+  css: document.getElementById('fgp-code-css'),
+  html: document.getElementById('fgp-code-html'),
+};
+
+let lastCode = { css: '', html: '' };
+
+function syncCode(state) {
+  lastCode = generateCode(state, SCHEMAS[state.topic]);
+  codeOut.css.textContent = lastCode.css;
+  codeOut.html.textContent = lastCode.html;
+}
+
+/**
+ * 클립보드 API는 보안 컨텍스트에서만 쓸 수 있다. 태블릿은 http로 접속하므로
+ * 그쪽에서는 쓸 수 없어 선택 영역을 이용한 예전 방식으로 넘어간다.
+ */
+async function copyText(text, button) {
+  let ok = false;
+
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      ok = true;
+    }
+  } catch {
+    ok = false;
+  }
+
+  if (!ok) {
+    const holder = document.createElement('textarea');
+    holder.value = text;
+    holder.setAttribute('readonly', 'readonly');
+    holder.classList.add('fgp-visually-hidden');
+    document.body.appendChild(holder);
+    holder.select();
+    try { ok = document.execCommand('copy'); } catch { ok = false; }
+    document.body.removeChild(holder);
+  }
+
+  const label = button.textContent;
+  button.textContent = ok ? '복사됨' : '복사 실패';
+  setTimeout(() => { button.textContent = label; }, 1200);
+}
+
+/* --------------------------------------------------------------------------
    아이템 추가 · 제거
    -------------------------------------------------------------------------- */
 
@@ -205,12 +258,14 @@ const ACTIONS = {
   'view-reset': () => store.resetView(),
   'undo': () => store.undo(),
   'redo': () => store.redo(),
+  'copy-css': (button) => copyText(lastCode.css, button),
+  'copy-html': (button) => copyText(lastCode.html, button),
 };
 
 document.addEventListener('click', (event) => {
   const button = event.target.closest('[data-action]');
   const action = button && ACTIONS[button.dataset.action];
-  if (action) action();
+  if (action) action(button);
 });
 
 /* --------------------------------------------------------------------------
@@ -321,6 +376,7 @@ function sync(state) {
   syncViewControls(state.view);
   syncContainerControls(state);
   syncHistoryButtons();
+  syncCode(state);
 }
 
 store.subscribe(sync);

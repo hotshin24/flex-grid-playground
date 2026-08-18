@@ -76,6 +76,17 @@
   <section class="fgp-preview" aria-label="프리뷰">
     <!-- 프리뷰 마운트 지점 -->
     <div class="fgp-preview__stage" id="fgp-preview"></div>
+
+    <section class="fgp-code" aria-labelledby="fgp-code-title">
+      <div class="fgp-panel__head">
+        <h2 class="fgp-panel__title" id="fgp-code-title">코드</h2>
+        <button type="button" class="fgp-btn fgp-btn--quiet" data-action="copy-css">CSS 복사</button>
+        <button type="button" class="fgp-btn fgp-btn--quiet" data-action="copy-html">HTML 복사</button>
+      </div>
+      <!-- 코드 마운트 지점. 내용은 codegen이 상태에서 만든다 -->
+      <pre class="fgp-code__block"><code id="fgp-code-css"></code></pre>
+      <pre class="fgp-code__block"><code id="fgp-code-html"></code></pre>
+    </section>
   </section>
 
 </main>

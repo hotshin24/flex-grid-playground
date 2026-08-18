@@ -424,3 +424,53 @@
     text-align: center;
   }
 }
+
+/* --------------------------------------------------------------------------
+   코드 출력 (F-04)
+
+   프리뷰 아래에 붙는다. 셸 높이가 고정이므로 코드가 길어질 때는 블록 안에서만
+   스크롤하게 두어 페이지를 밀지 않는다.
+   -------------------------------------------------------------------------- */
+
+.fgp-code {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin-top: var(--sp-3);
+  padding: var(--sp-3);
+  background: var(--fgp-surface-panel);
+  border: 1px solid var(--fgp-border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.fgp-code__block {
+  margin: var(--sp-0);
+  padding: var(--sp-3);
+  max-height: calc(var(--sp-16) * 3);
+  overflow: auto;
+  overscroll-behavior: contain;
+  background: var(--fgp-code-bg);
+  border: 1px solid var(--fgp-border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--fgp-code-text);
+  font-family: var(--p-font-code);
+  font-size: var(--fs-2xs);
+  line-height: var(--lh-base);
+  white-space: pre;
+  tab-size: 2;
+}
+
+.fgp-code__block:empty {
+  display: none;
+}
+
+/* 클립보드 대체 경로가 잠깐 붙이는 요소. 화면에서 감추되 선택은 가능해야 한다 */
+.fgp-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: var(--sp-0);
+  border: 0;
+  clip-path: inset(50%);
+  overflow: hidden;
+}
