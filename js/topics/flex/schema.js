@@ -32,7 +32,10 @@ export const FLEX_SCHEMA = [
     desc: '아이템이 한 줄에 다 들어가지 않을 때 다음 줄로 넘길지 결정합니다.',
     tip: 'nowrap이면 줄이 하나뿐이라 align-content가 동작하지 않습니다. 이게 초보자가 가장 자주 막히는 지점입니다.',
     mdn: MDN + 'flex-wrap',
-    demo: { itemCount: 7, itemSizes: 'wide' },
+    axisAware: true,
+    // column 데모는 높이가 막혀 있어야 줄이 넘어간다. row 데모는 카드 폭이
+    // 이미 좁아 그대로도 넘치지만, 같은 판을 쓰므로 함께 고정한다.
+    demo: { itemCount: 7, itemSizes: 'wide', containerStyle: { height: '220px' } },
     values: [
       { val: 'nowrap',       desc: '넘기지 않고 아이템을 줄여서 한 줄에 (기본값)' },
       { val: 'wrap',         desc: '넘칠 때 다음 줄로' },
