@@ -23,6 +23,16 @@ const MIN_ITEMS = 1;
 const MAX_ITEMS = 20;
 
 /**
+ * 아이템 기하값 슬라이더 (개선 3).
+ * width·height는 CSS 속성이 아니라 프리뷰 구성값이므로 스키마에 없다.
+ * 선택된 아이템 하나에만 적용된다.
+ */
+const ITEM_SIZE_CONTROLS = [
+  { key: 'width', label: '너비', min: 20, max: 400, step: 10 },
+  { key: 'height', label: '높이', min: 20, max: 300, step: 10 },
+];
+
+/**
  * 뷰 설정 슬라이더 범위 (F-06). 스키마 항목이 아니므로 여기서 정의한다.
  * fallback은 값이 null일 때 슬라이더가 놓일 자리이며, 실제 적용값이 아니다 —
  * null이면 CSS 기본값(40vh / 46vh / 62vh)이 그대로 산다.
@@ -176,6 +186,47 @@ document.addEventListener('keydown', (event) => {
 });
 
 /* --------------------------------------------------------------------------
+   아이템 크기 — 선택된 아이템 하나에만 적용 (개선 3)
+
+   컨테이너 크기(뷰 설정)와 달리 이쪽은 상태의 items에 들어 있는 값이라
+   dispatch로 흐르고 undo 대상이 된다.
+   -------------------------------------------------------------------------- */
+
+const itemSizePanel = document.getElementById('fgp-item-size');
+
+function selectedItem(state) {
+  return state.items.find((item) => item.id === state.selectedId) ?? state.items[0];
+}
+
+function setSelectedItemSize(key, value) {
+  const state = store.getState();
+  const target = selectedItem(state);
+  if (!target) return;
+
+  store.dispatch({
+    items: state.items.map((item) => (item.id === target.id ? { ...item, [key]: value } : item)),
+  });
+}
+
+const itemSizeControls = ITEM_SIZE_CONTROLS.map((config) => {
+  const control = createRangeControl({
+    ...config,
+    value: selectedItem(initial)?.[config.key],
+    onChange: setSelectedItemSize,
+  });
+  itemSizePanel.appendChild(control.root);
+  return { key: config.key, control };
+});
+
+const itemSizeLabel = document.getElementById('fgp-item-selected');
+
+function syncItemSize(state) {
+  const target = selectedItem(state);
+  itemSizeLabel.textContent = target ? `${state.items.indexOf(target) + 1}번` : '없음';
+  itemSizeControls.forEach(({ key, control }) => control.sync(target?.[key] ?? null));
+}
+
+/* --------------------------------------------------------------------------
    아이템 선택 — 프리뷰를 눌러 고른다 (F-05)
    -------------------------------------------------------------------------- */
 
@@ -210,6 +261,7 @@ function syncHistoryButtons() {
 
 function sync(state) {
   syncItembar(state);
+  syncItemSize(state);
   applyView(state.view);
   syncViewControls(state.view);
   syncContainerControls(state.container);
