@@ -189,5 +189,39 @@ check('선언 없으면 항상 활성', isInactive({ prop: 'gap' }, { flexWrap: 
 check('상태에 값이 없으면 활성', isInactive(ENTRY({ prop: 'flexWrap', equals: 'nowrap', reason: REASON }), {}).inactive === false);
 check('containerState 를 안 넘겨도 죽지 않음', isInactive(ENTRY({ prop: 'flexWrap', equals: 'nowrap', reason: REASON })).inactive === false);
 
+/* ==========================================================================
+   실제 스키마에 선언된 조건부 비활성 (F-13 2단계)
+
+   합성 fixture가 아니라 flex/schema.js 의 실제 선언으로 판정을 확인한다.
+   선언은 있는데 판정이 어긋나면 화면에 아무 증상 없이 조용히 틀린다.
+   ========================================================================== */
+
+console.log('\n── 실제 선언 판정 ──');
+
+const declaredInactive = [...FLEX, ...GRID].filter((e) => e.inactiveWhen);
+check(`선언된 항목 ${declaredInactive.length}건`, declaredInactive.length > 0,
+  declaredInactive.map((e) => `${e.prop} ← ${e.inactiveWhen.prop}`).join(', '));
+
+check('전 선언에 reason 존재', declaredInactive.every((e) => e.inactiveWhen.reason?.trim()));
+
+{
+  const ac = FLEX.find((e) => e.prop === 'align-content');
+  check('align-content 에 선언 있음', Boolean(ac?.inactiveWhen));
+
+  const nowrap = isInactive(ac, { flexWrap: 'nowrap' });
+  check('flex-wrap: nowrap → 비활성', nowrap.inactive === true);
+  check('사유 전달', Boolean(nowrap.reason), nowrap.reason);
+  check('힌트 전달', Boolean(nowrap.hint), nowrap.hint);
+
+  check('flex-wrap: wrap → 활성', isInactive(ac, { flexWrap: 'wrap' }).inactive === false);
+  check('flex-wrap: wrap-reverse → 활성', isInactive(ac, { flexWrap: 'wrap-reverse' }).inactive === false);
+
+  const defaults = defaultsFrom(FLEX, 'container');
+  check('기본 상태(nowrap)에서는 비활성', isInactive(ac, defaults).inactive === true,
+    `flexWrap=${defaults.flexWrap}`);
+}
+
+check('선언이 항목 수를 늘리지 않음', FLEX.length === EXPECTED.flex.total, `${FLEX.length}/${EXPECTED.flex.total}`);
+
 console.log(failures === 0 ? '\n전체 통과\n' : `\n실패 ${failures}건\n`);
 process.exit(failures === 0 ? 0 : 1);

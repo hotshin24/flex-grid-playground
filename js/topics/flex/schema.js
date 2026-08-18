@@ -84,6 +84,12 @@ export const FLEX_SCHEMA = [
     tip: 'flex-wrap: wrap 이면서 실제로 줄이 넘어간 상태에서만 효과가 보입니다.',
     mdn: MDN + 'align-content',
     axisAware: true,
+    inactiveWhen: {
+      prop: 'flexWrap',
+      equals: 'nowrap',
+      reason: '지금은 flex-wrap이 nowrap이라 줄이 하나뿐입니다. 정렬할 줄 뭉치가 없습니다.',
+      hint: 'flex-wrap을 wrap으로 바꿔 줄을 두 개 이상 만들어 보세요.',
+    },
     demo: { itemCount: 7, itemSizes: 'wide', containerStyle: { flexWrap: 'wrap', height: '220px' } },
     values: [
       { val: 'normal',        desc: 'stretch 처럼 동작 (기본값)' },
