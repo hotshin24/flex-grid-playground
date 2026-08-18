@@ -57,11 +57,43 @@
   }
 }
 
-/* 600 ~ 1023px — 고정 해제. 프리뷰 상 · 컨트롤 하 2단 */
+/**
+ * 600px 이상 — 페이지 자체는 스크롤하지 않는다.
+ *
+ * 예전에는 패널이 max-height: calc(100vh - --sp-12) 로 스스로를 제한했는데
+ * 이 상수가 헤더 높이를 세지 않았다. 1280x800 실측으로 헤더 62 + 셸 패딩 32 =
+ * 94px을 빼야 하는데 48px만 빼서 46px이 넘쳤다. 헤더는 폭에 따라 줄바꿈되어
+ * 높이가 변하므로 상수로 맞출 수 있는 값이 아니다.
+ *
+ * 뷰포트 높이를 셸에 실제로 나눠 주는 방식으로 바꾼다. 헤더는 제 높이를 갖고,
+ * 셸이 나머지를 전부 가져가며, 그 안에서 패널만 스크롤한다.
+ * 프리뷰에는 overflow를 걸지 않는다 — 아이템이 컨테이너를 넘치는 모습은
+ * 가려야 할 결함이 아니라 가르쳐야 할 현상이다 (PRD 5.5).
+ */
 @media (min-width: 600px) {
+  body {
+    height: 100vh;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .fgp-header {
+    flex: none;
+  }
+
   .fgp-shell {
+    flex: 1;
+    min-height: 0;
     gap: var(--sp-4);
     padding: var(--sp-4);
+  }
+
+  /* 스크롤은 여기서만 일어난다 */
+  .fgp-panel {
+    min-height: 0;
+    overflow-y: auto;
   }
 }
 
@@ -100,10 +132,13 @@
     align-items: start;
   }
 
-  .fgp-panel {
-    position: sticky;
-    top: var(--sp-4);
-    max-height: calc(100vh - var(--sp-12));
-    overflow-y: auto;
+  /* 패널이 열 높이를 꽉 채워야 그 안에서 스크롤이 생긴다.
+     프리뷰는 제 높이만 쓰도록 따로 떼어 놓는다. */
+  .fgp-shell {
+    align-items: stretch;
+  }
+
+  .fgp-preview {
+    align-self: start;
   }
 }
