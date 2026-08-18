@@ -57,7 +57,7 @@ v0.1 파일(`index.html` · `js/app.js` · `js/data.js` · `css/style.css`)은 �
 `js/topics/*/schema.js`에서 파생된다.
 
 - **속성을 추가할 때 마크업을 건드리지 않는다.** 스키마 항목만 추가한다.
-- `index.html`에 속성별 버튼을 하드코딩하면 이 설계가 무너진다. v0.1이 실패한 지점이다.
+- `index-v1.html`에 속성별 버튼을 하드코딩하면 이 설계가 무너진다. v0.1이 실패한 지점이다.
 - 초기 상태는 `defaultsFrom(schema, scope)`로 만든다. 상태 객체 리터럴을 코드에 쓰지 않는다.
 - 새 컨트롤 타입이 필요하면 `CONTROL_TYPES`에 등록하고 `ui/controls.js`에 렌더러를 추가한다.
 
