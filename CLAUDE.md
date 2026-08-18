@@ -60,6 +60,9 @@ v0.1 파일(`index.html` · `js/app.js` · `js/data.js` · `css/style.css`)은 �
 - `index-v1.html`에 속성별 버튼을 하드코딩하면 이 설계가 무너진다. v0.1이 실패한 지점이다.
 - 초기 상태는 `defaultsFrom(schema, scope)`로 만든다. 상태 객체 리터럴을 코드에 쓰지 않는다.
 - 새 컨트롤 타입이 필요하면 `CONTROL_TYPES`에 등록하고 `ui/controls.js`에 렌더러를 추가한다.
+- 조건부 비활성 판정을 코드에 하드코딩하지 않는다. 유형 A는 스키마의 `inactiveWhen`,
+  유형 B·C는 `renderer.js`의 측정 키로만 선언한다. `if (prop === 'align-content')`
+  같은 분기가 등장하면 설계가 무너진 것이다.
 
 ## 검증 게이트
 
