@@ -208,6 +208,51 @@
   font-size: var(--fs-2xs);
 }
 
+/* --------------------------------------------------------------------------
+   조건부 비활성 (F-13 유형 A)
+
+   막지 않고 흐리게만 한다. 눌러도 아무 일이 없다는 걸 직접 확인해야 개념이
+   남기 때문이다. 그래서 opacity를 글자가 읽히는 선에서 멈춘다.
+   -------------------------------------------------------------------------- */
+
+.fgp-control.is-inactive .fgp-control__prop,
+.fgp-control.is-inactive .fgp-control__hint,
+.fgp-control.is-inactive .fgp-control__values {
+  opacity: 0.55;
+}
+
+.fgp-control.is-inactive .fgp-control__option.is-checked {
+  border-style: dashed;
+}
+
+.fgp-control__note {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding: var(--sp-2);
+  border-left: 2px solid var(--fgp-state-hint);
+  border-radius: var(--radius-xs);
+  background: color-mix(in srgb, var(--fgp-state-hint) 8%, transparent);
+  font-size: var(--fs-2xs);
+  line-height: var(--lh-base);
+}
+
+.fgp-control__note[hidden] {
+  display: none;
+}
+
+.fgp-control__reason {
+  color: var(--fgp-text-secondary);
+}
+
+.fgp-control__remedy {
+  color: var(--fgp-state-hint);
+}
+
+.fgp-control__remedy[hidden] {
+  display: none;
+}
+
 /* M3 대기 컨트롤 — 자리만 있고 조작 수단은 없다 */
 .fgp-control__values[data-pending] {
   padding: var(--sp-2);

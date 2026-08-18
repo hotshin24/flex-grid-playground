@@ -12,7 +12,9 @@ import { readFileSync } from 'node:fs';
 import {
   createControl, createRangeControl, splitLength, joinLength,
   CONTROL_CLASS, LABEL_CLASS, PROP_CLASS, HINT_CLASS, OPTION_CLASS, VALUES_CLASS, CHECKED_CLASS,
+  INACTIVE_CLASS, NOTE_CLASS, REASON_CLASS, REMEDY_CLASS,
 } from '../js/ui/controls.js';
+import { isInactive, deriveState } from '../js/core/schema-spec.js';
 import { FLEX_SCHEMA } from '../js/topics/flex/schema.js';
 import { GRID_SCHEMA } from '../js/topics/grid/schema.js';
 
@@ -106,12 +108,12 @@ const optionsOf = (root) => findByClass(root, OPTION_CLASS);
 
 function build(entry, value) {
   const calls = [];
-  const { root, sync } = createControl(entry, {
+  const { root, sync, setInactive } = createControl(entry, {
     value,
     onChange: (jsProp, v) => calls.push([jsProp, v]),
     doc,
   });
-  return { root, sync, calls };
+  return { root, sync, setInactive, calls };
 }
 
 const byProp = (schema, prop) => schema.find((e) => e.prop === prop);
@@ -465,6 +467,103 @@ section('createRangeControl');
   try { createRangeControl({ label: 'x', min: 0, max: 1, doc }); } catch { threw++; }
   try { createRangeControl({ key: 'w', min: 0, max: 1, doc: null }); } catch { threw++; }
   check('잘못된 구성 2종 거부', threw === 2, `${threw}/2`);
+}
+
+/* ==========================================================================
+   조건부 비활성 표시 (F-13 유형 A)
+
+   판정은 schema-spec 이 하고 controls 는 결과만 그린다. 여기서는 실제 스키마
+   선언으로 끝에서 끝까지 확인한다.
+   ========================================================================== */
+section('조건부 비활성 표시');
+
+const ariaOf = (el) => el.getAttribute('aria-disabled');
+const noteOf = (root) => findByClass(root, NOTE_CLASS)[0];
+
+{
+  const entry = byProp(FLEX_SCHEMA, 'align-content');
+  check('스키마에 inactiveWhen 선언 있음', Boolean(entry.inactiveWhen));
+
+  const { root, setInactive } = build(entry);
+  const note = noteOf(root);
+
+  // 초기 상태 — 판정 전
+  check('만들 때는 활성', ariaOf(root) === 'false' && !root.classList.contains(INACTIVE_CLASS));
+  check('사유 영역은 숨김', note.hidden === true);
+
+  // 조건 충족 — flex-wrap: nowrap
+  setInactive(isInactive(entry, { container: { flexWrap: 'nowrap' } }));
+  check('조건 충족 → aria-disabled="true"', ariaOf(root) === 'true');
+  check('비활성 클래스 부여', root.classList.contains(INACTIVE_CLASS));
+  check('사유 영역 노출', note.hidden === false);
+  check('reason 문구가 DOM에 들어감',
+    findByClass(root, REASON_CLASS)[0].textContent === entry.inactiveWhen.reason,
+    findByClass(root, REASON_CLASS)[0].textContent);
+  check('hint 문구가 DOM에 들어감',
+    findByClass(root, REMEDY_CLASS)[0].textContent === entry.inactiveWhen.hint);
+  check('옵션에도 상태 전달', optionsOf(root).every((o) => ariaOf(o) === 'true'));
+  check('사유를 aria-describedby로 연결',
+    optionsOf(root).every((o) => o.getAttribute('aria-describedby') === note.getAttribute('id')));
+
+  // 조건 미충족 — flex-wrap: wrap
+  setInactive(isInactive(entry, { container: { flexWrap: 'wrap' } }));
+  check('조건 미충족 → aria-disabled="false"', ariaOf(root) === 'false');
+  check('비활성 클래스 해제', !root.classList.contains(INACTIVE_CLASS));
+  check('사유 영역 다시 숨김', note.hidden === true);
+  check('사유 문구 비움', findByClass(root, REASON_CLASS)[0].textContent === '');
+  check('describedby 해제', optionsOf(root).every((o) => o.getAttribute('aria-describedby') === null));
+}
+
+{
+  // 상태 참조 선언 (order) — 아이템 개수로 판정
+  const entry = byProp(FLEX_SCHEMA, 'order');
+  const { root, setInactive } = build(entry);
+
+  setInactive(isInactive(entry, { state: deriveState({ items: [1] }) }));
+  check('아이템 1개 → 비활성', ariaOf(root) === 'true');
+  check('사유 문구 표시', findByClass(root, REASON_CLASS)[0].textContent === entry.inactiveWhen.reason);
+  check('number 컨트롤의 입력에도 상태 전달',
+    findByClass(root, 'fgp-control__field').every((el) => ariaOf(el) === 'true'));
+
+  setInactive(isInactive(entry, { state: deriveState({ items: [1, 2] }) }));
+  check('아이템 2개 → 활성', ariaOf(root) === 'false');
+}
+
+{
+  // 선언이 없는 속성은 언제나 활성
+  const entry = byProp(FLEX_SCHEMA, 'justify-content');
+  const { root, setInactive } = build(entry);
+  setInactive(isInactive(entry, { container: { flexWrap: 'nowrap' } }));
+  check('선언 없으면 항상 활성', ariaOf(root) === 'false' && noteOf(root).hidden === true);
+}
+
+{
+  // 막지 않는다 — 비활성이어도 조작이 그대로 동작해야 한다
+  const entry = byProp(FLEX_SCHEMA, 'align-content');
+  const { root, setInactive, calls } = build(entry);
+  setInactive(isInactive(entry, { container: { flexWrap: 'nowrap' } }));
+
+  const all = walk(root);
+  check('disabled 속성 0건', all.filter((el) => el.attrs.disabled !== undefined).length === 0);
+
+  fire(optionsOf(root)[2], 'click');
+  check('비활성이어도 클릭이 동작', calls.length === 1, JSON.stringify(calls[0]));
+
+  fire(optionsOf(root)[2], 'keydown', { key: 'ArrowRight' });
+  check('비활성이어도 키보드가 동작', calls.length === 2, JSON.stringify(calls[1]));
+}
+
+{
+  // 전 컨트롤에 disabled 가 없어야 한다 (length 의 키워드 단위 제외)
+  const roots = FLEX_SCHEMA
+    .filter((e) => ['enum', 'number'].includes(e.control))
+    .map((entry) => {
+      const b = build(entry);
+      b.setInactive({ inactive: true, reason: 'x' });
+      return b.root;
+    });
+  const withDisabled = roots.flatMap((r) => walk(r)).filter((el) => el.attrs.disabled !== undefined);
+  check('비활성 처리한 전 컨트롤에 disabled 0건', withDisabled.length === 0, `${withDisabled.length}건`);
 }
 
 /* ==========================================================================

@@ -29,6 +29,10 @@ export const READOUT_CLASS = 'fgp-control__readout';
 export const UNIT_CLASS = 'fgp-control__unit';
 export const PENDING_CLASS = 'fgp-control--pending';
 export const CHECKED_CLASS = 'is-checked';
+export const INACTIVE_CLASS = 'is-inactive';
+export const NOTE_CLASS = 'fgp-control__note';
+export const REASON_CLASS = 'fgp-control__reason';
+export const REMEDY_CLASS = 'fgp-control__remedy';
 
 /** 숫자가 앞에 붙는 단위. 나머지(auto·content 등)는 키워드로 본다. */
 const NUMERIC_UNITS = new Set(['px', 'rem', 'em', '%', 'fr', 'vh', 'vw', 'ch']);
@@ -114,6 +118,7 @@ function buildEnum(entry, value, doc, state) {
   });
 
   state.group = group;
+  state.interactive = [group, ...group.children];
   return group;
 }
 
@@ -156,6 +161,7 @@ function buildNumber(entry, value, doc, state) {
 
   state.input = input;
   state.readout = readout;
+  state.interactive = [input];
   return wrap;
 }
 
@@ -189,6 +195,7 @@ function buildLength(entry, value, doc, state) {
 
   state.input = input;
   state.select = select;
+  state.interactive = [input, select];
   return wrap;
 }
 
@@ -277,6 +284,65 @@ function bindLength(root, entry, state, onChange) {
   root.addEventListener('change', (e) => {
     if (e.target === state.select) commit();
   });
+}
+
+/* --------------------------------------------------------------------------
+   조건부 비활성 표시 (F-13 유형 A)
+
+   이 파일은 판정하지 않는다. 어떤 속성이 왜 죽는지는 스키마가 정하고 판정은
+   isInactive()가 한다. 여기는 그 결과를 받아 화면에 옮길 뿐이라, 속성 이름을
+   알지 못한다.
+
+   disabled 를 걸지 않는 것이 핵심이다. 눌러도 아무 일이 없다는 사실을 직접
+   확인한 뒤 사유를 읽어야 개념이 남는다. 막아 버리면 "왜 안 눌리지"에서
+   멈춘다. (PRD 5.5 설계 원칙)
+   -------------------------------------------------------------------------- */
+
+function buildNote(doc, id) {
+  const note = doc.createElement('p');
+  note.className = NOTE_CLASS;
+  note.setAttribute('id', id);
+  note.setAttribute('role', 'note');
+  note.hidden = true;
+
+  const reason = doc.createElement('span');
+  reason.className = REASON_CLASS;
+  note.appendChild(reason);
+
+  const remedy = doc.createElement('span');
+  remedy.className = REMEDY_CLASS;
+  remedy.hidden = true;
+  note.appendChild(remedy);
+
+  return { note, reason, remedy };
+}
+
+/**
+ * 판정 결과를 컨트롤에 반영한다.
+ *
+ * @param {Object} parts   { root, note, reason, remedy, interactive[] }
+ * @param {Object} verdict isInactive() 결과 { inactive, reason?, hint? }
+ */
+function applyInactive(parts, verdict = {}) {
+  const inactive = Boolean(verdict.inactive);
+  const { root, note, reason, remedy, interactive, noteId } = parts;
+
+  root.classList.toggle(INACTIVE_CLASS, inactive);
+  root.setAttribute('aria-disabled', String(inactive));
+
+  // 조작 수단에도 상태만 알린다. disabled 는 걸지 않는다
+  interactive.forEach((el) => {
+    el.setAttribute('aria-disabled', String(inactive));
+    if (inactive) el.setAttribute('aria-describedby', noteId);
+    else el.removeAttribute('aria-describedby');
+  });
+
+  note.hidden = !inactive;
+  reason.textContent = inactive ? (verdict.reason ?? '') : '';
+
+  const hasHint = inactive && Boolean(verdict.hint);
+  remedy.hidden = !hasHint;
+  remedy.textContent = hasHint ? verdict.hint : '';
 }
 
 /* --------------------------------------------------------------------------
@@ -382,9 +448,10 @@ export function createRangeControl(config) {
  * @param {*}        config.value        현재 값. 없으면 entry.default
  * @param {Function} config.onChange     (jsProp, value) => void
  * @param {Document} [config.doc]        문서 객체. 테스트에서 대체 가능
- * @returns {{root: Element, sync: Function}}
+ * @returns {{root: Element, sync: Function, setInactive: Function}}
  *          sync(value)는 저장소 값에 UI를 맞춘다. undo처럼 컨트롤 밖에서
  *          상태가 바뀌었을 때 호출한다. 호출해도 onChange는 불리지 않는다.
+ *          setInactive(verdict)는 isInactive() 결과를 화면에 옮긴다.
  */
 export function createControl(entry, { value, onChange, doc = globalThis.document } = {}) {
   if (!entry) throw new Error('createControl: 스키마 항목이 필요합니다');
@@ -412,7 +479,7 @@ export function createControl(entry, { value, onChange, doc = globalThis.documen
 
   if (PENDING_CONTROLS.has(entry.control)) {
     root.appendChild(buildPending(entry, doc));
-    return { root, sync: noop };
+    return { root, sync: noop, setInactive: noop };
   }
 
   const notify = typeof onChange === 'function' ? onChange : noop;
@@ -455,7 +522,15 @@ export function createControl(entry, { value, onChange, doc = globalThis.documen
     }
   }
 
-  return { root, sync };
+  const noteId = nextId(`${entry.prop}-note`);
+  const { note, reason, remedy } = buildNote(doc, noteId);
+  root.appendChild(note);
+
+  const parts = { root, note, reason, remedy, noteId, interactive: state.interactive ?? [] };
+  const setInactive = (verdict) => applyInactive(parts, verdict);
+  setInactive({ inactive: false });
+
+  return { root, sync, setInactive };
 }
 
 export default createControl;

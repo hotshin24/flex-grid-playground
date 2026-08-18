@@ -14,6 +14,7 @@
 import { createStore } from './core/store.js';
 import { createRenderer } from './core/renderer.js';
 import { createControl, createRangeControl } from './ui/controls.js';
+import { isInactive, deriveState } from './core/schema-spec.js';
 import { FLEX_SCHEMA } from './topics/flex/schema.js';
 
 const SCHEMAS = { flex: FLEX_SCHEMA };
@@ -64,17 +65,29 @@ const initial = store.getState();
 const containerControls = FLEX_SCHEMA
   .filter((entry) => entry.scope === 'container')
   .map((entry) => {
-    const { root, sync } = createControl(entry, {
+    const { root, sync, setInactive } = createControl(entry, {
       value: initial.container[entry.jsProp],
       onChange: (jsProp, value) => store.dispatch({ container: { [jsProp]: value } }),
     });
     panel.appendChild(root);
-    return { jsProp: entry.jsProp, sync };
+    return { entry, sync, setInactive };
   });
 
-/** undo처럼 컨트롤 밖에서 상태가 바뀌면 패널도 따라가야 한다. */
-function syncContainerControls(container) {
-  containerControls.forEach(({ jsProp, sync }) => sync(container[jsProp]));
+/**
+ * undo처럼 컨트롤 밖에서 상태가 바뀌면 패널도 따라가야 한다.
+ *
+ * 조건부 비활성(F-13 유형 A)도 여기서 갱신한다. 판정은 isInactive가 하고
+ * 컨트롤은 결과만 받으므로, 이 파일에도 controls.js에도 속성명 분기가 없다.
+ * flex-wrap을 wrap으로 바꾸면 align-content가 즉시 살아나는 것은 이 한 줄
+ * 덕분이다.
+ */
+function syncContainerControls(state) {
+  const derived = deriveState(state);
+
+  containerControls.forEach(({ entry, sync, setInactive }) => {
+    sync(state.container[entry.jsProp]);
+    setInactive(isInactive(entry, { container: state.container, state: derived }));
+  });
 }
 
 /* --------------------------------------------------------------------------
@@ -264,7 +277,7 @@ function sync(state) {
   syncItemSize(state);
   applyView(state.view);
   syncViewControls(state.view);
-  syncContainerControls(state.container);
+  syncContainerControls(state);
   syncHistoryButtons();
 }
 
