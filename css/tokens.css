@@ -176,6 +176,17 @@
   --fgp-preview-item-selected: var(--p-ink-000);
   --fgp-preview-freespace:     color-mix(in srgb, var(--p-ink-300) var(--p-alpha-10), transparent);
 
+  /* 아이템 강조색 — 프리뷰 아이템 8색 순환.
+     renderer는 --fgp-item-accent 에 인덱스별 별칭을 대입한다. */
+  --fgp-item-1: var(--p-item-1);  --fgp-item-1-deep: var(--p-item-1-deep);
+  --fgp-item-2: var(--p-item-2);  --fgp-item-2-deep: var(--p-item-2-deep);
+  --fgp-item-3: var(--p-item-3);  --fgp-item-3-deep: var(--p-item-3-deep);
+  --fgp-item-4: var(--p-item-4);  --fgp-item-4-deep: var(--p-item-4-deep);
+  --fgp-item-5: var(--p-item-5);  --fgp-item-5-deep: var(--p-item-5-deep);
+  --fgp-item-6: var(--p-item-6);  --fgp-item-6-deep: var(--p-item-6-deep);
+  --fgp-item-7: var(--p-item-7);  --fgp-item-7-deep: var(--p-item-7-deep);
+  --fgp-item-8: var(--p-item-8);  --fgp-item-8-deep: var(--p-item-8-deep);
+
   /* --- 프리뷰 (Grid 전용) ---
      GR-05 라인 번호 오버레이 · GR-06 암시적 트랙 구분에 사용.
      명시/암시 구분은 색상만이 아니라 실선/점선으로도 표현한다 (색각 이상 대응). */
