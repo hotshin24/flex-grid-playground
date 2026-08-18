@@ -352,6 +352,33 @@ Flex와 Grid를 **동일한 4탭 구조로 풀 패리티** 제공하는 정적 �
 
 조건이 맞지 않아 효과가 나타나지 않는 속성을 화면에서 구분한다.
 
+#### 대상 속성 목록
+
+**Flex (5건)**
+
+| 속성                     | 조건                          | 안 맞을 때 | 유형 |
+| ---------------------- | --------------------------- | ------ | -- |
+| `align-content`        | `flex-wrap ≠ nowrap`        | 완전 무시  | A  |
+| `align-items: stretch` | 아이템에 교차축 크기 없음              | 효과 없음  | C  |
+| `flex-shrink`          | 공간 부족 + `min-*` 하한 미도달      | 효과 없음  | C  |
+| `flex-grow`            | 남는 공간 존재                    | 효과 없음  | B  |
+| `order`                | 아이템 2개 이상                   | 효과 없음  | A  |
+
+**Grid (7건)**
+
+| 속성                            | 조건                                   | 안 맞을 때    | 유형 |
+| ----------------------------- | ------------------------------------ | --------- | -- |
+| `justify-content`             | 트랙 합계 < 컨테이너 너비 (`fr` 있으면 불가)        | 효과 없음     | B  |
+| `align-content`               | 트랙 합계 < 컨테이너 높이                      | 효과 없음     | B  |
+| `grid-auto-columns`           | 암시적 열 생성 조건 성립                       | 효과 없음     | B  |
+| `grid-auto-rows`              | 암시적 행 생성 조건 성립                       | 효과 없음     | B  |
+| `grid-area`                   | `grid-template-areas`에 해당 이름 존재      | 무시        | A  |
+| `dense`                       | 배치되지 않은 빈 칸 존재                       | 효과 없음     | B  |
+| `justify-self` / `align-self` | 부모 `justify-items`/`align-items`와 다름 | 시각적 변화 없음 | A  |
+
+> 이 목록은 현재까지 파악된 것이다. 구현 중 추가로 발견되면 여기에 더하고,
+> 6장 품질 기준의 건수를 함께 갱신한다. 두 곳의 숫자가 어긋나면 안 된다.
+
 #### 판정 유형
 
 | 유형 | 판정 근거      | 판정 주체                | 구현 시점 |
@@ -359,23 +386,6 @@ Flex와 Grid를 **동일한 4탭 구조로 풀 패리티** 제공하는 정적 �
 | A  | 다른 속성의 값   | `controls.js` (스키마 선언) | M2    |
 | B  | 렌더 결과의 치수  | `renderer.js` (측정)     | M3    |
 | C  | CSS 초기값 충돌 | `renderer.js` (측정) + 해법 안내 | M3    |
-
-#### 대상 속성
-
-| 토픽   | 속성                          | 조건                                   | 유형 |
-| ---- | --------------------------- | ------------------------------------ | -- |
-| Flex | `align-content`             | `flex-wrap ≠ nowrap`                 | A  |
-| Flex | `align-items: stretch`      | 아이템에 교차축 크기 없음                       | C  |
-| Flex | `flex-shrink`               | 공간 부족 + `min-height/width` 하한 미도달    | C  |
-| Flex | `flex-grow`                 | 남는 공간 존재                             | B  |
-| Flex | `order`                     | 아이템 2개 이상                            | A  |
-| Grid | `justify-content`           | 트랙 합계 < 컨테이너 너비 (`fr` 있으면 불가)        | B  |
-| Grid | `align-content`             | 트랙 합계 < 컨테이너 높이                      | B  |
-| Grid | `grid-auto-columns`         | 암시적 열 생성 조건 성립                       | B  |
-| Grid | `grid-auto-rows`            | 암시적 행 생성 조건 성립                       | B  |
-| Grid | `grid-area`                 | `grid-template-areas`에 해당 이름 존재      | A  |
-| Grid | `dense`                     | 배치되지 않은 빈 칸 존재                       | B  |
-| Grid | `justify-self` / `align-self` | 부모 `justify-items`/`align-items`와 다름 | A  |
 
 #### 요구사항
 
