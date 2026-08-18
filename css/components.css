@@ -433,9 +433,10 @@
    -------------------------------------------------------------------------- */
 
 .fgp-code {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-2);
+  /* CSS와 HTML을 나란히 둔다. 세로로 쌓으면 열 높이를 두 배로 먹는다. */
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-2) var(--sp-3);
   margin-top: var(--sp-3);
   padding: var(--sp-3);
   background: var(--fgp-surface-panel);
@@ -462,6 +463,18 @@
 
 .fgp-code__block:empty {
   display: none;
+}
+
+/* 제목과 복사 버튼은 두 열을 가로지른다 */
+.fgp-code > .fgp-panel__head {
+  grid-column: 1 / -1;
+}
+
+/* 좁은 화면에서는 두 열로 나누면 코드가 읽히지 않는다 */
+@media (max-width: 599px) {
+  .fgp-code {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 /* 클립보드 대체 경로가 잠깐 붙이는 요소. 화면에서 감추되 선택은 가능해야 한다 */
