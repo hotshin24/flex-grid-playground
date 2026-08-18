@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flex &amp; Grid Playground</title>
+
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+</head>
+<body>
+
+<!--
+  셸만 둔다. 속성별 버튼은 여기에 없다 — controls.js가 스키마에서 만든다.
+  마크업에 속성이 등장하는 순간 스키마 주도 설계가 무너진다. v0.1이 실패한 지점이다.
+-->
+
+<header class="fgp-header">
+  <h1 class="fgp-title">Flex &amp; Grid Playground</h1>
+  <span class="fgp-badge" id="fgp-topic-badge"></span>
+  <span class="fgp-header__spacer"></span>
+  <span class="fgp-subtitle">M1 · 플레이그라운드</span>
+</header>
+
+<main class="fgp-shell">
+
+  <aside class="fgp-panel">
+    <section class="fgp-panel__section" aria-labelledby="fgp-controls-title">
+      <h2 class="fgp-panel__title" id="fgp-controls-title">컨테이너 속성</h2>
+      <!-- 컨트롤 마운트 지점 -->
+      <div class="fgp-control-list" id="fgp-controls"></div>
+    </section>
+
+    <section class="fgp-panel__section" aria-labelledby="fgp-items-title">
+      <h2 class="fgp-panel__title" id="fgp-items-title">아이템</h2>
+      <div class="fgp-itembar" id="fgp-itembar">
+        <button type="button" class="fgp-btn" data-action="item-add">추가</button>
+        <button type="button" class="fgp-btn" data-action="item-remove">제거</button>
+        <output class="fgp-itembar__count" id="fgp-item-count"></output>
+      </div>
+    </section>
+  </aside>
+
+  <section class="fgp-preview" aria-label="프리뷰">
+    <!-- 프리뷰 마운트 지점 -->
+    <div class="fgp-preview__stage" id="fgp-preview"></div>
+  </section>
+
+</main>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
