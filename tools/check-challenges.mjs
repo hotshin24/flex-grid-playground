@@ -141,9 +141,15 @@ section('데이터');
 const REQUIRED = ['id', 'title', 'difficulty', 'desc', 'hint', 'target', 'ignore', 'itemCount', 'accents', 'miniStyle'];
 
 {
-  check('챌린지 8건', FLEX_CHALLENGES.length === 8, `${FLEX_CHALLENGES.length}건`);
-  check('id 유일', new Set(FLEX_CHALLENGES.map((c) => c.id)).size === FLEX_CHALLENGES.length,
-    FLEX_CHALLENGES.map((c) => c.id).join(', '));
+  check('챌린지 40건', FLEX_CHALLENGES.length === 40, `${FLEX_CHALLENGES.length}건`);
+  check('id가 1부터 빠짐없이 이어짐',
+    FLEX_CHALLENGES.every((c, i) => c.id === i + 1),
+    `1~${FLEX_CHALLENGES[FLEX_CHALLENGES.length - 1].id}`);
+  check('id 유일', new Set(FLEX_CHALLENGES.map((c) => c.id)).size === FLEX_CHALLENGES.length);
+
+  const byDiff = FLEX_CHALLENGES.reduce((map, c) => map.set(c.difficulty, (map.get(c.difficulty) ?? 0) + 1), new Map());
+  check('난이도가 셋으로 나뉨', byDiff.size === 3,
+    [...byDiff].map(([d, n]) => `${d} ${n}건`).join(' · '));
 
   const missing = [];
   FLEX_CHALLENGES.forEach((ch) => {
@@ -314,7 +320,8 @@ section('화면');
 {
   const { root, api, store } = build();
 
-  check('문제 목록 8개', byClass(root, LIST_ITEM_CLASS).length === 8);
+  check(`문제 목록 ${FLEX_CHALLENGES.length}개`,
+    byClass(root, LIST_ITEM_CLASS).length === FLEX_CHALLENGES.length);
   check('처음에는 1번', api.selected().id === 1);
   check('목표 미리보기 있음', byClass(root, GOAL_CLASS).length === 1);
   check('목표 아이템이 itemCount만큼',
@@ -356,7 +363,9 @@ section('화면');
   check('화살표로 다음 문제', api.selected().id === 5);
   api.select(1);
   fire(buttons[0], 'keydown', { key: 'ArrowUp', target: buttons[0] });
-  check('처음에서 위로 가면 끝으로 돈다', api.selected().id === 8);
+  check('처음에서 위로 가면 끝으로 돈다',
+    api.selected().id === FLEX_CHALLENGES[FLEX_CHALLENGES.length - 1].id,
+    `#${api.selected().id}`);
 }
 
 /* ==========================================================================
@@ -374,7 +383,8 @@ section('풀이');
   const work = root.children[1];
   const actionOf = (name) => walk(work).find((el) => el.getAttribute('data-challenge-action') === name);
 
-  check('진행 표시가 0부터', progress.textContent === `0/8 클리어`, progress.textContent);
+  const total = FLEX_CHALLENGES.length;
+  check('진행 표시가 0부터', progress.textContent === `0/${total} 클리어`, progress.textContent);
   check('힌트는 처음에 감춰져 있음', hint.hidden === true);
 
   fire(actionOf('hint'), 'click', { target: actionOf('hint') });
@@ -396,7 +406,7 @@ section('풀이');
   check('클리어 목록에 들어감', api.solved().includes(1));
   check('모든 태그가 일치 표시',
     byClass(root, TAG_CLASS).every((t) => t.classList.contains(MATCH_CLASS)));
-  check('진행 표시가 올라감', progress.textContent === `1/8 클리어`, progress.textContent);
+  check('진행 표시가 올라감', progress.textContent === `1/${total} 클리어`, progress.textContent);
   check('목록에 클리어 표식',
     byClass(root, LIST_ITEM_CLASS)[0].classList.contains(SOLVED_CLASS));
   check('localStorage에 남는다', JSON.stringify(api.persisted()) === '[1]',
@@ -458,14 +468,28 @@ section('v0.1 이관');
 
 {
   const v01 = read('../js/data.js');
+
+  // v0.1에서 옮겨온 것은 1~8뿐이다. 9번부터는 v1.0에서 새로 쓴 문제다.
+  const v01Ids = [...v01.matchAll(/^      id: (\d+), title: '([^']+)'/gm)].map((m) => Number(m[1]));
+  const ported = FLEX_CHALLENGES.filter((c) => v01Ids.includes(c.id));
+  const added = FLEX_CHALLENGES.filter((c) => !v01Ids.includes(c.id));
+
+  check('v0.1 원본은 8건', v01Ids.length === 8, v01Ids.join(', '));
+  check('이관분과 신규분의 합이 전체', ported.length + added.length === FLEX_CHALLENGES.length,
+    `이관 ${ported.length}건 · 신규 ${added.length}건`);
+
   const notFound = [];
-  FLEX_CHALLENGES.forEach((ch) => {
+  ported.forEach((ch) => {
     ['title', 'desc', 'hint'].forEach((key) => {
       if (!v01.includes(ch[key])) notFound.push(`#${ch.id}.${key}`);
     });
   });
-  check('제목·설명·힌트가 v0.1에 그대로 있음', notFound.length === 0,
-    notFound.join(', ') || `${FLEX_CHALLENGES.length}건 × 3필드 일치`);
+  check('이관분의 제목·설명·힌트가 v0.1에 그대로 있음', notFound.length === 0,
+    notFound.join(', ') || `${ported.length}건 × 3필드 일치`);
+
+  const collided = added.filter((ch) => v01.includes(ch.title));
+  check('신규분 제목이 v0.1과 겹치지 않음', collided.length === 0,
+    collided.map((c) => c.title).join(', ') || `${added.length}건`);
 
   check('v0.1 파일은 손대지 않았다 (colors 8건 그대로)',
     (v01.match(/^\s+colors: \[/gm) ?? []).length === 8);
@@ -476,9 +500,12 @@ section('v0.1 이관');
     .reduce((map, m) => map.set(Number(m[1]), m[2]), new Map());
   const v01Colors = [...v01.matchAll(/^\s+colors: \[(.+)\],$/gm)]
     .map((m) => m[1].split(',').map((s) => s.trim().replace(/'/g, '')));
-  check('accents가 v0.1의 색을 그대로 가리킨다',
-    FLEX_CHALLENGES.every((ch, i) => ch.accents.every((n, j) => palette.get(n) === v01Colors[i][j])),
+  check('이관분의 accents가 v0.1의 색을 그대로 가리킨다',
+    ported.every((ch, i) => ch.accents.every((n, j) => palette.get(n) === v01Colors[i][j])),
     `${v01Colors.flat().length}개 색 일치`);
+  check('신규분의 accents도 팔레트 안에 있다',
+    added.every((ch) => ch.accents.every((n) => palette.has(n))),
+    `${added.reduce((n, c) => n + c.accents.length, 0)}개`);
 }
 
 /* ==========================================================================
