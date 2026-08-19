@@ -178,7 +178,21 @@ function buildLines(template, count, doc) {
 }
 
 function buildDemo(entry, value, axis, doc, config = {}) {
-  const demo = { ...(entry.demo ?? {}), ...(config.demos?.[entry.prop] ?? {}) };
+  const base = { ...(entry.demo ?? {}), ...(config.demos?.[entry.prop] ?? {}) };
+
+  /**
+   * 값 하나에만 다른 판을 쓸 수 있다.
+   *
+   * 대개는 같은 판에서 값만 갈아 끼우는 것이 옳다 — 그래야 무엇이 달라졌는지
+   * 값 탓이라고 읽힌다. 다만 값이 요구하는 조건이 서로 달라 한 판에 담기지
+   * 않는 경우가 있다. grid-auto-flow 의 dense 가 그렇다: 행 흐름의 구멍은
+   * 열을 스팬하는 아이템이, 열 흐름의 구멍은 행을 스팬하는 아이템이 만든다.
+   * 한 판에 둘을 같이 두면 어느 쪽에도 구멍이 안 생긴다.
+   *
+   * 짝끼리는 같은 판을 쓴다. row 와 row dense 가 한 판, column 과 column dense
+   * 가 다른 한 판이다. 비교는 짝 안에서 일어나므로 공정하다.
+   */
+  const demo = { ...base, ...(base.byValue?.[String(value)] ?? {}) };
   const count = demo.itemCount ?? 3;
 
   const box = doc.createElement('div');

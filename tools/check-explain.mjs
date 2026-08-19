@@ -403,12 +403,51 @@ section('Grid — 데모 판');
     check(`${prop} — 조건이 판에 있다`, ok(st), why);
   });
 
+  /**
+   * dense — 네 값이 서로 다른 배치를 내는가.
+   *
+   * 축마다 구멍을 만드는 방법이 다르다. 행 흐름의 구멍은 열을 스팬하는 아이템이,
+   * 열 흐름의 구멍은 행을 스팬하는 아이템이 만든다. 한 판에 둘을 같이 두면
+   * 어느 쪽에도 구멍이 생기지 않으므로 짝마다 판을 나눈다.
+   */
   const flow = GRID_EXPLAIN_DEMOS['grid-auto-flow'];
-  check('dense — 빈 칸을 만드는 아이템이 있다',
-    (flow.itemStyles ?? []).some((s) => /span/.test(s.gridColumn ?? '')),
-    '메울 자리가 없으면 dense가 할 일이 없다');
-  check('dense — 아이템이 칸보다 적다',
-    flow.itemCount < 3 * 3, `아이템 ${flow.itemCount}개`);
+  const flowEntry = GRID_SCHEMA.find((e) => e.prop === 'grid-auto-flow');
+  const boardFor = (val) => ({ ...flow, ...(flow.byValue?.[val] ?? {}) });
+
+  check('dense — 아이템이 칸보다 적다', flow.itemCount < 3 * 3, `아이템 ${flow.itemCount}개`);
+
+  check('행 흐름 판은 열을 스팬한다',
+    ['row', 'row dense'].every((v) => /span/.test(boardFor(v).itemStyles?.[0]?.gridColumn ?? '')),
+    '행 흐름의 구멍은 넓은 아이템이 만든다');
+  check('열 흐름 판은 행을 스팬한다',
+    ['column', 'column dense'].every((v) => /span/.test(boardFor(v).itemStyles?.[0]?.gridRow ?? '')),
+    '열 흐름의 구멍은 높은 아이템이 만든다');
+  check('열 흐름 판은 행을 명시한다',
+    ['column', 'column dense'].every((v) => Boolean(boardFor(v).containerStyle?.gridTemplateRows)),
+    '행이 하나면 dense가 거슬러 올라갈 칸이 없다');
+  check('짝끼리는 같은 판을 쓴다',
+    JSON.stringify(boardFor('row')) === JSON.stringify(boardFor('row dense'))
+    && JSON.stringify(boardFor('column')) === JSON.stringify(boardFor('column dense')),
+    '비교는 짝 안에서 일어나야 공정하다');
+  check('두 짝은 다른 판이다',
+    JSON.stringify(boardFor('row')) !== JSON.stringify(boardFor('column')));
+
+  // DOM 으로도 확인 — 값마다 아이템에 실린 스팬이 갈린다
+  const flowDetail = gridApi.details[GRID_SCHEMA.findIndex((e) => e.prop === 'grid-auto-flow')];
+  const spans = byClass(flowDetail, CASE_CLASS).map((c) => {
+    const first = byClass(c, 'fgp-explain__demoitem')[0];
+    return { val: c.getAttribute('data-value'), col: first.style.gridColumn ?? '', row: first.style.gridRow ?? '' };
+  });
+  check('네 값이 서로 다른 스팬을 얹는다',
+    spans.filter((s) => s.col).length === 2 && spans.filter((s) => s.row).length === 2,
+    spans.map((s) => `${s.val}:${s.col || s.row}`).join(' · '));
+  check('값 목록이 스키마 그대로',
+    JSON.stringify(spans.map((s) => s.val)) === JSON.stringify(flowEntry.values.map((v) => String(v.val))));
+
+  // 값별 판은 여기에만 쓴다 — 다른 속성이 휩쓸리지 않았는지
+  const withByValue = Object.entries(GRID_EXPLAIN_DEMOS).filter(([, d]) => d.byValue).map(([p]) => p);
+  check('값별 판을 쓰는 속성은 하나뿐', withByValue.length === 1 && withByValue[0] === 'grid-auto-flow',
+    withByValue.join(', '));
 
   // 라인 번호
   const lineProps = Object.entries(GRID_EXPLAIN_DEMOS).filter(([, d]) => d.lines).map(([p]) => p);

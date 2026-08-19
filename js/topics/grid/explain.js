@@ -162,6 +162,29 @@ export const GRID_EXPLAIN_DEMOS = {
     itemSizes: 'fill',
     containerStyle: { height: '150px', gridTemplateColumns: 'repeat(3, 1fr)' },
     itemStyles: [{ gridColumn: 'span 2' }, { gridColumn: 'span 2' }],
+
+    /**
+     * 열 흐름은 다른 판을 쓴다.
+     *
+     * 위 판을 열 흐름으로 돌리면 명시한 행이 없어 격자가 한 행이 된다. 아이템이
+     * 옆으로만 늘어서므로 dense 가 거슬러 올라가 메울 세로 칸이 아예 생기지
+     * 않는다 — 실측에서 column 과 column dense 가 글자 하나까지 같았던 이유다.
+     *
+     * 그래서 행을 셋 선언하고, 스팬을 열이 아니라 행에 건다. 첫 아이템이 c1 의
+     * 두 행을 먹으면 둘째는 남은 한 행에 들어가지 못해 다음 열로 넘어가고
+     * c1 의 마지막 행이 빈다. dense 가 아니면 그대로 비고, dense 면 뒤 아이템이
+     * 거슬러 올라와 메운다 — 행 흐름 판과 정확히 같은 이야기를 축만 바꿔 한다.
+     */
+    byValue: {
+      column: {
+        containerStyle: { height: '150px', gridTemplateColumns: 'repeat(3, 1fr)', gridTemplateRows: 'repeat(3, 1fr)' },
+        itemStyles: [{ gridRow: 'span 2' }, { gridRow: 'span 2' }],
+      },
+      'column dense': {
+        containerStyle: { height: '150px', gridTemplateColumns: 'repeat(3, 1fr)', gridTemplateRows: 'repeat(3, 1fr)' },
+        itemStyles: [{ gridRow: 'span 2' }, { gridRow: 'span 2' }],
+      },
+    },
   },
 
   /* ---- 라인 좌표는 번호가 보여야 읽힌다 ---- */
