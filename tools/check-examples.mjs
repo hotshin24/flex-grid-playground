@@ -14,6 +14,8 @@
  */
 
 import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { FLEX_EXAMPLES } from '../js/topics/flex/examples.js';
 import { GRID_EXAMPLES } from '../js/topics/grid/examples.js';
 import {
@@ -31,6 +33,30 @@ function check(label, ok, detail = '') {
 
 function section(title) {
   console.log(`\n── ${title} ──`);
+}
+
+/**
+ * v0.1 원본을 꺼내 온다.
+ *
+ * js/data.js 는 M7 파일 정리(PRD 7.2 절차 5)에서 지워졌다. 대조를 포기하지
+ * 않고 v0.1-archive 태그에서 읽는다 — 태그를 남긴 이유가 이것이다.
+ * 태그가 없는 사본(얕은 클론 등)에서는 이 절을 건너뛴다. 게이트가 바깥
+ * 사정으로 실패하면 안 되기 때문이다.
+ */
+function v01Source() {
+  try {
+    return execFileSync('git', ['show', 'v0.1-archive:js/data.js'], {
+      cwd: fileURLToPath(new URL('..', import.meta.url)),
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    });
+  } catch {
+    return null;
+  }
+}
+
+function skip(label) {
+  console.log(`  [SKIP] ${label} — v0.1-archive 태그를 찾을 수 없다`);
 }
 
 const read = (rel) => readFileSync(new URL(rel, import.meta.url), 'utf8');
@@ -145,7 +171,9 @@ const REQUIRED = ['id', 'title', 'category', 'desc', 'previewHeight', 'css', 'ht
 section('v0.1 이관');
 
 {
-  const v01 = read('../js/data.js');
+  const v01 = v01Source();
+  if (!v01) skip('v0.1 이관 대조');
+  else {
 
   const notFound = [];
   FLEX_EXAMPLES.forEach((ex) => {
@@ -161,8 +189,9 @@ section('v0.1 이관');
     JSON.stringify(FLEX_EXAMPLES.map((e) => e.id)) === JSON.stringify(v01Ids.slice(0, FLEX_EXAMPLES.length)),
     FLEX_EXAMPLES.map((e) => e.id).join(', '));
 
-  check('v0.1 파일은 손대지 않았다 (categoryColor 18건 그대로)',
+  check('원본에 categoryColor 18건 그대로 (색은 v1.0 이 토큰으로 옮겼다)',
     (v01.match(/categoryColor:/g) ?? []).length === 18);
+  }
 }
 
 /* ==========================================================================

@@ -14,6 +14,8 @@
  */
 
 import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { FLEX_CHALLENGES } from '../js/topics/flex/challenges.js';
 import { FLEX_SCHEMA } from '../js/topics/flex/schema.js';
 import { GRID_SCHEMA } from '../js/topics/grid/schema.js';
@@ -37,6 +39,30 @@ function check(label, ok, detail = '') {
 
 function section(title) {
   console.log(`\n── ${title} ──`);
+}
+
+/**
+ * v0.1 원본을 꺼내 온다.
+ *
+ * js/data.js 는 M7 파일 정리(PRD 7.2 절차 5)에서 지워졌다. 대조를 포기하지
+ * 않고 v0.1-archive 태그에서 읽는다 — 태그를 남긴 이유가 이것이다.
+ * 태그가 없는 사본(얕은 클론 등)에서는 이 절을 건너뛴다. 게이트가 바깥
+ * 사정으로 실패하면 안 되기 때문이다.
+ */
+function v01Source() {
+  try {
+    return execFileSync('git', ['show', 'v0.1-archive:js/data.js'], {
+      cwd: fileURLToPath(new URL('..', import.meta.url)),
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    });
+  } catch {
+    return null;
+  }
+}
+
+function skip(label) {
+  console.log(`  [SKIP] ${label} — v0.1-archive 태그를 찾을 수 없다`);
 }
 
 const read = (rel) => readFileSync(new URL(rel, import.meta.url), 'utf8');
@@ -1166,7 +1192,9 @@ section('이어 하기 · 독립성');
 section('v0.1 이관');
 
 {
-  const v01 = read('../js/data.js');
+  const v01 = v01Source();
+  if (!v01) skip('v0.1 이관 대조');
+  else {
 
   // v0.1에서 옮겨온 것은 1~8뿐이다. 9번부터는 v1.0에서 새로 쓴 문제다.
   //
@@ -1203,7 +1231,7 @@ section('v0.1 이관');
   check('신규분 제목이 v0.1과 겹치지 않음', collided.length === 0,
     collided.map((c) => c.title).join(', ') || `${added.length}건`);
 
-  check('v0.1 파일은 손대지 않았다 (colors 8건 그대로)',
+  check('원본에 colors 8건 그대로 (색은 v1.0 이 토큰 순번으로 옮겼다)',
     (v01.match(/^\s+colors: \[/gm) ?? []).length === 8);
 
   // v0.1 COLORS 팔레트와 accents 순번이 같은 색을 가리키는가
@@ -1220,6 +1248,7 @@ section('v0.1 이관');
   check('신규분의 accents도 팔레트 안에 있다',
     added.every((ch) => ch.accents.every((n) => palette.has(n))),
     `${added.reduce((n, c) => n + c.accents.length, 0)}개`);
+  }
 }
 
 /* ==========================================================================
