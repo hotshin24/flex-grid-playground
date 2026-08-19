@@ -16,6 +16,7 @@ import { createRenderer } from './core/renderer.js';
 import { createControl, createRangeControl } from './ui/controls.js';
 import { createTabs, panelId } from './ui/tabs.js';
 import { createExplain } from './ui/explain.js';
+import { createCompare } from './ui/compare.js';
 import { createExamples } from './ui/examples.js';
 import { createChallenge, storageKeyFor } from './ui/challenge.js';
 import { createGridOverlay } from './ui/grid-overlay.js';
@@ -39,6 +40,9 @@ const SCHEMAS = { flex: FLEX_SCHEMA, grid: GRID_SCHEMA };
 
 /** 토픽 버튼에 붙일 표시 이름. 목록 자체는 store.getTopics()가 정한다. */
 const TOPIC_LABELS = { flex: 'Flex', grid: 'Grid' };
+
+/** 대조 뷰의 접힘 줄 문구. 뒤에 붙는 쌍 수는 데이터가 센다. */
+const COMPARE_TITLE = '같은 이름, 다른 동작';
 
 /** 토픽에서 주입받는다. M3의 Grid는 자기 목록을 여기에 더한다. */
 const EXPLAIN = {
@@ -447,6 +451,39 @@ function buildExplain(topic) {
   resetPanel('explain');
   if (!config) return;
   createExplain({ ...config, root: explainRoot });
+  buildCompare(topic);
+}
+
+/**
+ * Flex ↔ Grid 대조 (GR-09).
+ *
+ * 속성 설명 탭 안에 접힌 채로 붙는다. PRD 9번 열린 결정 사항 3을 그렇게 닫았다 —
+ * 근거는 compare.js 머리말에 적었다.
+ *
+ * 지금 보는 토픽이 왼쪽에 온다. 어느 토픽에서 들어와도 자기 쪽이 먼저 보이는
+ * 편이 읽기 쉽다. 짝은 relatedTo 가 정하므로 순서만 바뀐다.
+ *
+ * store 를 건드리지 않는다. 값이 고정된 정적 스냅숏이다.
+ */
+function buildCompare(topic) {
+  const other = store.getTopics().find((name) => name !== topic);
+  if (!other || !EXPLAIN[other]) return;
+
+  // 속성 설명 탭이 쓰는 판 설정을 그대로 넘긴다. 두 화면이 같은 그림을 쓴다.
+  const side = (key) => ({
+    key,
+    label: TOPIC_LABELS[key] ?? key,
+    schema: SCHEMAS[key],
+    display: EXPLAIN[key].display,
+    demos: EXPLAIN[key].demos,
+  });
+
+  createCompare({
+    left: side(topic),
+    right: side(other),
+    host: explainRoot,
+    title: COMPARE_TITLE,
+  });
 }
 
 /**

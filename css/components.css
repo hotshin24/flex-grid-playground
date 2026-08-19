@@ -1787,3 +1787,155 @@ code.fgp-pane__item__name {
 .fgp-challenge__result.is-mismatch {
   color: var(--fgp-state-incorrect);
 }
+
+/* --------------------------------------------------------------------------
+   Flex ↔ Grid 개념 대조 (GR-09)
+
+   속성 설명 탭 안에 산다. 그 탭은 2열 격자(fgp-pane)이므로 두 열을 가로질러
+   맨 윗줄에 앉힌다. 접혀 있을 때는 한 줄이라 목록과 본문이 그대로 살아 있고,
+   펼치면 위로 자란다.
+
+   600px 이상에서 fgp-pane 은 overflow: hidden 이고 두 열이 각자 스크롤한다.
+   대조 줄이 그 규칙을 깨지 않도록 행 크기를 못 박는다 — 첫 줄은 내용만큼,
+   둘째 줄이 남은 높이를 전부 갖는다. minmax(0, 1fr) 이라야 안쪽 스크롤이 산다.
+
+   펼친 본문에는 상한을 건다. 여섯 쌍이 1,600px 가까이 되는데 패널은 그보다
+   낮고 overflow 가 hidden 이라, 상한이 없으면 아래쪽 짝이 잘린 채 닿을 수도
+   없고 속성 목록과 본문이 0px 로 짓눌린다. 상한을 접힘 줄이 아니라 본문에
+   걸어야 스크롤하는 동안에도 다시 접을 수 있다.
+   -------------------------------------------------------------------------- */
+
+.fgp-pane.has-compare {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.fgp-compare {
+  grid-column: 1 / -1;
+  background: var(--fgp-surface-panel);
+  border: 1px solid var(--fgp-border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.fgp-compare__summary {
+  padding: var(--sp-2) var(--sp-3);
+  color: var(--fgp-text-secondary);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  cursor: pointer;
+}
+
+.fgp-compare__summary:hover {
+  color: var(--fgp-text-primary);
+}
+
+/* 펼침 표시는 브라우저 기본 삼각형을 쓴다. 색만 맞춘다 */
+.fgp-compare__summary::marker {
+  color: var(--fgp-accent-text);
+}
+
+.fgp-compare__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-1) var(--sp-3) var(--sp-3);
+}
+
+/* 모바일은 페이지가 스크롤하므로 상한을 걸지 않는다. 안쪽에 또 스크롤을
+   만들면 손가락이 어느 쪽을 움직일지 알 수 없다 — fgp-pane 과 같은 판단이다 */
+@media (min-width: 600px) {
+  .fgp-compare__body {
+    max-height: 50vh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+}
+
+/* 한 짝이 두 패널이다. 나란히 두어야 대조가 된다 */
+.fgp-compare__pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-3);
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--fgp-border-subtle);
+}
+
+.fgp-compare__pair:first-child {
+  padding-top: var(--sp-0);
+  border-top: 0;
+}
+
+.fgp-compare__side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+.fgp-compare__name {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: var(--sp-0);
+  font-family: var(--fgp-font-code);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--fgp-text-primary);
+}
+
+/* 어느 모델의 속성인지. 두 패널이 같은 이름을 쓸 때 이것만이 구분이다 */
+.fgp-compare__name__topic {
+  padding: var(--sp-0) var(--sp-2);
+  border: 1px solid var(--fgp-accent-quiet);
+  border-radius: var(--radius-pill);
+  background: var(--fgp-accent-faint);
+  color: var(--fgp-accent-text);
+  font-family: var(--fgp-font-ui);
+  font-size: var(--fs-3xs);
+}
+
+.fgp-compare__value {
+  font-family: var(--fgp-font-code);
+  font-size: var(--fs-3xs);
+  color: var(--fgp-text-muted);
+}
+
+.fgp-compare__text {
+  margin: var(--sp-0);
+  font-size: var(--fs-2xs);
+  line-height: var(--lh-base);
+  color: var(--fgp-text-secondary);
+}
+
+.fgp-compare__text--tip {
+  color: var(--fgp-text-muted);
+}
+
+.fgp-compare__text code {
+  font-family: var(--fgp-font-code);
+  color: var(--fgp-text-primary);
+}
+
+.fgp-compare__text strong {
+  color: var(--fgp-text-primary);
+  font-weight: var(--fw-semibold);
+}
+
+/* 짝을 못 지은 relatedTo. 숨기지 않고 사유를 적어 둔다 */
+.fgp-compare__note {
+  margin: var(--sp-0);
+  padding-top: var(--sp-2);
+  border-top: 1px solid var(--fgp-border-subtle);
+  font-size: var(--fs-3xs);
+  color: var(--fgp-text-muted);
+}
+
+/* 2열이 성립하지 않는 구간. 두 모델을 위아래로 쌓는다 */
+@media (max-width: 599px) {
+  .fgp-pane.has-compare {
+    grid-template-rows: none;
+  }
+
+  .fgp-compare__pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
