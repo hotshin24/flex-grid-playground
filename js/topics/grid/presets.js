@@ -21,6 +21,16 @@
  * gridArea 를 쓰는 프리셋(holy-grail)은 gridTemplateAreas 와 이름이 맞아야 한다.
  * 어긋나면 아이템이 자동 배치로 떨어지고 이름만 남은 행이 0px 로 접힌다.
  *
+ * width·height 가 null 이면 "크기를 정하지 않는다" 는 뜻이다. renderer 가 유한한
+ * 수일 때만 크기를 얹으므로 아이템이 자기 칸을 채운다. justify-items 나
+ * align-items 를 stretch 로 둔 프리셋은 반드시 null 이어야 한다 — 크기가 박혀
+ * 있으면 stretch 가 할 일이 없어, 영역을 두 칸으로 잡아 놓고도 아이템은 그
+ * 안에 작게 놓인다. 키를 빼지 않고 null 을 적는 이유는 빠뜨린 키가 앞 프리셋의
+ * 값을 물려받기 때문이다.
+ *
+ * 반대로 center 계열로 정렬하는 프리셋(centered)은 크기가 있어야 한다. 크기를
+ * 비우면 아이템이 글자 너비로 줄어 가운데 정렬이 보이지 않는다.
+ *
  * 이 파일에 색 값이 없다. px 는 트랙 크기와 아이템 기하값이라 --sp-* 토큰으로
  * 옮기지 않는다 — 간격이 아니라 판의 치수다.
  */
@@ -45,10 +55,10 @@ export const GRID_PRESETS = [
       gridAutoRows: 'auto',
     },
     items: [
-      { gridArea: 'header', gridColumnStart: 'auto', gridColumnEnd: 'auto', gridRowStart: 'auto', gridRowEnd: 'auto', justifySelf: 'auto', alignSelf: 'auto', width: 120, height: 48 },
-      { gridArea: 'nav', gridColumnStart: 'auto', gridColumnEnd: 'auto', gridRowStart: 'auto', gridRowEnd: 'auto', justifySelf: 'auto', alignSelf: 'auto', width: 120, height: 48 },
-      { gridArea: 'main', gridColumnStart: 'auto', gridColumnEnd: 'auto', gridRowStart: 'auto', gridRowEnd: 'auto', justifySelf: 'auto', alignSelf: 'auto', width: 120, height: 48 },
-      { gridArea: 'footer', gridColumnStart: 'auto', gridColumnEnd: 'auto', gridRowStart: 'auto', gridRowEnd: 'auto', justifySelf: 'auto', alignSelf: 'auto', width: 120, height: 48 },
+      { gridArea: 'header', gridColumnStart: 'auto', gridColumnEnd: 'auto', gridRowStart: 'auto', gridRowEnd: 'auto', justifySelf: 'auto', alignSelf: 'auto', width: null, height: null },
+      { gridArea: 'nav', gridColumnStart: 'auto', gridColumnEnd: 'auto', gridRowStart: 'auto', gridRowEnd: 'auto', justifySelf: 'auto', alignSelf: 'auto', width: null, height: null },
+      { gridArea: 'main', gridColumnStart: 'auto', gridColumnEnd: 'auto', gridRowStart: 'auto', gridRowEnd: 'auto', justifySelf: 'auto', alignSelf: 'auto', width: null, height: null },
+      { gridArea: 'footer', gridColumnStart: 'auto', gridColumnEnd: 'auto', gridRowStart: 'auto', gridRowEnd: 'auto', justifySelf: 'auto', alignSelf: 'auto', width: null, height: null },
     ],
   },
   {
@@ -57,7 +67,9 @@ export const GRID_PRESETS = [
     desc: '같은 크기 카드를 4열로 늘어놓고 행 높이를 고정한다',
     container: {
       gridTemplateColumns: [{ size: 1, unit: 'fr' }, { size: 1, unit: 'fr' }, { size: 1, unit: 'fr' }, { size: 1, unit: 'fr' }],
-      gridTemplateRows: [{ unit: 'auto' }],
+      // 명시 행도 gridAutoRows 와 같은 높이여야 한다. auto 로 두면 첫 줄만
+      // 내용 높이로 주저앉아 "행 높이를 고정한다" 가 첫 줄에서 거짓이 된다.
+      gridTemplateRows: [{ size: 90, unit: 'px' }],
       gridTemplateAreas: 'none',
       rowGap: '12px',
       columnGap: '12px',
@@ -70,12 +82,12 @@ export const GRID_PRESETS = [
       gridAutoRows: '90px',
     },
     items: [
-      { gridArea: 'auto', gridColumnStart: 'auto', gridColumnEnd: 'auto', gridRowStart: 'auto', gridRowEnd: 'auto', justifySelf: 'auto', alignSelf: 'auto', width: 100, height: 80 },
-      { gridArea: 'auto', gridColumnStart: 'auto', gridColumnEnd: 'auto', gridRowStart: 'auto', gridRowEnd: 'auto', justifySelf: 'auto', alignSelf: 'auto', width: 100, height: 80 },
-      { gridArea: 'auto', gridColumnStart: 'auto', gridColumnEnd: 'auto', gridRowStart: 'auto', gridRowEnd: 'auto', justifySelf: 'auto', alignSelf: 'auto', width: 100, height: 80 },
-      { gridArea: 'auto', gridColumnStart: 'auto', gridColumnEnd: 'auto', gridRowStart: 'auto', gridRowEnd: 'auto', justifySelf: 'auto', alignSelf: 'auto', width: 100, height: 80 },
-      { gridArea: 'auto', gridColumnStart: 'auto', gridColumnEnd: 'auto', gridRowStart: 'auto', gridRowEnd: 'auto', justifySelf: 'auto', alignSelf: 'auto', width: 100, height: 80 },
-      { gridArea: 'auto', gridColumnStart: 'auto', gridColumnEnd: 'auto', gridRowStart: 'auto', gridRowEnd: 'auto', justifySelf: 'auto', alignSelf: 'auto', width: 100, height: 80 },
+      { gridArea: 'auto', gridColumnStart: 'auto', gridColumnEnd: 'auto', gridRowStart: 'auto', gridRowEnd: 'auto', justifySelf: 'auto', alignSelf: 'auto', width: null, height: null },
+      { gridArea: 'auto', gridColumnStart: 'auto', gridColumnEnd: 'auto', gridRowStart: 'auto', gridRowEnd: 'auto', justifySelf: 'auto', alignSelf: 'auto', width: null, height: null },
+      { gridArea: 'auto', gridColumnStart: 'auto', gridColumnEnd: 'auto', gridRowStart: 'auto', gridRowEnd: 'auto', justifySelf: 'auto', alignSelf: 'auto', width: null, height: null },
+      { gridArea: 'auto', gridColumnStart: 'auto', gridColumnEnd: 'auto', gridRowStart: 'auto', gridRowEnd: 'auto', justifySelf: 'auto', alignSelf: 'auto', width: null, height: null },
+      { gridArea: 'auto', gridColumnStart: 'auto', gridColumnEnd: 'auto', gridRowStart: 'auto', gridRowEnd: 'auto', justifySelf: 'auto', alignSelf: 'auto', width: null, height: null },
+      { gridArea: 'auto', gridColumnStart: 'auto', gridColumnEnd: 'auto', gridRowStart: 'auto', gridRowEnd: 'auto', justifySelf: 'auto', alignSelf: 'auto', width: null, height: null },
     ],
   },
   {
@@ -84,7 +96,9 @@ export const GRID_PRESETS = [
     desc: '크기가 다른 위젯을 칸 수로 배치한다',
     container: {
       gridTemplateColumns: [{ size: 1, unit: 'fr' }, { size: 1, unit: 'fr' }, { size: 1, unit: 'fr' }, { size: 1, unit: 'fr' }],
-      gridTemplateRows: [{ unit: 'auto' }],
+      // 명시 행도 gridAutoRows 와 같은 높이로 둔다. auto 면 첫 줄 위젯만 납작해져
+      // 칸 수로 크기가 정해진다는 이 프리셋의 요점이 흐려진다.
+      gridTemplateRows: [{ size: 72, unit: 'px' }],
       gridTemplateAreas: 'none',
       rowGap: '10px',
       columnGap: '10px',
@@ -97,11 +111,11 @@ export const GRID_PRESETS = [
       gridAutoRows: '72px',
     },
     items: [
-      { gridArea: 'auto', gridColumnStart: 'auto', gridColumnEnd: 'span 2', gridRowStart: 'auto', gridRowEnd: 'span 2', justifySelf: 'auto', alignSelf: 'auto', width: 100, height: 70 },
-      { gridArea: 'auto', gridColumnStart: 'auto', gridColumnEnd: 'span 2', gridRowStart: 'auto', gridRowEnd: 'auto', justifySelf: 'auto', alignSelf: 'auto', width: 100, height: 70 },
-      { gridArea: 'auto', gridColumnStart: 'auto', gridColumnEnd: 'auto', gridRowStart: 'auto', gridRowEnd: 'span 2', justifySelf: 'auto', alignSelf: 'auto', width: 100, height: 70 },
-      { gridArea: 'auto', gridColumnStart: 'auto', gridColumnEnd: 'auto', gridRowStart: 'auto', gridRowEnd: 'auto', justifySelf: 'auto', alignSelf: 'auto', width: 100, height: 70 },
-      { gridArea: 'auto', gridColumnStart: 'auto', gridColumnEnd: 'span 2', gridRowStart: 'auto', gridRowEnd: 'auto', justifySelf: 'auto', alignSelf: 'auto', width: 100, height: 70 },
+      { gridArea: 'auto', gridColumnStart: 'auto', gridColumnEnd: 'span 2', gridRowStart: 'auto', gridRowEnd: 'span 2', justifySelf: 'auto', alignSelf: 'auto', width: null, height: null },
+      { gridArea: 'auto', gridColumnStart: 'auto', gridColumnEnd: 'span 2', gridRowStart: 'auto', gridRowEnd: 'auto', justifySelf: 'auto', alignSelf: 'auto', width: null, height: null },
+      { gridArea: 'auto', gridColumnStart: 'auto', gridColumnEnd: 'auto', gridRowStart: 'auto', gridRowEnd: 'span 2', justifySelf: 'auto', alignSelf: 'auto', width: null, height: null },
+      { gridArea: 'auto', gridColumnStart: 'auto', gridColumnEnd: 'auto', gridRowStart: 'auto', gridRowEnd: 'auto', justifySelf: 'auto', alignSelf: 'auto', width: null, height: null },
+      { gridArea: 'auto', gridColumnStart: 'auto', gridColumnEnd: 'span 2', gridRowStart: 'auto', gridRowEnd: 'auto', justifySelf: 'auto', alignSelf: 'auto', width: null, height: null },
     ],
   },
   {
@@ -123,8 +137,8 @@ export const GRID_PRESETS = [
       gridAutoRows: 'auto',
     },
     items: [
-      { gridArea: 'auto', gridColumnStart: 'auto', gridColumnEnd: 'auto', gridRowStart: 'auto', gridRowEnd: 'auto', justifySelf: 'auto', alignSelf: 'auto', width: 180, height: 200 },
-      { gridArea: 'auto', gridColumnStart: 'auto', gridColumnEnd: 'auto', gridRowStart: 'auto', gridRowEnd: 'auto', justifySelf: 'auto', alignSelf: 'auto', width: 180, height: 200 },
+      { gridArea: 'auto', gridColumnStart: 'auto', gridColumnEnd: 'auto', gridRowStart: 'auto', gridRowEnd: 'auto', justifySelf: 'auto', alignSelf: 'auto', width: null, height: null },
+      { gridArea: 'auto', gridColumnStart: 'auto', gridColumnEnd: 'auto', gridRowStart: 'auto', gridRowEnd: 'auto', justifySelf: 'auto', alignSelf: 'auto', width: null, height: null },
     ],
   },
   {

@@ -304,6 +304,19 @@ section('Grid 프리셋 — 컨테이너');
     .filter((k) => !Array.isArray(p.container[k])).map((k) => `${p.id}.${k}`));
   check('track-list 값이 배열', notArray.length === 0, notArray.join(', ') || TRACKS.join(' · '));
 
+  /* 명시 행이 auto 인데 gridAutoRows 가 고정 크기면 첫 줄만 내용 높이로
+     주저앉는다. 아이템 크기가 박혀 있을 때는 그 크기가 가려 주지만, 칸을
+     채우는 프리셋에서는 첫 줄만 납작해진 그림이 그대로 드러난다. */
+  const AUTO_ROW = 'auto';
+  const rowMismatch = GRID_PRESETS.filter((p) => {
+    const explicit = p.container.gridTemplateRows ?? [];
+    const onlyAuto = explicit.length > 0 && explicit.every((t) => t.unit === AUTO_ROW);
+    return onlyAuto && p.container.gridAutoRows !== AUTO_ROW;
+  });
+  check('명시 행과 gridAutoRows 가 어긋나지 않음', rowMismatch.length === 0,
+    rowMismatch.map((p) => `${p.id}: rows auto · auto-rows ${p.container.gridAutoRows}`).join(', ')
+      || `${GRID_PRESETS.length}종`);
+
   const rep = GRID_PRESETS.filter((p) => JSON.stringify(p.container).includes('repeat('));
   check('repeat() 0건', rep.length === 0,
     rep.map((p) => p.id).join(', ') || '파서가 트랙 수를 잃는다');
@@ -329,9 +342,34 @@ section('Grid 프리셋 — 아이템');
     keys.filter((k) => !(k in it)).map((k) => `${p.id}[${i}].${k}`)));
   check('아이템이 7키를 전부 명시', missing.length === 0, missing.join(', ') || `${keys.length}키`);
 
-  const geoMissing = GRID_PRESETS.flatMap((p) => (p.items ?? []).flatMap((it, i) =>
-    GEOMETRY.filter((k) => !Number.isFinite(it[k])).map((k) => `${p.id}[${i}].${k}`)));
-  check('width·height 가 숫자', geoMissing.length === 0, geoMissing.join(', ') || GEOMETRY.join(' · '));
+  /* width·height 는 숫자 또는 null 이다. null 은 "크기를 정하지 않는다" 는 뜻이고,
+     renderer 가 유한한 수일 때만 크기를 얹으므로 아이템이 자기 칸을 채운다.
+     키를 아예 빼면 앞 프리셋의 값을 물려받으므로 반드시 적어야 한다. */
+  const geoBad = GRID_PRESETS.flatMap((p) => (p.items ?? []).flatMap((it, i) =>
+    GEOMETRY.filter((k) => !(k in it) || (it[k] !== null && !Number.isFinite(it[k])))
+      .map((k) => `${p.id}[${i}].${k}=${it[k]}`)));
+  check('width·height 가 숫자 또는 null', geoBad.length === 0,
+    geoBad.join(', ') || 'null 은 자동 크기를 뜻한다');
+
+  /* stretch 로 정렬하면서 크기를 박아 두면 stretch 가 할 일이 없다. 영역을 두
+     칸으로 잡아 놓고도 아이템은 그 안에 작게 놓인다 — 화면에는 "고장 난 것
+     같은 그림" 만 남고 오류는 어디에도 나오지 않는다. */
+  const STRETCH = 'stretch';
+  const stretched = GRID_PRESETS.filter((p) =>
+    p.container.justifyItems === STRETCH || p.container.alignItems === STRETCH);
+  const sized = stretched.filter((p) => (p.items ?? [])
+    .some((it) => GEOMETRY.some((k) => Number.isFinite(it[k]))));
+  check(`stretch 로 정렬하는 ${stretched.length}종의 크기가 전부 null`, sized.length === 0,
+    sized.map((p) => p.id).join(', ') || stretched.map((p) => p.id).join(' '));
+
+  /* 반대로 center 계열은 크기가 있어야 한다. 비우면 아이템이 글자 너비로 줄어
+     가운데 정렬이 보이지 않는다. */
+  const centered = GRID_PRESETS.filter((p) =>
+    p.container.justifyItems === 'center' && p.container.alignItems === 'center');
+  const unsized = centered.filter((p) => (p.items ?? [])
+    .some((it) => GEOMETRY.some((k) => it[k] === null)));
+  check(`가운데 정렬하는 ${centered.length}종은 크기를 갖는다`, unsized.length === 0,
+    unsized.map((p) => p.id).join(', ') || centered.map((p) => p.id).join(' '));
 
   const extra = GRID_PRESETS.flatMap((p) => (p.items ?? []).flatMap((it, i) =>
     Object.keys(it).filter((k) => !G_ITEM.has(k) && !GEOMETRY.includes(k)).map((k) => `${p.id}[${i}].${k}`)));
