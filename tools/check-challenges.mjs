@@ -1241,7 +1241,7 @@ section('색상 리터럴 · 하드코딩');
   check('챌린지 데이터에 색상 0건', dirty.length === 0, dirty.join(', ') || `${META.length + 1}개 필드`);
 
   [['js/ui/challenge.js', '../js/ui/challenge.js'], ['css/components.css', '../css/components.css'],
-   ['index-v1.html', '../index-v1.html'], ['js/main.js', '../js/main.js']].forEach(([label, rel]) => {
+   ['index.html', '../index.html'], ['js/main.js', '../js/main.js']].forEach(([label, rel]) => {
     const hits = read(rel).match(COLOR) ?? [];
     check(`${label} 색상 0건`, hits.length === 0, hits.join(', ') || '0건');
   });

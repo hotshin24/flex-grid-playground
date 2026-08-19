@@ -838,7 +838,7 @@ section('자동으로 버튼');
 
 {
   const src = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
-  const html = readFileSync(new URL('../index-v1.html', import.meta.url), 'utf8')
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8')
     .replace(/<!--[\s\S]*?-->/g, ' ');
   const css = readFileSync(new URL('../css/components.css', import.meta.url), 'utf8');
 

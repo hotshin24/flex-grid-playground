@@ -101,7 +101,7 @@ section('토픽 목록');
     !/TOPICS\s*=\s*\[/.test(main) && !/\[\s*'flex'\s*,\s*'grid'\s*\]/.test(main));
   check('전환은 store.setTopic으로만', /store\.setTopic\(/.test(main));
 
-  const html = codeOnly(read('../index-v1.html'));
+  const html = codeOnly(read('../index.html'));
   check('마크업에 토픽 버튼이 없다',
     !/data-topic=/.test(html) && !/>Grid</.test(html) && !/>Flex</.test(html),
     '마운트 지점만 둔다');
@@ -272,7 +272,7 @@ section('색상 · 하드코딩');
 {
   const COLOR = /#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(/g;
   [['js/main.js', '../js/main.js'], ['css/components.css', '../css/components.css'],
-   ['index-v1.html', '../index-v1.html']].forEach(([label, rel]) => {
+   ['index.html', '../index.html']].forEach(([label, rel]) => {
     const hits = read(rel).match(COLOR) ?? [];
     check(`${label} 색상 0건`, hits.length === 0, hits.join(', ') || '0건');
   });

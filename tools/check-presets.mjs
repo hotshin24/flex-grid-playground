@@ -73,7 +73,7 @@ section('프리셋 목록');
   check('main.js에 설정값 하드코딩 없음',
     !/justifyContent:\s*'(center|space-between|flex-start)'/.test(src) && !/flexBasis:\s*'160px'/.test(src));
 
-  const html = readFileSync(new URL('../index-v1.html', import.meta.url), 'utf8');
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   check('마크업에 프리셋 라벨 없음', FLEX_PRESETS.every((p) => !html.includes(p.label)));
 }
 

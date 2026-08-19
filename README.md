@@ -82,7 +82,7 @@ python3 .claude/serve.py 7788
 `http://localhost:7788` 로 접속합니다. 이 서버는 `0.0.0.0` 에 붙으므로
 같은 Wi-Fi의 태블릿·폰에서 `http://<맥의 IP>:7788` 로도 열립니다.
 
-`index-v1.html` 을 `file://` 로 직접 열면 화면이 비어 있습니다. ES 모듈은
+`index.html` 을 `file://` 로 직접 열면 화면이 비어 있습니다. ES 모듈은
 CORS 를 타는데 `file://` 은 출처가 없어 `import` 가 막히기 때문입니다.
 서버 없이 여는 방법은 없고, 위 명령이 그 서버입니다.
 

@@ -509,7 +509,7 @@ section('접근성 · 하드코딩');
   check('토글이 눌림 상태를 알린다', button.getAttribute('aria-pressed') !== null);
 
   const src = read('../js/ui/grid-overlay.js');
-  const html = read('../index-v1.html');
+  const html = read('../index.html');
   check('인라인 onclick 0건', !/onclick/i.test(src) && !/onclick/i.test(html));
   check('이벤트는 위임으로만', (src.match(/addEventListener/g) ?? []).length === 1, 'toolbar click 하나');
   check('innerHTML 0건', !/innerHTML/.test(codeOnly(src)));
@@ -521,7 +521,7 @@ section('접근성 · 하드코딩');
   [['js/ui/grid-overlay.js', '../js/ui/grid-overlay.js'],
    ['js/main.js', '../js/main.js'],
    ['css/components.css', '../css/components.css'],
-   ['index-v1.html', '../index-v1.html']].forEach(([label, rel]) => {
+   ['index.html', '../index.html']].forEach(([label, rel]) => {
     const hits = read(rel).match(COLOR) ?? [];
     check(`${label} 색상 0건`, hits.length === 0, hits.join(', ') || '0건');
   });

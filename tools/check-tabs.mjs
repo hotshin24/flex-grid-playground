@@ -106,7 +106,7 @@ section('구조 규칙');
   check('색상 리터럴 0건', (src.match(/#[0-9a-fA-F]{3,8}\b|rgba?\(/g) ?? []).length === 0);
   check('innerHTML 미사용', !/\.innerHTML/.test(src));
 
-  const raw = readFileSync(new URL('../index-v1.html', import.meta.url), 'utf8');
+  const raw = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   // 주석을 걷어내고 센다. 구조를 설명한 주석에 role="tabpanel" 이 적혀 있으면
   // 세는 쪽이 한 건 더 잡는다 — 실제로 그렇게 어긋났다.
   const html = raw.replace(/<!--[\s\S]*?-->/g, ' ');

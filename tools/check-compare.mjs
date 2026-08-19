@@ -345,8 +345,8 @@ section('문장 파생');
 
   check('compare.js 색상 리터럴 0건', (read('../js/ui/compare.js').match(COLOR) ?? []).length === 0);
   check('인라인 onclick 0건', !/onclick/i.test(read('../js/ui/compare.js'))
-    && !/onclick/i.test(read('../index-v1.html')));
-  check('마크업에 대조 문구 없음', !read('../index-v1.html').includes('대조'));
+    && !/onclick/i.test(read('../index.html')));
+  check('마크업에 대조 문구 없음', !read('../index.html').includes('대조'));
 }
 
 /* ==========================================================================
