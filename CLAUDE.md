@@ -44,13 +44,17 @@ CSS Flexbox와 Grid를 값 단위로 조작하며 익히는 정적 학습 사이
 
 v1.0 진입점은 `index-v1.html`이다. 기존 `index.html`은 v0.1 참조 화면이며
 M2 회귀 검증에서 나란히 띄워 비교하는 용도이므로 수정·덮어쓰기 금지.
-M7 완료 시 `index-v1.html`을 `index.html`로 교체한다.
+교체는 M7 파일 정리 절차(PRD 7.2)의 **4번**이다. 그 앞에 회귀 검증(1) ·
+`v0.1-archive` 태그(2) · `js/data.js` 이관 확인(3)이 끝나 있어야 한다.
 
 ## 절대 규칙
 
 1. **의존성 0.** npm 패키지, CDN 스크립트, 폰트 CDN 모두 금지. jQuery 절대 금지.
 2. **ES 모듈만.** `<script type="module">`. 전역 함수 노출 금지. IIFE 패턴 금지.
-3. **인라인 `onclick=` 금지.** 이벤트는 `core/events.js`의 위임으로만 바인딩한다.
+3. **인라인 `onclick=` 금지.** 마크업에 핸들러를 적지 않는다. 이벤트는 각 UI 모듈이
+   자기 뿌리에 하나씩 걸고 `e.target`에서 거슬러 올라가 어느 항목인지 가려내는
+   위임으로 바인딩한다 (`data-*` 속성이 그 표지다). 모듈이 자기 것만 알면 되므로
+   중앙 파일을 두지 않는다.
 4. **인라인 `style=` 금지.** 예외는 **값이 데이터에서 오는 미리보기**뿐이다.
    스키마의 `demo` · 챌린지의 `miniStyle` 처럼 CSS 파일에 미리 적을 수 없는 값이
    해당한다. 허용 파일은 여섯이다 —
@@ -83,8 +87,17 @@ v0.1 파일(`index.html` · `js/app.js` · `js/data.js` · `css/style.css`)은 �
 
 ## 스키마가 단일 진실 공급원
 
-컨트롤 UI · 코드 생성 · 챌린지 정답 검증 · 속성 설명 데모는 전부
-`js/topics/*/schema.js`에서 파생된다.
+아래가 전부 `js/topics/*/schema.js`에서 파생된다.
+
+| 무엇 | 스키마의 무엇에서 |
+|---|---|
+| 컨트롤 UI | `control` · `values` · `units` · `min`/`max` |
+| 코드 생성 | `prop` · `default` (기본값과 같으면 선언을 만들지 않는다) |
+| 챌린지 정답 검증 | `CONTROL_TYPES`의 `parse`·`serialize` 정규형 |
+| 속성 설명 데모 | `values` · `demo` · `axisAware` |
+| Flex↔Grid 대조 뷰 | `relatedTo` (`pairsFrom`이 짝을 만든다) |
+| 조건부 비활성 판정 | `inactiveWhen` (유형 A) · `measuredInactive` (유형 B·C) |
+| URL 직렬화 | `urlKey` (`core/router.js`) |
 
 - **속성을 추가할 때 마크업을 건드리지 않는다.** 스키마 항목만 추가한다.
 - `index-v1.html`에 속성별 버튼을 하드코딩하면 이 설계가 무너진다. v0.1이 실패한 지점이다.
@@ -96,11 +109,25 @@ v0.1 파일(`index.html` · `js/app.js` · `js/data.js` · `css/style.css`)은 �
 
 ## 검증 게이트
 
-스키마를 수정했으면 반드시 실행한다.
+`tools/` 아래 게이트 **18종**이 있다. 전부 순수 node 스크립트이고, 실패하면
+종료 코드가 0이 아니다. 커밋 전에 전체를 돌린다.
 
 ```bash
-node tools/validate-schema.mjs   # 종료 코드 0이어야 한다
+for f in tools/check-*.mjs tools/validate-*.mjs; do
+  case "$f" in *check-mdn-links*) continue;; esac
+  node "$f" >/dev/null || echo "FAIL $f"
+done
 ```
+
+스키마를 고쳤으면 `validate-schema.mjs` 하나로 끝나지 않는다. 스키마가 단일 진실
+공급원이므로 파생되는 쪽이 함께 깨진다 — `check-controls` · `check-codegen` ·
+`check-challenges` · `check-explain` · `check-router` · `check-measured` 가
+그 자리다. 그래서 전체를 돌린다.
+
+`tools/check-mdn-links.mjs`는 **게이트가 아니다.** 위 명령이 그것만 건너뛴다.
+네트워크를 쓰기 때문이다 — 오프라인이거나 MDN이 잠깐 죽으면 실패하는데, 링크
+상태는 코드의 옳고 그름이 아니라 바깥 사정이라 그때 커밋이 막히면 곤란하다.
+필요할 때 사람이 따로 돌린다.
 
 실패한 상태로 커밋하지 않는다. 검증 통과 여부를 작업 보고에 포함한다.
 
@@ -109,31 +136,48 @@ node tools/validate-schema.mjs   # 종료 코드 0이어야 한다
 ```
 index.html              v0.1 참조 화면. 수정 금지
 index-v1.html           v1.0 진입점. 셸만 — 탭 컨테이너와 마운트 지점 외 마크업 없음
+README.md · LICENSE
 css/
   tokens.css            토큰 (완료 — 수정 시 사유를 남길 것)
   base.css              리셋 · 타이포그래피
-  layout.css            셸 · 반응형 (브레이크포인트 599 / 1023)
+  layout.css            셸 · 반응형 (브레이크포인트 599 / 1023) · 부팅 게이트
   components.css        컨트롤 · 카드 · 패널
+  style.css             v0.1 참조. 수정 금지
 js/
+  main.js               부품 조립 · 프리셋 · 뷰 설정 · 아이템 조작 · 구독
+  app.js · data.js      v0.1 참조. 수정 금지
   core/
-    schema-spec.js      계약 · 검증기 · 파서 (완료)
-    store.js            상태 · 구독 · undo/redo 히스토리
-    renderer.js         프리뷰 DOM (요소 재사용 diffing — 트랜지션 유지)
+    schema-spec.js      계약 · 검증기 · 파서 · CONTROL_TYPES · isInactive
+    store.js            상태 · 구독 · undo/redo 히스토리 (토픽별)
+    renderer.js         프리뷰 DOM (요소 재사용 diffing — 트랜지션 유지) · 측정
     codegen.js          CSS · HTML 코드 생성
-    router.js           URL 해시 직렬화
-    storage.js          localStorage
-    events.js           이벤트 위임
+    router.js           URL 해시 직렬화 (F-09)
   ui/
     controls.js         스키마 → 컨트롤 DOM
     tabs.js             탭 전환
+    explain.js          속성 설명 탭
+    compare.js          Flex↔Grid 대조 뷰 (GR-09)
+    examples.js         실전 예제 탭
+    challenge.js        챌린지 탭 · 정답 판정 · 진행률(localStorage)
     track-editor.js     GR-03
     area-editor.js      GR-04
+    span-editor.js      GR-02
+    grid-overlay.js     GR-05 · GR-06
   topics/
-    flex/  schema.js(완료) explain.js examples.js challenges.js
-    grid/  schema.js(완료) explain.js examples.js challenges.js
-tools/
-  validate-schema.mjs   (완료)
+    flex/  schema.js explain.js examples.js challenges.js presets.js
+    grid/  schema.js explain.js examples.js challenges.js presets.js
+tools/                  게이트 18종 + check-mdn-links.mjs (게이트 아님)
+docs/
+  PRD_flex-grid-playground_v1.0.md
+  BACKLOG.md
 ```
+
+두 스키마와 `schema-spec.js` · `tokens.css`는 M0에서 확정된 파일이다. 고쳐야
+한다고 판단되면 사유를 커밋 본문에 남긴다.
+
+`core/storage.js`와 `core/events.js`는 M0 계획에는 있었으나 만들지 않았다.
+진행률 저장은 `ui/challenge.js`가 자기 것만 다루고, 이벤트는 규칙 3대로 각
+모듈이 위임으로 건다. 둘 다 중앙 파일을 둘 이유가 생기지 않았다.
 
 ## 프리뷰 렌더링 주의
 
