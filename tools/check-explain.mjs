@@ -465,6 +465,32 @@ section('Grid — 데모 판');
     new Set(areaCases.map((c) => byClass(c, DEMO_CLASS)[0].style.gridTemplateAreas)).size === areaCases.length,
     areaCases.map((c) => c.getAttribute('data-value')).join(' · '));
 
+  /**
+   * 사례가 같은 그림을 내면 안 된다.
+   *
+   * grid-row-start 의 -2 가 auto 와 겹쳤다. 음수 가로 라인은 명시한 행을 기준으로
+   * 세는데 그 판에는 명시 행이 없었기 때문이다. 값을 바꿔 해소했고, 여기서는
+   * 사례 목록에 음수가 남아 있지 않은지 본다 — 판이 그대로인 채 음수를 다시
+   * 넣으면 같은 일이 반복된다.
+   */
+  const rowStart = GRID_EXPLAIN_SAMPLES['grid-row-start'];
+  const rowBoard = { ...(GRID_SCHEMA.find((e) => e.prop === 'grid-row-start').demo ?? {}),
+    ...(GRID_EXPLAIN_DEMOS['grid-row-start'] ?? {}) };
+  check('grid-row-start 사례에 음수가 없다',
+    rowStart.every((v) => !String(v.val).startsWith('-')),
+    rowBoard.containerStyle?.gridTemplateRows
+      ? '명시 행이 생기면 음수를 다시 넣어도 된다'
+      : '명시 행이 없는 판이라 음수는 auto와 겹친다');
+  check('grid-row-start 사례가 서로 다른 값',
+    new Set(rowStart.map((v) => String(v.val))).size === rowStart.length,
+    rowStart.map((v) => v.val).join(' · '));
+
+  const rowDetail = gridApi.details[GRID_SCHEMA.findIndex((e) => e.prop === 'grid-row-start')];
+  const rowCases = byClass(rowDetail, CASE_CLASS);
+  check('grid-row-start 세 사례가 서로 다른 값을 얹는다',
+    new Set(rowCases.map((c) => byClass(c, 'fgp-explain__demoitem')[0].style.gridRowStart)).size === rowCases.length,
+    rowCases.map((c) => c.getAttribute('data-value')).join(' · '));
+
   // 값별 판은 여기에만 쓴다 — 다른 속성이 휩쓸리지 않았는지
   const withByValue = Object.entries(GRID_EXPLAIN_DEMOS).filter(([, d]) => d.byValue).map(([p]) => p);
   check('값별 판을 쓰는 속성은 하나뿐', withByValue.length === 1 && withByValue[0] === 'grid-auto-flow',
