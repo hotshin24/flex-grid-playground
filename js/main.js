@@ -720,10 +720,33 @@ function rebuildForTopic(state) {
   buildPresets(state.topic);
 }
 
+/**
+ * 다음 프레임에 한 번 더 재고 그린다.
+ *
+ * 상태가 바뀐 직후에는 배치가 아직 끝나지 않았다. 컨테이너 폭에 트랜지션이
+ * 걸려 있어 토픽을 갈아탄 순간에 잰 값은 옛 것이고, 그러면 라인 오버레이가
+ * 어긋난 자리에 서고 F-13 측정도 한 프레임 뒤처진 판정을 낸다. 두 증상의
+ * 원인이 같아 한자리에서 처리한다.
+ *
+ * 여기서도 dispatch 를 부르지 않는다. 다시 재고 컨트롤 표시만 갈아 끼운다.
+ * 프레임 하나에 여러 번 불려도 한 번만 돈다.
+ */
+let queuedFrame = 0;
+
+function measureAfterPaint() {
+  if (typeof requestAnimationFrame !== 'function') return;
+  if (queuedFrame) cancelAnimationFrame(queuedFrame);
+  queuedFrame = requestAnimationFrame(() => {
+    queuedFrame = 0;
+    applyMeasured(renderer.remeasure());
+  });
+}
+
 function sync(state) {
   rebuildForTopic(state);
   // 읽기만 한다. 여기서 dispatch 하면 그대로 무한 루프다.
-  overlay.refresh();
+  overlay.refreshSoon();
+  measureAfterPaint();
   syncTopics(state);
   syncItembar(state);
   syncItemSize(state);

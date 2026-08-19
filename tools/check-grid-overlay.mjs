@@ -354,6 +354,60 @@ section('암시적 트랙');
 }
 
 /* ==========================================================================
+   다음 프레임 재실행
+   ========================================================================== */
+section('다음 프레임');
+
+{
+  const api = build({
+    computed: { gridTemplateColumns: '100px 100px 100px', gridTemplateRows: '80px' },
+    inline: { gridTemplateColumns: '1fr 1fr 1fr', gridTemplateRows: 'auto' },
+  });
+
+  check('refreshSoon을 내놓는다', typeof api.refreshSoon === 'function');
+
+  // rAF 가 없는 환경에서도 바로 한 번은 돈다
+  const before = byClass(api.host, LABEL_CLASS).length;
+  api.refreshSoon();
+  check('rAF가 없어도 즉시 한 번 그린다',
+    byClass(api.host, LABEL_CLASS).length === before, `${before}개`);
+
+  // rAF 를 흉내내 두 번째 실행이 걸리는지 본다
+  const frames = [];
+  const realRaf = globalThis.requestAnimationFrame;
+  const realCancel = globalThis.cancelAnimationFrame;
+  globalThis.requestAnimationFrame = (fn) => { frames.push(fn); return frames.length; };
+  globalThis.cancelAnimationFrame = (id) => { frames[id - 1] = null; };
+
+  const live = build({
+    computed: { gridTemplateColumns: '100px 100px', gridTemplateRows: '80px' },
+    inline: { gridTemplateColumns: '1fr 1fr', gridTemplateRows: 'auto' },
+  });
+  live.refreshSoon();
+  check('다음 프레임 실행을 예약한다', frames.filter(Boolean).length === 1, `${frames.filter(Boolean).length}건`);
+
+  live.refreshSoon();
+  live.refreshSoon();
+  check('여러 번 불러도 예약은 하나', frames.filter(Boolean).length === 1,
+    '상태 변화가 몰아쳐도 같은 일을 반복하지 않는다');
+
+  frames.filter(Boolean).forEach((fn) => fn());
+  check('예약이 실제로 돈다', labelsOn(live.host, 'top').length === 3);
+
+  globalThis.requestAnimationFrame = realRaf;
+  globalThis.cancelAnimationFrame = realCancel;
+
+  const mainSrc = codeOnly(read('../js/main.js'));
+  check('main.js가 refreshSoon을 쓴다', /overlay\.refreshSoon\(\)/.test(mainSrc));
+  check('측정도 같은 경로로 한 프레임 미룬다',
+    /function measureAfterPaint/.test(mainSrc) && /requestAnimationFrame/.test(mainSrc),
+    '오버레이와 측정의 원인이 같다');
+  const block = mainSrc.slice(mainSrc.indexOf('function measureAfterPaint'),
+    mainSrc.indexOf('function sync('));
+  check('미룬 실행에도 dispatch가 없다', !/dispatch\(|setView\(/.test(block));
+}
+
+/* ==========================================================================
    토글
    ========================================================================== */
 section('토글');

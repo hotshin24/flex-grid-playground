@@ -315,11 +315,34 @@ export function createGridOverlay(config) {
     return shown;
   }
 
+  /**
+   * 다음 프레임에 한 번 더 그린다.
+   *
+   * 상태가 바뀐 직후에는 배치가 아직 끝나지 않았다. 컨테이너 폭에 트랜지션이
+   * 걸려 있어 토픽을 갈아탄 순간의 사각형은 옛 값이고, 그 값으로 자리를 잡으면
+   * 라인이 한 프레임 어긋난 곳에 선다. 실제로 Grid 로 전환한 직후 그랬다.
+   *
+   * 프레임 하나에 여러 번 불려도 한 번만 돈다. 상태 변화가 몰아칠 때 같은 일을
+   * 반복하지 않기 위해서다.
+   */
+  let queued = 0;
+
+  function refreshSoon() {
+    refresh();
+    if (typeof globalThis.requestAnimationFrame !== 'function') return;
+    if (queued) globalThis.cancelAnimationFrame?.(queued);
+    queued = globalThis.requestAnimationFrame(() => {
+      queued = 0;
+      refresh();
+    });
+  }
+
   refresh();
 
   return {
     root: layer,
     refresh,
+    refreshSoon,
     toggle,
     isVisible: () => shown && hasLines(),
     hasLines,
