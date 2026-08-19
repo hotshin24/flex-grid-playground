@@ -50,6 +50,15 @@ export const MISMATCH_CLASS = 'is-mismatch';
 
 export const STORAGE_KEY = 'fgp.challenge.progress.v1';
 
+/**
+ * 토픽별 진행 저장 키.
+ *
+ * 문제 번호는 토픽 안에서만 유일하다. 한 키를 나눠 쓰면 Flex #1 을 푼 기록이
+ * Grid #1 에도 클리어 표시로 나타난다. readProgress 가 id 목록으로 거르는
+ * 것도 소용없다 — 두 토픽 다 1~40 이라 전부 유효한 id 로 통과한다.
+ */
+export const storageKeyFor = (topic) => (topic ? `${STORAGE_KEY}.${topic}` : STORAGE_KEY);
+
 /** 목표 미리보기의 색 단계. components.css 가 준비해 둔 만큼만 쓴다. */
 const ACCENT_COUNT = 8;
 
@@ -184,12 +193,12 @@ export function stretchesItems(target = {}, schema = [], doc = globalThis.docume
    -------------------------------------------------------------------------- */
 
 /** 읽어 온 값은 믿지 않는다. 모양이 틀리거나 없는 id 면 조용히 버린다. */
-export function readProgress(storage, validIds = []) {
+export function readProgress(storage, validIds = [], key = STORAGE_KEY) {
   const allowed = new Set(validIds);
 
   let raw = null;
   try {
-    raw = storage?.getItem?.(STORAGE_KEY) ?? null;
+    raw = storage?.getItem?.(key) ?? null;
   } catch {
     return [];
   }
@@ -209,10 +218,10 @@ export function readProgress(storage, validIds = []) {
 }
 
 /** 용량이 찼거나 저장이 막혀 있으면 그냥 못 남긴다. 화면은 계속 돈다. */
-export function writeProgress(storage, solved) {
+export function writeProgress(storage, solved, key = STORAGE_KEY) {
   if (typeof storage?.setItem !== 'function') return false;
   try {
-    storage.setItem(STORAGE_KEY, JSON.stringify({ solved: [...solved] }));
+    storage.setItem(key, JSON.stringify({ solved: [...solved] }));
     return true;
   } catch {
     return false;
@@ -307,7 +316,7 @@ function buildGoal(challenge, doc) {
 export function createChallenge(config) {
   const {
     challenges, schema, store, root,
-    storage = globalThis.localStorage, doc = globalThis.document,
+    storage = globalThis.localStorage, storageKey = STORAGE_KEY, doc = globalThis.document,
   } = config;
 
   if (!Array.isArray(challenges) || challenges.length === 0) throw new Error('createChallenge: 문제 목록이 필요합니다');
@@ -322,7 +331,7 @@ export function createChallenge(config) {
   const entries = partitionByScope(schema).container;
   const byProp = new Map(schema.map((e) => [e.jsProp, e]));
   const ids = challenges.map((c) => c.id);
-  const solved = new Set(readProgress(storage, ids));
+  const solved = new Set(readProgress(storage, ids, storageKey));
 
   /* ---- 문제 목록 ---- */
   const nav = doc.createElement('nav');
@@ -544,7 +553,7 @@ export function createChallenge(config) {
 
     if (verdict.solved) {
       solved.add(current.id);
-      writeProgress(storage, solved);
+      writeProgress(storage, solved, storageKey);
       resultBox.textContent = '정답입니다. 모든 속성이 일치합니다.';
       resultBox.className = `${RESULT_CLASS} ${MATCH_CLASS}`;
     } else {

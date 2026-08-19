@@ -17,7 +17,7 @@ import { createControl, createRangeControl } from './ui/controls.js';
 import { createTabs, panelId } from './ui/tabs.js';
 import { createExplain } from './ui/explain.js';
 import { createExamples } from './ui/examples.js';
-import { createChallenge } from './ui/challenge.js';
+import { createChallenge, storageKeyFor } from './ui/challenge.js';
 import { createGridOverlay } from './ui/grid-overlay.js';
 import { FLEX_EXPLAIN_NOTES, FLEX_EXPLAIN_SAMPLES, AXIS_LABELS } from './topics/flex/explain.js';
 import { GRID_EXPLAIN_NOTES, GRID_EXPLAIN_SAMPLES, GRID_EXPLAIN_DEMOS, GRID_DISPLAY } from './topics/grid/explain.js';
@@ -25,6 +25,7 @@ import { FLEX_PRESETS } from './topics/flex/presets.js';
 import { FLEX_EXAMPLES } from './topics/flex/examples.js';
 import { GRID_EXAMPLES } from './topics/grid/examples.js';
 import { FLEX_CHALLENGES } from './topics/flex/challenges.js';
+import { GRID_CHALLENGES } from './topics/grid/challenges.js';
 import { isInactive, inactiveValues, deriveState, partitionByScope, defaultsFrom } from './core/schema-spec.js';
 import { generateCode } from './core/codegen.js';
 import { FLEX_SCHEMA } from './topics/flex/schema.js';
@@ -57,7 +58,7 @@ const EXPLAIN = {
 };
 const PRESETS = { flex: FLEX_PRESETS };
 const EXAMPLES = { flex: FLEX_EXAMPLES, grid: GRID_EXAMPLES };
-const CHALLENGES = { flex: FLEX_CHALLENGES };
+const CHALLENGES = { flex: FLEX_CHALLENGES, grid: GRID_CHALLENGES };
 
 /** 아이템 개수 한계. 스키마와 무관한 프리뷰 구성값이다. */
 const MIN_ITEMS = 1;
@@ -567,23 +568,51 @@ function buildExamples(topic) {
 }
 
 /* --------------------------------------------------------------------------
-   챌린지 (F-09 · F-10)
+   챌린지 (F-09 · F-10 · GR-08)
 
    저장소를 하나 더 만든다. 챌린지에서 속성을 만져도 플레이그라운드 탭은 그대로
    여야 하므로, 같은 인스턴스를 나눠 쓸 수 없다. 프리뷰는 같은 renderer 를
    붙인다 — 그리는 규칙은 어느 탭이든 같아야 한다.
+
+   토픽이 바뀌면 다시 짓는다. 문제도 스키마도 컨트롤도 통째로 갈리므로 갱신할
+   것이 없다. 프리뷰 마운트 지점이 새로 생기니 renderer 도 함께 갈아 끼운다 —
+   옛 것을 destroy 하지 않으면 사라진 DOM 을 붙든 구독이 쌓인다.
+
+   진행 기록은 토픽별 키로 나눈다. 한 키를 나눠 쓰면 Flex #1 을 푼 기록이
+   Grid #1 에도 클리어로 나타난다.
    -------------------------------------------------------------------------- */
 
-const challengeStore = createStore(SCHEMAS);
+const challengeStore = createStore(SCHEMAS, { topic: initial.topic });
+const challengeRoot = document.getElementById(panelId('challenge'));
 
-const challenge = createChallenge({
-  challenges: CHALLENGES[initial.topic],
-  schema: SCHEMAS[initial.topic],
-  store: challengeStore,
-  root: document.getElementById(panelId('challenge')),
-});
+let challenge = null;
+let challengeRenderer = null;
 
-createRenderer({ store: challengeStore, schemas: SCHEMAS, root: challenge.previewRoot });
+function buildChallenge(topic) {
+  challengeRenderer?.destroy();
+  challengeRenderer = null;
+  challenge = null;
+
+  resetPanel('challenge');
+
+  const challenges = CHALLENGES[topic];
+  if (!challenges) return;
+
+  // 컨트롤을 세우기 전에 저장소를 옮긴다. 아니면 앞 토픽의 값으로 그린다.
+  challengeStore.setTopic(topic);
+
+  challenge = createChallenge({
+    challenges,
+    schema: SCHEMAS[topic],
+    store: challengeStore,
+    root: challengeRoot,
+    storageKey: storageKeyFor(topic),
+  });
+
+  challengeRenderer = createRenderer({
+    store: challengeStore, schemas: SCHEMAS, root: challenge.previewRoot,
+  });
+}
 
 /* --------------------------------------------------------------------------
    아이템 추가 · 제거
@@ -754,6 +783,7 @@ function rebuildForTopic(state) {
   buildPresets(state.topic);
   buildExplain(state.topic);
   buildExamples(state.topic);
+  buildChallenge(state.topic);
 }
 
 /**

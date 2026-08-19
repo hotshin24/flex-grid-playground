@@ -17,11 +17,12 @@ import { readFileSync } from 'node:fs';
 import { FLEX_CHALLENGES } from '../js/topics/flex/challenges.js';
 import { FLEX_SCHEMA } from '../js/topics/flex/schema.js';
 import { GRID_SCHEMA } from '../js/topics/grid/schema.js';
+import { GRID_CHALLENGES } from '../js/topics/grid/challenges.js';
 import { createStore } from '../js/core/store.js';
 import { partitionByScope, defaultsFrom, CONTROL_TYPES } from '../js/core/schema-spec.js';
 import {
   createChallenge, checkAnswer, normalizeValue, stretchesItems,
-  readProgress, writeProgress, STORAGE_KEY,
+  readProgress, writeProgress, STORAGE_KEY, storageKeyFor,
   wrapsLines, itemWidthFor,
   LIST_ITEM_CLASS, TAG_CLASS, GOAL_CLASS, GOAL_ITEM_CLASS, PREVIEW_CLASS,
   HINT_CLASS, RESULT_CLASS, PROGRESS_CLASS, MATCH_CLASS, MISMATCH_CLASS, SOLVED_CLASS,
@@ -508,6 +509,243 @@ section('ignore');
   const ch = { target: { alignItems: 'center', justifyContent: 'center' }, ignore: ['alignItems'] };
   const v = checkAnswer(ch, { alignItems: 'start', justifyContent: 'center' }, FLEX_SCHEMA);
   check('target 에 있는 키를 ignore 하면 실제로 빠진다', v.solved && v.total === 1, `${v.correct}/${v.total}`);
+}
+
+/* ==========================================================================
+   열자마자 정답 — 두 토픽 공통
+
+   target 의 모든 키가 스키마 기본값과 같으면 학습자가 아무것도 하지 않아도
+   제출만으로 통과한다. 문제가 성립하지 않는다.
+
+   비교는 정규형으로 한다. track-list 는 데이터에 CSS 문자열, 기본값은 객체
+   배열이라 원시값끼리는 애초에 맞지 않는다.
+   ========================================================================== */
+section('열자마자 정답');
+
+{
+  const trivialIn = (list, schema) => {
+    const D = defaultsFrom(schema, 'container');
+    const byProp = new Map(schema.map((e) => [e.jsProp, e]));
+    return list.filter((ch) => Object.entries(ch.target).every(([key, v]) =>
+      normalizeValue(byProp.get(key), v) === normalizeValue(byProp.get(key), D[key])));
+  };
+
+  const gridTrivial = trivialIn(GRID_CHALLENGES, GRID_SCHEMA);
+  check('Grid 40건에 열자마자 정답이 없다', gridTrivial.length === 0,
+    gridTrivial.map((c) => `#${c.id} ${c.title}`).join(', ') || '0건');
+
+  // Flex 는 세어서 남기기만 한다. 데이터 40건은 이번 수정 대상이 아니다
+  const flexTrivial = trivialIn(FLEX_CHALLENGES, FLEX_SCHEMA);
+  check('Flex 열자마자 정답 — 세어서 남긴다', true,
+    flexTrivial.map((c) => `#${c.id} ${c.title}`).join(', ') || '0건');
+  check('Flex 열자마자 정답이 1건을 넘지 않는다', flexTrivial.length <= 1,
+    `${flexTrivial.length}건 — 늘어나면 데이터가 더 나빠진 것이다`);
+
+  // 판정이 실제로 잡는지. 기본값만 담은 가짜 문제를 넣어 본다
+  const D = defaultsFrom(GRID_SCHEMA, 'container');
+  const fake = [{ id: 0, target: { justifyItems: D.justifyItems, alignItems: D.alignItems } }];
+  check('기본값만 담은 문제를 실제로 잡는다', trivialIn(fake, GRID_SCHEMA).length === 1);
+  check('한 키라도 다르면 잡지 않는다',
+    trivialIn([{ id: 0, target: { justifyItems: 'center' } }], GRID_SCHEMA).length === 0);
+}
+
+/* ==========================================================================
+   Grid 챌린지 (GR-08)
+
+   Flex 는 1~8 이 v0.1 이관이라 원본과 글자 대조를 하지만 Grid 40건은 전부
+   신규라 대조할 원본이 없다. 대신 설계 규칙을 검사한다 — 어기면 정답을
+   맞혀도 그림이 변하지 않아 문제가 성립하지 않는다.
+   ========================================================================== */
+section('Grid 챌린지 — 목록');
+
+const GRID_CONT = new Map(partitionByScope(GRID_SCHEMA).container.map((e) => [e.jsProp, e]));
+const gnorm = (key, v) => normalizeValue(GRID_CONT.get(key), v);
+
+{
+  check('Grid 챌린지 40건', GRID_CHALLENGES.length === 40, `${GRID_CHALLENGES.length}건`);
+  check('id가 1~40 연속', GRID_CHALLENGES.every((c, i) => c.id === i + 1),
+    GRID_CHALLENGES.map((c) => c.id).join(',').slice(0, 40));
+  check('id 중복 없음', new Set(GRID_CHALLENGES.map((c) => c.id)).size === 40);
+
+  const REQUIRED = ['id', 'title', 'difficulty', 'desc', 'hint', 'target', 'itemCount', 'accents', 'miniStyle'];
+  const missing = GRID_CHALLENGES.flatMap((ch) => REQUIRED
+    .filter((k) => ch[k] === undefined || ch[k] === null || ch[k] === '')
+    .map((k) => `#${ch.id}.${k}`));
+  check('필수 필드 전량 보유', missing.length === 0, missing.join(', ') || REQUIRED.join(' · '));
+
+  const STARS = ['⭐', '⭐⭐', '⭐⭐⭐'];
+  const off = GRID_CHALLENGES.filter((c) => !STARS.includes(c.difficulty));
+  check('난이도가 세 등급 중 하나', off.length === 0, off.map((c) => `#${c.id}`).join(', ') || '이상 0건');
+
+  const tally = STARS.map((s) => GRID_CHALLENGES.filter((c) => c.difficulty === s).length);
+  check('난이도 분포 16 · 14 · 10', JSON.stringify(tally) === JSON.stringify([16, 14, 10]),
+    tally.join(' · '));
+
+  check('제목 중복 없음', new Set(GRID_CHALLENGES.map((c) => c.title)).size === 40);
+  check('ignore 필드가 없다', GRID_CHALLENGES.every((c) => !('ignore' in c)),
+    GRID_CHALLENGES.filter((c) => 'ignore' in c).map((c) => `#${c.id}`).join(', ') || '무효한 장치를 새로 쓰지 않는다');
+
+  check('miniStyle.display 가 grid',
+    GRID_CHALLENGES.every((c) => c.miniStyle?.display === 'grid'),
+    GRID_CHALLENGES.filter((c) => c.miniStyle?.display !== 'grid').map((c) => `#${c.id}`).join(', ') || '40건');
+
+  const badAccent = GRID_CHALLENGES.filter((c) => !Array.isArray(c.accents)
+    || c.accents.length !== c.itemCount
+    || c.accents.some((a) => !Number.isInteger(a) || a < 1 || a > 8));
+  check('accents 길이가 itemCount 와 같고 값이 1~8 정수', badAccent.length === 0,
+    badAccent.map((c) => `#${c.id}`).join(', ') || '40건');
+
+  const src = readFileSync(new URL('../js/topics/grid/challenges.js', import.meta.url), 'utf8');
+  check('색상 리터럴 0건', (src.match(COLOR) ?? []).length === 0);
+  check('store 를 모른다', !/\bstore\b/i.test(codeOnly(src)));
+  check('신규 작성이라는 성격이 주석에 남아 있다',
+    /v1\.0 신규 작성/.test(src) && /v0\.1/.test(src));
+}
+
+/* --------------------------------------------------------------------------
+   target 형식
+   -------------------------------------------------------------------------- */
+section('Grid 챌린지 — target');
+
+{
+  const offScope = [...new Set(GRID_CHALLENGES.flatMap((ch) =>
+    Object.keys(ch.target).filter((k) => !GRID_CONT.has(k))))];
+  check('target 키가 전부 컨테이너 스코프', offScope.length === 0,
+    offScope.join(', ') || '아이템 속성은 컨트롤이 서지 않는다');
+
+  const lengths = [...new Set(GRID_CHALLENGES.flatMap((ch) =>
+    Object.keys(ch.target).filter((k) => GRID_CONT.get(k)?.control === 'length')))];
+  check('length 속성을 묻지 않는다', lengths.length === 0,
+    lengths.join(', ') || 'row-gap · column-gap · grid-auto-columns · grid-auto-rows');
+
+  const badEnum = GRID_CHALLENGES.flatMap((ch) => Object.entries(ch.target)
+    .filter(([key, v]) => {
+      const entry = GRID_CONT.get(key);
+      return entry?.values && !entry.values.some((x) => x.val === v);
+    })
+    .map(([key, v]) => `#${ch.id}.${key}=${v}`));
+  check('enum 값이 전부 스키마 values 에 있음', badEnum.length === 0,
+    badEnum.join(', ') || '오타 0건');
+
+  const flat = (v) => String(v).replace(/\s+/g, ' ').trim();
+  const lossy = GRID_CHALLENGES.flatMap((ch) => Object.entries(ch.target)
+    .filter(([key, v]) => typeof v === 'string' && flat(gnorm(key, v)) !== flat(v))
+    .map(([key, v]) => `#${ch.id}.${key}=${v} → ${gnorm(key, v)}`));
+  check('문자열 target 이 전부 무손실', lossy.length === 0, lossy.join(', ') || '손실 0건');
+
+  const rep = GRID_CHALLENGES.filter((ch) =>
+    Object.values(ch.target).some((v) => String(v).includes('repeat(')));
+  check('repeat() 0건', rep.length === 0,
+    rep.map((c) => `#${c.id}`).join(', ') || '펼쳐 적었다');
+
+  // 같은 조합을 두 번 묻지 않는다. 정규형으로 비교해야 표기 차이에 속지 않는다
+  const shape = (ch) => JSON.stringify(Object.keys(ch.target).sort().map((k) => [k, gnorm(k, ch.target[k])]));
+  const shapes = GRID_CHALLENGES.map(shape);
+  const dup = shapes.filter((v, i) => shapes.indexOf(v) !== i);
+  check('target 조합이 40건 사이에서 유일', dup.length === 0,
+    dup.join(' / ') || '중복 0건');
+
+  const D = defaultsFrom(GRID_SCHEMA, 'container');
+  const failed = GRID_CHALLENGES.filter((ch) =>
+    !checkAnswer(ch, { ...D, ...ch.target }, GRID_SCHEMA).solved);
+  check('40건 전부 정답으로 통과', failed.length === 0,
+    failed.map((c) => `#${c.id}`).join(', ') || '40건');
+}
+
+/* --------------------------------------------------------------------------
+   설계 규칙 — 어기면 정답을 맞혀도 그림이 변하지 않는다
+   -------------------------------------------------------------------------- */
+section('Grid 챌린지 — 설계 규칙');
+
+{
+  // '1fr' 은 \bfr\b 로 못 잡는다 — 1 과 f 사이에 낱말 경계가 없다.
+  // 뒤쪽 경계만 본다. 트랙 단위 중 fr 로 끝나는 것은 fr 뿐이다.
+  const FR = /fr\b/;
+  const hasFr = (v) => FR.test(gnorm('gridTemplateColumns', v ?? ''));
+  const rowsOf = (ch) => ch.target.gridTemplateRows;
+  const colsOf = (ch) => ch.target.gridTemplateColumns;
+
+  // 규칙 1 — 세로 정렬은 행 크기를 함께 정한다
+  const vertical = GRID_CHALLENGES.filter((ch) => 'alignItems' in ch.target || 'alignContent' in ch.target);
+  const noRows = vertical.filter((ch) => rowsOf(ch) === undefined);
+  check(`세로 정렬 ${vertical.length}건이 전부 행 크기를 함께 정함`, noRows.length === 0,
+    noRows.map((c) => `#${c.id}`).join(', ')
+      || vertical.map((c) => `#${c.id}`).join(' '));
+  check('행이 auto 인 세로 정렬 문제가 없다',
+    vertical.every((ch) => !/auto/.test(String(rowsOf(ch)))),
+    '행이 auto 면 start 와 stretch 가 같은 그림이다');
+
+  // 규칙 2 — 트랙 전체 정렬은 고정 단위 트랙
+  const jc = GRID_CHALLENGES.filter((ch) => 'justifyContent' in ch.target);
+  const jcBad = jc.filter((ch) => colsOf(ch) === undefined || hasFr(colsOf(ch)));
+  check(`트랙 가로 정렬 ${jc.length}건의 열에 fr 이 없다`, jcBad.length === 0,
+    jcBad.map((c) => `#${c.id}`).join(', ') || jc.map((c) => `#${c.id}`).join(' '));
+
+  const ac = GRID_CHALLENGES.filter((ch) => 'alignContent' in ch.target);
+  const acBad = ac.filter((ch) => rowsOf(ch) === undefined || FR.test(gnorm('gridTemplateRows', rowsOf(ch))));
+  check(`트랙 세로 정렬 ${ac.length}건의 행에 fr 이 없다`, acBad.length === 0,
+    acBad.map((c) => `#${c.id}`).join(', ') || ac.map((c) => `#${c.id}`).join(' '));
+
+  // 규칙 4 — areas 는 판 모양이 열 개수와 맞아야 한다
+  const areas = GRID_CHALLENGES.filter((ch) => 'gridTemplateAreas' in ch.target);
+  const areaBad = areas.filter((ch) => {
+    const cols = gnorm('gridTemplateColumns', colsOf(ch) ?? '').trim().split(/\s+/).filter(Boolean).length;
+    const rows = gnorm('gridTemplateAreas', ch.target.gridTemplateAreas).split('\n');
+    return cols === 0 || rows.some((r) => r.replace(/"/g, '').trim().split(/\s+/).length !== cols);
+  });
+  check(`areas ${areas.length}건의 칸 수가 열 개수와 맞음`, areaBad.length === 0,
+    areaBad.map((c) => `#${c.id}`).join(', ') || areas.map((c) => `#${c.id}`).join(' '));
+  check('areas 가 계약 검증을 통과', areas.every((ch) =>
+    CONTROL_TYPES['area-grid'].parse(ch.target.gridTemplateAreas).errors.length === 0),
+    '이름마다 직사각형이어야 한다');
+
+  // 판정이 실제로 잡는지 — 규칙을 어긴 가짜 문제를 넣어 본다
+  const brokenRows = [{ id: 0, target: { alignItems: 'center' } }];
+  check('행 없는 세로 정렬 문제를 실제로 잡는다',
+    brokenRows.filter((ch) => ch.target.gridTemplateRows === undefined).length === 1);
+  check('fr 열을 실제로 잡는다', hasFr('1fr 1fr') && hasFr('2fr 1fr') && !hasFr('80px 80px'));
+  check('minmax 안의 fr 도 잡는다', hasFr('minmax(120px, 1fr) 1fr'));
+  check('fr 없는 키워드 트랙을 잡지 않는다',
+    !hasFr('auto 1fr auto'.replace(/1fr/, 'auto')) && !hasFr('min-content max-content'));
+}
+
+/* --------------------------------------------------------------------------
+   진행 기록 — 토픽별로 나뉘어야 한다
+   -------------------------------------------------------------------------- */
+section('Grid 챌린지 — 진행 기록');
+
+{
+  check('토픽별 키가 서로 다름', storageKeyFor('flex') !== storageKeyFor('grid'),
+    `${storageKeyFor('flex')} · ${storageKeyFor('grid')}`);
+  check('토픽 없이 부르면 옛 키', storageKeyFor() === STORAGE_KEY && storageKeyFor(null) === STORAGE_KEY);
+  check('키가 옛 키에서 뻗어 나감',
+    storageKeyFor('grid').startsWith(STORAGE_KEY), storageKeyFor('grid'));
+
+  // 두 토픽 다 1~40 이라 id 로는 못 거른다. 키가 갈리지 않으면 그대로 샌다
+  const store = { map: new Map(), getItem(k) { return this.map.get(k) ?? null; },
+    setItem(k, v) { this.map.set(k, v); } };
+  writeProgress(store, [1, 2, 3], storageKeyFor('flex'));
+  const gridIds = GRID_CHALLENGES.map((c) => c.id);
+  check('Flex 기록이 Grid 로 새지 않는다',
+    readProgress(store, gridIds, storageKeyFor('grid')).length === 0,
+    `Flex 3건 저장 후 Grid 읽기 ${readProgress(store, gridIds, storageKeyFor('grid')).length}건`);
+  check('같은 키로 읽으면 그대로 나온다',
+    JSON.stringify(readProgress(store, gridIds, storageKeyFor('flex'))) === '[1,2,3]');
+
+  writeProgress(store, [7], storageKeyFor('grid'));
+  check('두 토픽이 서로를 덮어쓰지 않는다',
+    JSON.stringify(readProgress(store, gridIds, storageKeyFor('flex'))) === '[1,2,3]'
+    && JSON.stringify(readProgress(store, gridIds, storageKeyFor('grid'))) === '[7]');
+
+  const src = codeOnly(read('../js/main.js'));
+  check('main.js 가 토픽별 키를 넘긴다', /storageKey:\s*storageKeyFor\(topic\)/.test(src));
+  check('main.js 가 토픽 레지스트리로 챌린지를 받는다',
+    /CHALLENGES\s*=\s*\{[^}]*flex:[^}]*grid:/.test(src));
+  check('토픽이 바뀌면 챌린지도 다시 짓는다',
+    /buildChallenge\(state\.topic\)/.test(src) && /challengeRenderer\?\.destroy\(\)/.test(src));
+  check('컨트롤을 세우기 전에 저장소를 옮긴다',
+    src.indexOf('challengeStore.setTopic(topic)') < src.indexOf('challenge = createChallenge('));
+  check('챌린지를 한 토픽으로 못박아 두지 않았다', !/CHALLENGES\[initial\.topic\]/.test(src));
 }
 
 /* ==========================================================================
