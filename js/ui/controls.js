@@ -33,6 +33,7 @@ export const UNIT_CLASS = 'fgp-control__unit';
 export const PENDING_CLASS = 'fgp-control--pending';
 export const CHECKED_CLASS = 'is-checked';
 export const INACTIVE_CLASS = 'is-inactive';
+export const VALUE_INACTIVE_CLASS = 'is-value-inactive';
 export const NOTE_CLASS = 'fgp-control__note';
 export const REASON_CLASS = 'fgp-control__reason';
 export const REMEDY_CLASS = 'fgp-control__remedy';
@@ -670,7 +671,33 @@ export function createControl(entry, { value, onChange, suggestions, doc = globa
   const setInactive = (verdict) => applyInactive(parts, verdict);
   setInactive({ inactive: false });
 
-  return { root, sync, setInactive };
+  /**
+   * 값 하나만 죽는 경우 (F-13 유형 B·C 중 값 단위).
+   *
+   * 속성은 멀쩡하고 그 값만 지금 아무 일도 하지 않는다. 컨트롤 전체를 회색으로
+   * 만들면 같은 자리의 다른 값까지 못 쓰는 것처럼 보이므로 버튼 하나에만 표시한다.
+   * 여기서도 disabled 는 걸지 않는다 — 눌러 보고 아무 일이 없다는 것을 직접
+   * 확인할 수 있어야 한다 (F-13-2).
+   */
+  const setValueInactive = (verdicts = {}) => {
+    if (!state.group) return;
+
+    [...state.group.children].forEach((option) => {
+      const verdict = verdicts[option.getAttribute('data-value')];
+      const off = Boolean(verdict?.inactive);
+
+      option.classList.toggle(VALUE_INACTIVE_CLASS, off);
+      option.setAttribute('data-inactive', String(off));
+      if (off && verdict.reason) option.setAttribute('title', verdict.reason);
+      else if (entry.values) {
+        const spec = entry.values.find((v) => String(v.val) === option.getAttribute('data-value'));
+        if (spec?.desc) option.setAttribute('title', spec.desc);
+        else option.removeAttribute('title');
+      }
+    });
+  };
+
+  return { root, sync, setInactive, setValueInactive };
 }
 
 export default createControl;

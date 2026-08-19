@@ -23,7 +23,7 @@ import { FLEX_EXPLAIN_NOTES, FLEX_EXPLAIN_SAMPLES, AXIS_LABELS } from './topics/
 import { FLEX_PRESETS } from './topics/flex/presets.js';
 import { FLEX_EXAMPLES } from './topics/flex/examples.js';
 import { FLEX_CHALLENGES } from './topics/flex/challenges.js';
-import { isInactive, deriveState, partitionByScope, defaultsFrom } from './core/schema-spec.js';
+import { isInactive, inactiveValues, deriveState, partitionByScope, defaultsFrom } from './core/schema-spec.js';
 import { generateCode } from './core/codegen.js';
 import { FLEX_SCHEMA } from './topics/flex/schema.js';
 import { GRID_SCHEMA } from './topics/grid/schema.js';
@@ -120,7 +120,26 @@ const overlay = createGridOverlay({
 
 // 레이아웃만 달라져도 라인 자리가 바뀐다. 상태 변화로는 잡히지 않는 경로다.
 if (typeof ResizeObserver === 'function') {
-  new ResizeObserver(() => overlay.refresh()).observe(stage);
+  new ResizeObserver(() => {
+    overlay.refresh();
+    applyMeasured(renderer.remeasure());
+  }).observe(stage);
+}
+
+/**
+ * 측정 결과를 컨트롤 표시에만 옮긴다 (F-13 유형 B·C).
+ *
+ * ★ 여기서 dispatch 를 부르지 않는다. 부르면 구독자가 반응해 다시 렌더하고
+ * 다시 재는 고리가 생긴다 (PRD 8장 리스크). 이 함수가 건드리는 것은 컨트롤의
+ * 클래스와 속성뿐이고, 그것들은 렌더를 유발하지 않는다.
+ *
+ * 어떤 속성이 어떤 측정에 매여 있는지는 스키마가 정하고 판정은 isInactive 가
+ * 한다. 이 파일에도 속성명 분기가 없다.
+ */
+function applyMeasured(measured) {
+  const state = store.getState();
+  syncContainerControls(state, measured);
+  syncItemControls(state, measured);
 }
 
 /* --------------------------------------------------------------------------
@@ -149,12 +168,12 @@ function clear(node) {
 function buildContainerControls(topic, state) {
   clear(panel);
   containerControls = partitionByScope(SCHEMAS[topic]).container.map((entry) => {
-    const { root, sync, setInactive } = createControl(entry, {
+    const { root, sync, setInactive, setValueInactive } = createControl(entry, {
       value: state.container[entry.jsProp],
       onChange: (jsProp, value) => store.dispatch({ container: { [jsProp]: value } }),
     });
     panel.appendChild(root);
-    return { entry, sync, setInactive };
+    return { entry, sync, setInactive, setValueInactive };
   });
 }
 
@@ -166,12 +185,13 @@ function buildContainerControls(topic, state) {
  * flex-wrap을 wrap으로 바꾸면 align-content가 즉시 살아나는 것은 이 한 줄
  * 덕분이다.
  */
-function syncContainerControls(state) {
+function syncContainerControls(state, measured = renderer.getMeasured()) {
   const derived = deriveState(state);
 
-  containerControls.forEach(({ entry, sync, setInactive }) => {
+  containerControls.forEach(({ entry, sync, setInactive, setValueInactive }) => {
     sync(state.container[entry.jsProp]);
-    setInactive(isInactive(entry, { container: state.container, state: derived }));
+    setInactive(isInactive(entry, { container: state.container, state: derived, measured }));
+    setValueInactive(inactiveValues(entry, measured));
   });
 }
 
@@ -190,16 +210,16 @@ const itemTargetLabel = document.getElementById('fgp-item-props-target');
 function buildItemControls(topic, state) {
   clear(itemPanel);
   itemControls = partitionByScope(SCHEMAS[topic]).item.map((entry) => {
-    const { root, sync, setInactive } = createControl(entry, {
+    const { root, sync, setInactive, setValueInactive } = createControl(entry, {
       value: selectedItem(state)?.[entry.jsProp],
       onChange: patchSelectedItem,
     });
     itemPanel.appendChild(root);
-    return { entry, sync, setInactive };
+    return { entry, sync, setInactive, setValueInactive };
   });
 }
 
-function syncItemControls(state) {
+function syncItemControls(state, measured = renderer.getMeasured()) {
   const target = selectedItem(state);
   const derived = deriveState(state);
 
@@ -210,9 +230,10 @@ function syncItemControls(state) {
 
   itemTargetLabel.textContent = `${state.items.indexOf(target) + 1}번 아이템`;
 
-  itemControls.forEach(({ entry, sync, setInactive }) => {
+  itemControls.forEach(({ entry, sync, setInactive, setValueInactive }) => {
     sync(target[entry.jsProp]);
-    setInactive(isInactive(entry, { container: state.container, state: derived }));
+    setInactive(isInactive(entry, { container: state.container, state: derived, measured }));
+    setValueInactive(inactiveValues(entry, measured));
   });
 }
 
@@ -717,3 +738,11 @@ function sync(state) {
 
 store.subscribe(sync);
 sync(store.getState());
+
+/**
+ * 측정 통지 구독. store 구독과 별개 경로다.
+ *
+ * 순서가 중요하다 — 컨트롤이 세워진 뒤에 걸어야 첫 통지가 헛돌지 않는다.
+ * onMeasure 는 등록 즉시 지금 값으로 한 번 부른다.
+ */
+renderer.onMeasure(applyMeasured);

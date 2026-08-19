@@ -345,6 +345,17 @@ export function createRenderer({ store, schemas, root, doc = globalThis.document
   render();
   remeasure();
 
+  /**
+   * 첫 측정은 한 프레임 뒤에 다시 한다.
+   *
+   * 모듈이 도는 시점에는 아직 배치가 끝나지 않아 사각형이 전부 0 이다. 그대로
+   * 두면 "남는 공간 없음 · 넘치지 않음" 으로 읽혀 멀쩡한 컨트롤이 첫 화면에서
+   * 회색으로 뜬다. 배치가 끝난 뒤 한 번 더 재서 바로잡는다.
+   */
+  if (typeof globalThis.requestAnimationFrame === 'function') {
+    globalThis.requestAnimationFrame(() => remeasure());
+  }
+
   /** 구독을 끊고 만들어 둔 DOM을 걷어낸다. */
   function destroy() {
     unsubscribe();

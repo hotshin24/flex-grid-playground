@@ -1161,6 +1161,26 @@ code.fgp-pane__item__name {
   overflow-x: auto;
 }
 
+/**
+ * 값 하나만 죽은 상태 (F-13 유형 B·C 중 값 단위).
+ *
+ * 속성은 멀쩡하고 그 값만 지금 아무 일도 하지 않는다. 컨트롤 전체를 회색으로
+ * 만들지 않고 버튼 하나만 흐린다. 색만으로 알리지 않는다 — 글자에 취소선을 함께
+ * 그어 색각 이상 사용자에게도 남는다 (PRD 5.5).
+ *
+ * disabled 를 걸지 않으므로 눌러 보고 아무 일이 없다는 것을 직접 확인할 수 있다
+ * (F-13-2). 그래서 마우스 커서도 그대로 둔다.
+ */
+.fgp-control__option.is-value-inactive {
+  border-style: dashed;
+  color: var(--fgp-text-muted);
+  text-decoration: line-through;
+}
+
+.fgp-control__option.is-value-inactive.is-checked {
+  color: var(--fgp-text-secondary);
+}
+
 /* --------------------------------------------------------------------------
    자유 문자열 컨트롤 (text)
 
