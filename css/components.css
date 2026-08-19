@@ -976,6 +976,76 @@ code.fgp-pane__item__name {
 }
 
 /* --------------------------------------------------------------------------
+   라인 좌표 편집기 (GR-02)
+   -------------------------------------------------------------------------- */
+
+.fgp-span {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+.fgp-span__mode {
+  display: flex;
+  gap: var(--sp-1);
+}
+
+.fgp-span__option {
+  flex: 1;
+  padding: var(--sp-1);
+  border: 1px solid var(--fgp-border-default);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--fgp-text-secondary);
+  font-family: var(--fgp-font-code);
+  font-size: var(--fs-3xs);
+}
+
+.fgp-span__option:hover {
+  color: var(--fgp-text-primary);
+  border-color: var(--fgp-border-strong);
+}
+
+.fgp-span__option[aria-checked='true'] {
+  background: var(--fgp-accent-faint);
+  border-color: var(--fgp-accent-quiet);
+  color: var(--fgp-accent-text);
+}
+
+.fgp-span__field {
+  width: 100%;
+  padding: var(--sp-1);
+  border: 1px solid var(--fgp-border-default);
+  border-radius: var(--radius-sm);
+  background: var(--fgp-surface-sunken);
+  color: var(--fgp-text-primary);
+  font-family: var(--fgp-font-numeric);
+  font-size: var(--fs-3xs);
+}
+
+.fgp-span__field[hidden] {
+  display: none;
+}
+
+/* 범위를 막지 않는 대신 무엇을 넣는 자리인지 알려 준다 */
+.fgp-span__hint {
+  margin: var(--sp-0);
+  color: var(--fgp-text-muted);
+  font-size: var(--fs-3xs);
+  line-height: var(--lh-base);
+}
+
+.fgp-span__preview {
+  padding: var(--sp-1) var(--sp-2);
+  background: var(--fgp-code-bg);
+  border: 1px solid var(--fgp-border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--fgp-code-value);
+  font-family: var(--fgp-font-code);
+  font-size: var(--fs-3xs);
+}
+
+/* --------------------------------------------------------------------------
    토픽 전환 (F-01)
    -------------------------------------------------------------------------- */
 

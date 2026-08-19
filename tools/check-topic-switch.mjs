@@ -183,10 +183,10 @@ section('Grid 컨트롤');
   check('예정 표시가 붙은 것과 동작하는 것으로 나뉜다',
     pending.length + live.length === 19, `예정 ${pending.length} · 동작 ${live.length}`);
   check('예정은 미구현 컨트롤 종류뿐',
-    pending.every((b) => ['area-grid', 'span', 'text'].includes(b.entry.control)),
+    pending.every((b) => ['area-grid', 'text'].includes(b.entry.control)),
     [...new Set(pending.map((b) => b.entry.control))].join(', '));
   check('동작하는 것은 이미 만든 컨트롤 종류뿐',
-    live.every((b) => ['enum', 'number', 'length', 'track-list'].includes(b.entry.control)),
+    live.every((b) => ['enum', 'number', 'length', 'track-list', 'span'].includes(b.entry.control)),
     [...new Set(live.map((b) => b.entry.control))].join(', '));
   check('예정도 라벨은 갖는다 — 목록에서 빠지지 않는다',
     pending.every((b) => walk(b.root).some((n) => n.textContent === b.entry.prop)),

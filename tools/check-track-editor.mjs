@@ -299,8 +299,9 @@ section('controls.js 연결');
 {
   const controls = codeOnly(read('../js/ui/controls.js'));
   check('PENDING_CONTROLS에서 빠졌다', !/PENDING_CONTROLS[^;]*'track-list'/.test(controls));
-  check('area-grid · span은 아직 남아 있다',
-    /PENDING_CONTROLS = new Set\(\['area-grid', 'span'\]\)/.test(controls));
+  check('area-grid는 아직 남아 있다',
+    /PENDING_CONTROLS = new Set\(\['area-grid'\]\)/.test(controls),
+    'span은 GR-02에서 빠졌다');
   check('control 값으로만 분기한다 — 토픽을 모른다',
     !/topic/.test(controls), '토픽 이름도 topic 변수도 없다');
 
