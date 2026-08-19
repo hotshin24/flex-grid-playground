@@ -111,11 +111,15 @@ export const GRID_PRESETS = [
       gridAutoRows: '72px',
     },
     items: [
+      // 4열 판이다. 배치 순서가 dense 의 학습 지점이므로 폭을 일부러 이렇게 둔다.
+      //   1번(2폭·2높이) → 1~2열     2번(1폭) → 3열
+      //   3번(2폭) → 4열 하나로는 안 들어가 다음 줄로 내려간다. 1행 4열이 빈다
+      //   4번(1폭) → row 면 3행으로, row dense 면 그 빈 1행 4열을 메운다
       { gridArea: 'auto', gridColumnStart: 'auto', gridColumnEnd: 'span 2', gridRowStart: 'auto', gridRowEnd: 'span 2', justifySelf: 'auto', alignSelf: 'auto', width: null, height: null },
-      { gridArea: 'auto', gridColumnStart: 'auto', gridColumnEnd: 'span 2', gridRowStart: 'auto', gridRowEnd: 'auto', justifySelf: 'auto', alignSelf: 'auto', width: null, height: null },
-      { gridArea: 'auto', gridColumnStart: 'auto', gridColumnEnd: 'auto', gridRowStart: 'auto', gridRowEnd: 'span 2', justifySelf: 'auto', alignSelf: 'auto', width: null, height: null },
       { gridArea: 'auto', gridColumnStart: 'auto', gridColumnEnd: 'auto', gridRowStart: 'auto', gridRowEnd: 'auto', justifySelf: 'auto', alignSelf: 'auto', width: null, height: null },
       { gridArea: 'auto', gridColumnStart: 'auto', gridColumnEnd: 'span 2', gridRowStart: 'auto', gridRowEnd: 'auto', justifySelf: 'auto', alignSelf: 'auto', width: null, height: null },
+      { gridArea: 'auto', gridColumnStart: 'auto', gridColumnEnd: 'auto', gridRowStart: 'auto', gridRowEnd: 'auto', justifySelf: 'auto', alignSelf: 'auto', width: null, height: null },
+      { gridArea: 'auto', gridColumnStart: 'auto', gridColumnEnd: 'auto', gridRowStart: 'auto', gridRowEnd: 'auto', justifySelf: 'auto', alignSelf: 'auto', width: null, height: null },
     ],
   },
   {
