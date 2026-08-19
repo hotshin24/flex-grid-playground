@@ -91,10 +91,13 @@ function makeDom() {
 }
 
 function setup(options = {}) {
+  const { selectable = true, label = '프리뷰 아이템', ...storeOptions } = options;
   const dom = makeDom();
   const root = dom.createElement('div');
-  const store = createStore({ flex: FLEX_SCHEMA, grid: GRID_SCHEMA }, options);
-  const renderer = createRenderer({ store, schemas: { flex: FLEX_SCHEMA, grid: GRID_SCHEMA }, root, doc: dom.doc });
+  const store = createStore({ flex: FLEX_SCHEMA, grid: GRID_SCHEMA }, storeOptions);
+  const renderer = createRenderer({
+    store, schemas: { flex: FLEX_SCHEMA, grid: GRID_SCHEMA }, root, selectable, label, doc: dom.doc,
+  });
   return { dom, root, store, renderer, container: renderer.getContainer() };
 }
 
@@ -267,26 +270,88 @@ section('선택 상태');
 
   check('초기 선택은 1번', container.children[0].classList.contains(SELECTED_CLASS));
   check('나머지는 미선택', !container.children[1].classList.contains(SELECTED_CLASS));
-  // aria-selected 가 아니라 aria-current 다. 역할 없는 div 에 aria-selected 를
-  // 붙이면 axe 가 aria-allowed-attr 로 잡는다.
-  check('aria-current 로 알린다',
-    container.children[0].getAttribute('aria-current') === 'true');
-  check('고르지 않은 것에는 속성이 없다',
-    container.children[1].getAttribute('aria-current') === null,
-    'aria-current="false" 는 아무것도 알리지 않으면서 트리만 채운다');
-  // 주석은 걷어내고 본다 — 왜 안 쓰는지 적어 둔 설명까지 위반으로 세면 곤란하다
-  const rendererCode = readFileSync(new URL('../js/core/renderer.js', import.meta.url), 'utf8')
-    .replace(/\/\*[\s\S]*?\*\//g, ' ')
-    .replace(/^\s*\/\/.*$/gm, ' ');
-  check('aria-selected 를 쓰지 않는다',
-    container.children.every((c) => c.getAttribute('aria-selected') === null)
-    && !/aria-selected/.test(rendererCode));
+  /* 아이템이 포커스를 받게 되면서 listbox / option 이 사실과 맞는 역할이 됐다.
+     직전에는 aria-current 였다 — 그때는 키보드로 고를 수 없어 option 을
+     선언하면 없는 조작을 약속하는 셈이었다. */
+  check('aria-selected 로 알린다',
+    container.children[0].getAttribute('aria-selected') === 'true'
+    && container.children[1].getAttribute('aria-selected') === 'false');
+  check('aria-current 를 더 이상 쓰지 않는다',
+    container.children.every((c) => c.getAttribute('aria-current') === null));
 
   store.dispatch({ selectedId: 3 });
   check('선택 이동', !container.children[0].classList.contains(SELECTED_CLASS) &&
     container.children[2].classList.contains(SELECTED_CLASS));
-  check('aria-current 이동', container.children[2].getAttribute('aria-current') === 'true'
-    && container.children[0].getAttribute('aria-current') === null);
+  check('aria-selected 이동', container.children[2].getAttribute('aria-selected') === 'true'
+    && container.children[0].getAttribute('aria-selected') === 'false');
+}
+
+/* ==========================================================================
+   키보드 선택 — listbox / option 과 roving tabindex
+   ========================================================================== */
+section('키보드 선택');
+
+{
+  const { container, store } = setup();
+
+  check('컨테이너가 listbox', container.getAttribute('role') === 'listbox');
+  check('listbox 에 이름이 있다', container.getAttribute('aria-label') === '프리뷰 아이템',
+    'listbox 는 접근명이 필요하다');
+  check('아이템이 option', container.children.every((c) => c.getAttribute('role') === 'option'));
+  check('aria-orientation 을 두지 않는다', container.getAttribute('aria-orientation') === null,
+    '주축이 속성값에 따라 바뀌므로 한쪽으로 못 박으면 거짓이 된다');
+
+  // roving tabindex — 묶음 전체가 탭 한 스톱
+  const tabbable = () => container.children.filter((c) => c.getAttribute('tabindex') === '0');
+  check('탭 진입점은 하나뿐', tabbable().length === 1, `${tabbable().length}개`);
+  check('진입점이 고른 아이템', tabbable()[0] === container.children[0]);
+  check('나머지는 -1', container.children.slice(1)
+    .every((c) => c.getAttribute('tabindex') === '-1'));
+
+  store.dispatch({ selectedId: 3 });
+  check('선택을 옮기면 진입점도 옮겨간다',
+    tabbable().length === 1 && tabbable()[0] === container.children[2]);
+
+  // 스무 개까지 늘어나도 스톱은 하나다
+  withItemCount(store, 20);
+  check('아이템 20개에서도 진입점 하나', container.children.length === 20 && tabbable().length === 1,
+    `아이템 ${container.children.length}개 · 진입점 ${tabbable().length}개`);
+  check('20개 전부 option', container.children.every((c) => c.getAttribute('role') === 'option'));
+
+  // 번호는 그대로 붙는다
+  check('아이템 번호가 1부터', container.children.slice(0, 3).map((c) => c.textContent).join(',') === '1,2,3');
+}
+
+/* --------------------------------------------------------------------------
+   고를 수 없는 프리뷰 — 챌린지 답안이 쓴다
+   -------------------------------------------------------------------------- */
+section('고를 수 없는 프리뷰');
+
+{
+  const { container } = setup({ selectable: false });
+
+  check('listbox 가 아니다', container.getAttribute('role') === null);
+  check('option 이 아니다', container.children.every((c) => c.getAttribute('role') === null));
+  check('탭 스톱이 없다', container.children.every((c) => c.getAttribute('tabindex') === null),
+    '아이템을 골라도 할 수 있는 일이 없는 화면이다');
+  check('aria-selected 도 없다', container.children.every((c) => c.getAttribute('aria-selected') === null));
+  check('번호는 그대로 붙는다', container.children[0].textContent === '1');
+  check('스타일은 똑같이 적용', container.children[0].style.width === '80px');
+
+  const src = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
+  check('플레이그라운드만 selectable 로 세운다',
+    /selectable: true/.test(src) && (src.match(/selectable:/g) ?? []).length === 1,
+    '챌린지 프리뷰는 기본값(거짓)으로 둔다');
+  check('화살표·Home·End 를 받는다',
+    /ArrowRight/.test(src) && /ArrowDown/.test(src) && /'Home'/.test(src) && /'End'/.test(src));
+  check('DOM 순서로 옮긴다', /items\.findIndex/.test(src) && !/getBoundingClientRect/.test(src.split('아이템 선택')[1] ?? ''),
+    '시각 순서는 flex-direction 에 따라 뒤집힌다');
+  check('옮긴 뒤 포커스를 따라 보낸다', /focusItem\(/.test(src));
+  const keydownBlock = src.slice(src.indexOf("stage.addEventListener('keydown'"));
+  check('방향키가 페이지를 스크롤하지 않게 막는다',
+    /event\.preventDefault\(\)/.test(keydownBlock));
+  check('아이템 위에서 누른 키만 가로챈다', /if \(!itemElAt\(event\.target\)\) return;/.test(keydownBlock),
+    '입력란에서 누른 화살표까지 먹으면 곤란하다');
 }
 
 /* ==========================================================================

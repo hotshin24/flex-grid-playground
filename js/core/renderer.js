@@ -181,7 +181,19 @@ function groupLines(rects, vertical) {
   return [...lines.values()];
 }
 
-export function createRenderer({ store, schemas, root, doc = globalThis.document }) {
+/**
+ * 아이템을 고를 수 있는 프리뷰인가.
+ *
+ * 플레이그라운드만 참이다. 거기서는 아이템 속성 컨트롤과 크기 슬라이더가 전부
+ * 고른 아이템 하나를 대상으로 하므로, 고르는 일 자체가 기능이다.
+ *
+ * 챌린지 탭은 거짓이다. 그쪽은 컨테이너 속성만 다루므로 아이템을 골라도 할 수
+ * 있는 일이 없다. 그런데도 listbox 로 만들면 아무 기능 없는 탭 스톱이 하나
+ * 늘고, aria-selected 가 아무 뜻도 없이 읽힌다.
+ */
+export function createRenderer({
+  store, schemas, root, selectable = false, label, doc = globalThis.document,
+}) {
   if (!store) throw new Error('createRenderer: store가 필요합니다');
   if (!schemas) throw new Error('createRenderer: schemas가 필요합니다');
   if (!root) throw new Error('createRenderer: root 요소가 필요합니다');
@@ -189,11 +201,31 @@ export function createRenderer({ store, schemas, root, doc = globalThis.document
 
   const container = doc.createElement('div');
   container.className = CONTAINER_CLASS;
+
+  /**
+   * 고를 수 있는 프리뷰는 listbox 다.
+   *
+   * 아이템이 포커스를 받고 화살표로 옮겨 다니며 그중 하나가 선택 상태인 묶음
+   * 이므로 listbox / option 이 그 패턴 그대로다. 직전 커밋에서 aria-current 로
+   * 바꿨던 것을 aria-selected 로 되돌린다 — 그때는 아이템이 포커스를 받지
+   * 못해 option 을 선언하면 없는 조작을 약속하는 셈이었지만, 이제 조작이
+   * 생겼으므로 역할이 사실과 맞는다.
+   *
+   * aria-orientation 은 두지 않는다. 주축이 flex-direction · grid-auto-flow 에
+   * 따라 바뀌는데 한쪽으로 못 박으면 나머지 방향이 거짓이 된다. 값을 비우면
+   * 화살표 네 방향이 모두 유효하다는 뜻이 되고, 실제 동작도 그렇다.
+   */
+  if (selectable) {
+    container.setAttribute('role', 'listbox');
+    if (label) container.setAttribute('aria-label', label);
+  }
+
   root.appendChild(container);
 
   function createItemEl() {
     const el = doc.createElement('div');
     el.className = ITEM_CLASS;
+    if (selectable) el.setAttribute('role', 'option');
     return el;
   }
 
@@ -229,32 +261,25 @@ export function createRenderer({ store, schemas, root, doc = globalThis.document
 
     applyStyles(el, styles);
 
-    /**
-     * 선택 표시는 aria-current 로 한다.
-     *
-     * aria-selected 를 쓰던 자리인데, 그 속성은 option · tab · row · gridcell
-     * 같은 역할에만 허용된다. 프리뷰 아이템은 역할 없는 div 라 axe 가
-     * aria-allowed-attr 위반으로 잡았다(4건).
-     *
-     * 역할을 주는 쪽은 택하지 않았다. option 을 붙이려면 listbox 부모와
-     * 포커스 이동이 따라와야 하는데, 지금 프리뷰 아이템은 tabindex 가 없어
-     * 키보드로 고를 수 없다. 구현하지 않은 위젯 패턴을 선언하면 보조 기술에
-     * 없는 조작을 약속하는 셈이고, 역할만 붙이면 위반이 다른 이름으로 옮겨갈
-     * 뿐이다. aria-current 는 전역 속성이라 역할을 요구하지 않으면서
-     * "여럿 중 지금 이것" 을 그대로 뜻한다.
-     *
-     * 고르지 않은 아이템에는 속성을 지운다. aria-current="false" 는 아무것도
-     * 알리지 않으면서 접근성 트리만 채운다 — 아이템이 스무 개까지 늘어난다.
-     */
     const selected = item.id === selectedId;
     el.classList.toggle(SELECTED_CLASS, selected);
     el.setAttribute('data-item-id', String(item.id));
 
-    if (selected) el.setAttribute('aria-current', 'true');
-    else el.removeAttribute('aria-current');
+    // 번호는 어느 프리뷰에나 붙는다. 챌린지 답안도 같은 그림이어야 한다.
+    const text = String(index + 1);
+    if (el.textContent !== text) el.textContent = text;
 
-    const label = String(index + 1);
-    if (el.textContent !== label) el.textContent = label;
+    /**
+     * 탭 순회에서 묶음 전체가 한 스톱이다 (roving tabindex).
+     *
+     * 아이템은 스무 개까지 늘어난다. 전부 스톱이 되면 프리뷰를 지나 코드
+     * 영역에 닿는 데만 탭을 스무 번 눌러야 한다. controls.js 의 enum 컨트롤이
+     * 쓰는 방식과 같다 — 고른 것만 0, 나머지는 -1.
+     */
+    if (!selectable) return;
+
+    el.setAttribute('aria-selected', String(selected));
+    el.setAttribute('tabindex', selected ? '0' : '-1');
   }
 
   function render() {

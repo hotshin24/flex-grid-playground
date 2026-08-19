@@ -44,6 +44,9 @@ const TOPIC_LABELS = { flex: 'Flex', grid: 'Grid' };
 /** 대조 뷰의 접힘 줄 문구. 뒤에 붙는 쌍 수는 데이터가 센다. */
 const COMPARE_TITLE = '같은 이름, 다른 동작';
 
+/** 프리뷰 아이템 묶음의 접근명. listbox 에는 이름이 있어야 한다. */
+const PREVIEW_LABEL = '프리뷰 아이템';
+
 /** 토픽에서 주입받는다. M3의 Grid는 자기 목록을 여기에 더한다. */
 const EXPLAIN = {
   flex: {
@@ -108,7 +111,9 @@ const VIEW_CSS_PROP = {
 const store = createStore(SCHEMAS);
 const stage = document.getElementById('fgp-preview');
 
-const renderer = createRenderer({ store, schemas: SCHEMAS, root: stage });
+const renderer = createRenderer({
+  store, schemas: SCHEMAS, root: stage, selectable: true, label: PREVIEW_LABEL,
+});
 
 /* --------------------------------------------------------------------------
    라인 번호 오버레이 (GR-05)
@@ -770,13 +775,71 @@ function syncItemSize(state) {
 }
 
 /* --------------------------------------------------------------------------
-   아이템 선택 — 프리뷰를 눌러 고른다 (F-05)
+   아이템 선택 — 눌러서 고르고, 화살표로 옮겨 다닌다 (F-05)
+
+   아이템 속성 여섯~일곱 종과 크기 슬라이더가 전부 고른 아이템 하나를 대상으로
+   한다. 고르는 길이 마우스뿐이면 키보드만 쓰는 사람은 1번에 갇혀 나머지
+   아이템에 어떤 값도 줄 수 없다.
+
+   ── 화살표를 시각 순서가 아니라 DOM 순서에 맞춘 이유 ─────────────────────
+
+   프리뷰의 시각 순서는 flex-direction · grid-auto-flow · wrap-reverse 에 따라
+   뒤집힌다. 그런데 그 속성들이야말로 지금 학습자가 만지고 있는 대상이다.
+   화살표를 시각 순서에 묶으면, row 에서 오른쪽이던 "다음" 이 column 으로
+   바꾸는 순간 아래로 옮겨간다 — 속성을 배우려고 값을 바꿀 때마다 조작 규칙
+   자체가 흔들린다.
+
+   아이템에는 1부터 번호가 찍혀 있고 컨트롤 패널도 "선택된 아이템 3" 이라고
+   적는다. 사용자의 머릿속 순서는 그 번호이지 픽셀 자리가 아니다. 그래서
+   번호 순서, 곧 DOM 순서로 간다.
+
+   대신 방향을 하나로 묶지 않는다. 오른쪽·아래가 다음, 왼쪽·위가 이전이다.
+   세로로 쌓인 판에서는 아래 화살표가, 가로로 늘어선 판에서는 오른쪽 화살표가
+   자연스럽게 "다음" 으로 읽힌다. controls.js 의 enum 컨트롤과 같은 규칙이다.
+   Home · End 도 받는다 — 스무 개에서 끝으로 가는 데 열아홉 번을 누를 수는 없다.
    -------------------------------------------------------------------------- */
 
+const NEXT_ITEM_KEYS = new Set(['ArrowRight', 'ArrowDown']);
+const PREV_ITEM_KEYS = new Set(['ArrowLeft', 'ArrowUp']);
+
+const itemElAt = (target) => (typeof target?.closest === 'function'
+  ? target.closest('[data-item-id]')
+  : null);
+
+/** 고른 아이템으로 포커스를 옮긴다. 렌더가 끝난 뒤라야 tabindex 가 0 이다. */
+function focusItem(id) {
+  const el = stage.querySelector(`[data-item-id="${id}"]`);
+  if (el && typeof el.focus === 'function') el.focus();
+}
+
 stage.addEventListener('click', (event) => {
-  const el = event.target.closest('[data-item-id]');
+  const el = itemElAt(event.target);
   if (!el) return;
   store.dispatch({ selectedId: Number(el.dataset.itemId) });
+});
+
+stage.addEventListener('keydown', (event) => {
+  if (!itemElAt(event.target)) return;
+
+  const { items, selectedId } = store.getState();
+  if (items.length === 0) return;
+
+  const at = items.findIndex((item) => item.id === selectedId);
+  const from = at === -1 ? 0 : at;
+
+  let next = null;
+  if (NEXT_ITEM_KEYS.has(event.key)) next = (from + 1) % items.length;
+  else if (PREV_ITEM_KEYS.has(event.key)) next = (from - 1 + items.length) % items.length;
+  else if (event.key === 'Home') next = 0;
+  else if (event.key === 'End') next = items.length - 1;
+  else return;
+
+  // 방향키가 페이지를 스크롤하지 않게 막는다. 프리뷰 안에서만 움직인다.
+  event.preventDefault();
+
+  const id = items[next].id;
+  store.dispatch({ selectedId: id });
+  focusItem(id);
 });
 
 /* --------------------------------------------------------------------------

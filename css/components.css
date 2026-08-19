@@ -331,6 +331,11 @@
     color var(--dur-preview) var(--ease-out);
 }
 
+/* 고를 수 있는 프리뷰의 아이템. 챌린지 답안에는 role 이 없어 걸리지 않는다 */
+.fgp-preview__item[role='option'] {
+  cursor: pointer;
+}
+
 .fgp-preview__item.is-selected {
   border-color: var(--fgp-preview-item-selected);
   color: var(--fgp-preview-item-selected);
