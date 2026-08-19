@@ -361,15 +361,30 @@ section('인라인 onclick · style 0건');
 section('M3 보류 컨트롤');
 
 {
-  const pending = ['track-list', 'area-grid', 'span'];
+  // track-list 는 GR-03 에서 구현했다. 남은 것은 area-grid · span · text 다.
+  const pending = ['area-grid', 'span', 'text'];
   const entries = pending.map((c) => GRID_SCHEMA.find((e) => e.control === c));
   check('grid 스키마에서 3종 확보', entries.every(Boolean), entries.map((e) => e?.prop).join(', '));
 
   const roots = entries.map((entry) => build(entry).root);
-  check('오류 없이 자리만 생성', roots.every((r) => r && r.children.length === 2));
+  /**
+   * 자식 수를 세지 않는다. PENDING_CONTROLS 로 잡힌 종류(area-grid · span)는
+   * 일찍 돌아와 라벨 + 자리 두 개뿐이고, switch 의 default 로 떨어지는 종류(text)는
+   * 그 뒤에 조건부 비활성 노트까지 붙어 세 개다. 둘 다 "라벨과 자리는 있고
+   * 조작 수단은 없다"는 점에서 같다.
+   */
+  check('오류 없이 자리만 생성',
+    roots.every((r) => r && r.children.length >= 2 && findByClass(r, PROP_CLASS).length === 1),
+    roots.map((r) => r.children.length).join(' · '));
   check('data-pending=M3 표시', roots.every((r) => findByClass(r, VALUES_CLASS)[0].getAttribute('data-pending') === 'M3'));
   check('조작 요소 없음', roots.every((r) => optionsOf(r).length === 0));
   check('라벨은 그대로 생성', roots.every((r) => findByClass(r, PROP_CLASS)[0].textContent.length > 0));
+
+  const track = GRID_SCHEMA.find((e) => e.control === 'track-list');
+  const built = build(track).root;
+  check('track-list는 더 이상 보류가 아니다',
+    findByClass(built, VALUES_CLASS).every((n) => n.getAttribute('data-pending') === null),
+    track.prop);
 }
 
 /* ==========================================================================

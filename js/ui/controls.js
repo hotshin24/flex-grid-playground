@@ -13,6 +13,7 @@
  */
 
 import { CONTROL_TYPES } from '../core/schema-spec.js';
+import { createTrackEditor } from './track-editor.js';
 
 /* --------------------------------------------------------------------------
    DOM 계약 — components.css가 받는 이름
@@ -37,8 +38,8 @@ export const REMEDY_CLASS = 'fgp-control__remedy';
 /** 숫자가 앞에 붙는 단위. 나머지(auto·content 등)는 키워드로 본다. */
 const NUMERIC_UNITS = new Set(['px', 'rem', 'em', '%', 'fr', 'vh', 'vw', 'ch']);
 
-/** M3에서 구현할 컨트롤. 분기 자리만 잡아 둔다. */
-const PENDING_CONTROLS = new Set(['track-list', 'area-grid', 'span']);
+/** M3에서 구현할 컨트롤. 분기 자리만 잡아 둔다. track-list는 GR-03에서 빠졌다. */
+const PENDING_CONTROLS = new Set(['area-grid', 'span']);
 
 /** label 요소와 입력을 for/id로 잇기 위한 일련번호. */
 let uid = 0;
@@ -543,6 +544,14 @@ export function createControl(entry, { value, onChange, doc = globalThis.documen
         if (doc.activeElement === state.input) return;
         state.input.value = num;
       };
+      break;
+    }
+    case 'track-list': {
+      // 편집기는 따로 산다. 값 변환은 하지 않고 계약의 serialize·parse를 쓴다.
+      const editor = createTrackEditor(entry, { value: current, onChange: notify, doc });
+      root.appendChild(editor.root);
+      state.interactive = editor.interactive;
+      sync = editor.sync;
       break;
     }
     default: {

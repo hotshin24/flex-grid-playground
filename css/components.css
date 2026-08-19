@@ -876,6 +876,106 @@ code.fgp-pane__item__name {
 }
 
 /* --------------------------------------------------------------------------
+   트랙 편집기 (GR-03)
+   -------------------------------------------------------------------------- */
+
+.fgp-track {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.fgp-track__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+/* 번호 · 단위 · 값 · 버튼 세 개. 값 칸만 남는 자리를 먹는다 */
+.fgp-track__row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 7rem) minmax(0, 1fr) repeat(3, auto);
+  align-items: center;
+  gap: var(--sp-1);
+}
+
+.fgp-track__num {
+  color: var(--fgp-text-muted);
+  font-family: var(--fgp-font-numeric);
+  font-size: var(--fs-3xs);
+}
+
+.fgp-track__unit {
+  min-width: 0;
+  padding: var(--sp-1);
+  border: 1px solid var(--fgp-border-default);
+  border-radius: var(--radius-sm);
+  background: var(--fgp-surface-raised);
+  color: var(--fgp-text-primary);
+  font-family: var(--fgp-font-code);
+  font-size: var(--fs-3xs);
+}
+
+.fgp-track__size {
+  min-width: 0;
+  width: 100%;
+  padding: var(--sp-1);
+  border: 1px solid var(--fgp-border-default);
+  border-radius: var(--radius-sm);
+  background: var(--fgp-surface-sunken);
+  color: var(--fgp-text-primary);
+  font-family: var(--fgp-font-numeric);
+  font-size: var(--fs-3xs);
+}
+
+/* minmax 는 최소·최대 두 칸이 한 자리를 나눠 쓴다 */
+.fgp-track__range {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-1);
+  min-width: 0;
+}
+
+.fgp-track__bar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.fgp-track__toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  color: var(--fgp-text-muted);
+  font-size: var(--fs-3xs);
+}
+
+/* 지금 값이 CSS 로 어떻게 나가는지 그대로 보여 준다 */
+.fgp-track__preview {
+  padding: var(--sp-1) var(--sp-2);
+  background: var(--fgp-code-bg);
+  border: 1px solid var(--fgp-border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--fgp-code-value);
+  font-family: var(--fgp-font-code);
+  font-size: var(--fs-3xs);
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+/* 자리가 좁으면 값 칸을 다음 줄로 내린다 */
+@media (max-width: 1023px) {
+  .fgp-track__row {
+    grid-template-columns: auto minmax(0, 1fr) repeat(3, auto);
+  }
+
+  .fgp-track__range,
+  .fgp-track__row > .fgp-track__size {
+    grid-column: 1 / -1;
+  }
+}
+
+/* --------------------------------------------------------------------------
    토픽 전환 (F-01)
    -------------------------------------------------------------------------- */
 
