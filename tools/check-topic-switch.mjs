@@ -180,20 +180,39 @@ section('Grid 컨트롤');
   const pending = built.filter((b) => walk(b.root).some((n) => n.getAttribute('data-pending') === 'M3'));
   const live = built.filter((b) => !pending.includes(b));
 
-  check('예정 표시가 붙은 것과 동작하는 것으로 나뉜다',
-    pending.length + live.length === 19, `예정 ${pending.length} · 동작 ${live.length}`);
-  check('예정은 미구현 컨트롤 종류뿐',
-    pending.every((b) => ['text'].includes(b.entry.control)),
-    [...new Set(pending.map((b) => b.entry.control))].join(', '));
-  check('동작하는 것은 이미 만든 컨트롤 종류뿐',
-    live.every((b) => ['enum', 'number', 'length', 'track-list', 'span', 'area-grid'].includes(b.entry.control)),
-    [...new Set(live.map((b) => b.entry.control))].join(', '));
-  check('예정도 라벨은 갖는다 — 목록에서 빠지지 않는다',
-    pending.every((b) => walk(b.root).some((n) => n.textContent === b.entry.prop)),
-    pending.map((b) => b.entry.prop).join(', '));
+  /**
+   * M3 완료 기준 — "Grid 속성 19개 전부 조작 가능".
+   *
+   * 자리만 잡힌 것을 세지 않는다. 라벨이 있다고 조작이 되는 것은 아니다.
+   * 실제로 누르거나 칠 수 있는 요소가 붙어 있는지를 본다.
+   */
+  const OPERABLE = new Set(['BUTTON', 'INPUT', 'SELECT', 'TEXTAREA']);
+  const operable = (root) => walk(root).filter((n) => OPERABLE.has(n.tagName) && !n.disabled);
 
-  check('Flex 12개도 그대로 선다',
-    FLEX_SCHEMA.map((e) => createControl(e, { value: e.default, doc })).length === 12);
+  check('예정 표시 0건 — 19개가 전부 실물', pending.length === 0,
+    pending.map((b) => `${b.entry.prop}(${b.entry.control})`).join(', ') || `동작 ${live.length}`);
+
+  const mute = built.filter((b) => operable(b.root).length === 0);
+  check('19개 전부 조작 수단을 갖는다', mute.length === 0,
+    mute.map((b) => `${b.entry.prop}(${b.entry.control})`).join(', ')
+      || built.map((b) => operable(b.root).length).join(' · '));
+
+  check('쓰이는 control 종류 6가지가 전부 구현됐다',
+    [...new Set(built.map((b) => b.entry.control))].every(
+      (c) => ['enum', 'number', 'length', 'track-list', 'span', 'area-grid', 'text'].includes(c)),
+    [...new Set(built.map((b) => b.entry.control))].join(' · '));
+
+  const controlsSrc = codeOnly(read('../js/ui/controls.js'));
+  check('PENDING_CONTROLS가 비었다', /PENDING_CONTROLS = new Set\(\)/.test(controlsSrc));
+
+  check('전부 라벨을 갖는다 — 목록에서 빠지지 않는다',
+    built.every((b) => walk(b.root).some((n) => n.textContent === b.entry.prop)));
+
+  const flexBuilt = FLEX_SCHEMA.map((e) => ({ entry: e, root: createControl(e, { value: e.default, doc }).root }));
+  check('Flex 12개도 그대로 선다', flexBuilt.length === 12);
+  check('Flex 12개도 전부 조작 가능',
+    flexBuilt.every((b) => operable(b.root).length > 0),
+    flexBuilt.map((b) => operable(b.root).length).join(' · '));
 }
 
 /* ==========================================================================

@@ -214,6 +214,74 @@ function buildLength(entry, value, doc, state) {
   return wrap;
 }
 
+/**
+ * 자유 문자열 입력.
+ *
+ * 형식을 강제하지 않는다. grid-area 는 영역 이름 하나('header')로도, 네 라인
+ * 지정('1 / 1 / 3 / 2')으로도, auto 로도 쓴다. 셋 다 유효한 CSS 이고 어느
+ * 쪽으로 적을지는 배우는 사람이 정한다 — 여기서 하나만 통과시키면 나머지 둘을
+ * 배울 길이 막힌다.
+ *
+ * suggestions 를 받으면 datalist 로 붙인다. 고르는 목록이 아니라 거드는 목록이라
+ * 직접 친 값도 그대로 나간다. 이 파일은 그 목록이 어디서 왔는지 모른다 —
+ * store 를 import 하지 않는다는 원칙이 여기서도 그대로다.
+ */
+function buildText(entry, value, doc, state, suggestions) {
+  const input = doc.createElement('input');
+  input.className = FIELD_CLASS;
+  input.setAttribute('type', 'text');
+  input.setAttribute('id', state.inputId);
+  input.setAttribute('spellcheck', 'false');
+  input.setAttribute('autocomplete', 'off');
+  if (entry.placeholder) input.setAttribute('placeholder', entry.placeholder);
+  input.value = value == null ? '' : String(value);
+
+  const wrap = doc.createElement('div');
+  wrap.className = VALUES_CLASS;
+  wrap.appendChild(input);
+
+  const list = Array.isArray(suggestions) ? suggestions.filter(Boolean) : [];
+  if (list.length > 0) {
+    const listId = nextId(`${entry.prop}-list`);
+    const datalist = doc.createElement('datalist');
+    datalist.setAttribute('id', listId);
+
+    list.forEach((name) => {
+      const option = doc.createElement('option');
+      option.setAttribute('value', String(name));
+      datalist.appendChild(option);
+    });
+
+    input.setAttribute('list', listId);
+    wrap.appendChild(datalist);
+    state.datalist = datalist;
+  }
+
+  state.input = input;
+  state.interactive = [input];
+  return wrap;
+}
+
+/**
+ * 빈 입력은 알리지 않는다.
+ *
+ * length 컨트롤에서 겪은 것과 같은 자리다. 비우는 순간 어떤 값이 저장소로 나가고
+ * 그 값이 다시 입력란에 찍히면 지울 수가 없다. "아직 값이 없다"는 상태를 그대로
+ * 두고, 무언가 적혔을 때만 내보낸다.
+ */
+function bindText(root, entry, state, onChange) {
+  root.addEventListener('input', (e) => {
+    if (e.target !== state.input) return;
+
+    const raw = state.input.value;
+    if (raw.trim() === '') return;
+
+    const parsed = CONTROL_TYPES.text.parse(raw);
+    state.value = parsed;
+    onChange(entry.jsProp, parsed);
+  });
+}
+
 /** M3 대상. 자리만 만들고 조작 수단은 두지 않는다. */
 function buildPending(entry, doc) {
   const note = doc.createElement('div');
@@ -473,13 +541,14 @@ export function createRangeControl(config) {
  * @param {Object}   config
  * @param {*}        config.value        현재 값. 없으면 entry.default
  * @param {Function} config.onChange     (jsProp, value) => void
+ * @param {string[]} [config.suggestions] text 컨트롤의 거드는 목록. 호출자가 준다
  * @param {Document} [config.doc]        문서 객체. 테스트에서 대체 가능
  * @returns {{root: Element, sync: Function, setInactive: Function}}
  *          sync(value)는 저장소 값에 UI를 맞춘다. undo처럼 컨트롤 밖에서
  *          상태가 바뀌었을 때 호출한다. 호출해도 onChange는 불리지 않는다.
  *          setInactive(verdict)는 isInactive() 결과를 화면에 옮긴다.
  */
-export function createControl(entry, { value, onChange, doc = globalThis.document } = {}) {
+export function createControl(entry, { value, onChange, suggestions, doc = globalThis.document } = {}) {
   if (!entry) throw new Error('createControl: 스키마 항목이 필요합니다');
   if (!doc) throw new Error('createControl: document를 찾을 수 없습니다');
   if (!CONTROL_TYPES[entry.control]) {
@@ -576,8 +645,19 @@ export function createControl(entry, { value, onChange, doc = globalThis.documen
       sync = editor.sync;
       break;
     }
+    case 'text': {
+      root.appendChild(buildText(entry, current, doc, state, suggestions));
+      bindText(root, entry, state, notify);
+      sync = (next) => {
+        state.value = next;
+        // 치는 중인 칸은 덮어쓰지 않는다. 커서가 튀고 글자가 되돌아간다.
+        if (doc.activeElement === state.input) return;
+        state.input.value = next == null ? '' : String(next);
+      };
+      break;
+    }
     default: {
-      // text 등 계약에는 있으나 이번 범위 밖인 타입
+      // 계약에는 있으나 아직 편집기가 없는 타입. 자리만 만든다.
       root.appendChild(buildPending(entry, doc));
     }
   }

@@ -1162,6 +1162,29 @@ code.fgp-pane__item__name {
 }
 
 /* --------------------------------------------------------------------------
+   자유 문자열 컨트롤 (text)
+
+   grid-area 처럼 형태가 하나로 정해지지 않는 값을 받는다. datalist 를 붙이면
+   브라우저가 알아서 제안 목록을 띄우므로 여기서 따로 그릴 것이 없다.
+   -------------------------------------------------------------------------- */
+
+.fgp-control--text .fgp-control__field {
+  width: 100%;
+  min-width: 0;
+  padding: var(--sp-1) var(--sp-2);
+  border: 1px solid var(--fgp-border-default);
+  border-radius: var(--radius-sm);
+  background: var(--fgp-surface-sunken);
+  color: var(--fgp-text-primary);
+  font-family: var(--fgp-font-code);
+  font-size: var(--fs-3xs);
+}
+
+.fgp-control--text .fgp-control__field::placeholder {
+  color: var(--fgp-text-muted);
+}
+
+/* --------------------------------------------------------------------------
    그리드 라인 번호 오버레이 (GR-05)
    -------------------------------------------------------------------------- */
 

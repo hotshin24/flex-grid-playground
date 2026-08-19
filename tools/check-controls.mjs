@@ -358,38 +358,118 @@ section('인라인 onclick · style 0건');
 /* ==========================================================================
    M3 보류 컨트롤
    ========================================================================== */
-section('M3 보류 컨트롤');
+section('보류 컨트롤 없음');
 
 {
   /**
-   * PENDING_CONTROLS 는 GR-02 · GR-03 · GR-04 를 지나며 비었다. 이제 자리만
-   * 잡히는 것은 switch 의 default 로 떨어지는 종류, 즉 text 하나뿐이다.
+   * PENDING_CONTROLS 는 GR-02 · GR-03 · GR-04 를 지나며 비었고, switch 의
+   * default 로 떨어지던 text 도 채워졌다. 이제 grid 스키마의 어떤 항목도
+   * 자리만 잡히지 않는다.
+   *
+   * buildPending 은 지우지 않았다. 새 control 타입이 계약에 먼저 들어오고
+   * 편집기가 나중에 붙는 순서가 앞으로도 반복되기 때문이다.
    */
-  const pending = ['text'];
-  const entries = pending.map((c) => GRID_SCHEMA.find((e) => e.control === c));
-  check('grid 스키마에서 남은 보류 1종 확보', entries.every(Boolean), entries.map((e) => e?.prop).join(', '));
+  const roots = GRID_SCHEMA.map((entry) => ({ entry, root: build(entry).root }));
 
-  const roots = entries.map((entry) => build(entry).root);
-  /**
-   * 자식 수를 세지 않는다. PENDING_CONTROLS 로 잡힌 종류(area-grid · span)는
-   * 일찍 돌아와 라벨 + 자리 두 개뿐이고, switch 의 default 로 떨어지는 종류(text)는
-   * 그 뒤에 조건부 비활성 노트까지 붙어 세 개다. 둘 다 "라벨과 자리는 있고
-   * 조작 수단은 없다"는 점에서 같다.
-   */
-  check('오류 없이 자리만 생성',
-    roots.every((r) => r && r.children.length >= 2 && findByClass(r, PROP_CLASS).length === 1),
-    roots.map((r) => r.children.length).join(' · '));
-  check('data-pending=M3 표시', roots.every((r) => findByClass(r, VALUES_CLASS)[0].getAttribute('data-pending') === 'M3'));
-  check('조작 요소 없음', roots.every((r) => optionsOf(r).length === 0));
-  check('라벨은 그대로 생성', roots.every((r) => findByClass(r, PROP_CLASS)[0].textContent.length > 0));
+  const stillPending = roots.filter(({ root }) =>
+    findByClass(root, VALUES_CLASS).some((n) => n.getAttribute('data-pending') !== null));
+  check('grid 19개 중 보류 표시 0건', stillPending.length === 0,
+    stillPending.map(({ entry }) => `${entry.prop}(${entry.control})`).join(', ') || `${roots.length}개 전부 실물`);
 
-  ['track-list', 'span', 'area-grid'].forEach((control) => {
-    const entry = GRID_SCHEMA.find((e) => e.control === control);
-    const built = build(entry).root;
-    check(`${control}는 더 이상 보류가 아니다`,
-      findByClass(built, VALUES_CLASS).every((n) => n.getAttribute('data-pending') === null),
-      entry.prop);
+  check('전부 라벨을 갖는다',
+    roots.every(({ root }) => findByClass(root, PROP_CLASS)[0]?.textContent.length > 0));
+
+  const controls = [...new Set(GRID_SCHEMA.map((e) => e.control))];
+  check('쓰이는 control 종류가 전부 구현됐다', controls.length === 6,
+    controls.join(' · '));
+
+  const src = readFileSync(new URL('../js/ui/controls.js', import.meta.url), 'utf8');
+  check('PENDING_CONTROLS가 비었다', /PENDING_CONTROLS = new Set\(\)/.test(src));
+  check('buildPending은 남겨 둔다', /function buildPending/.test(src),
+    '새 타입이 계약에 먼저 들어오는 순서가 반복된다');
+}
+
+/* ==========================================================================
+   text — 자유 문자열 (grid-area)
+   ========================================================================== */
+section('text');
+
+{
+  const entry = GRID_SCHEMA.find((e) => e.control === 'text');
+  check('대상은 grid-area 하나', entry?.prop === 'grid-area' && entry.default === 'auto', entry?.prop);
+
+  const { root, calls, sync } = build(entry, entry.default);
+  const input = walk(root).find((n) => n.tagName === 'INPUT');
+
+  check('입력 칸이 있다', Boolean(input) && input.getAttribute('type') === 'text');
+  check('id와 label이 이어져 있다',
+    findByClass(root, LABEL_CLASS)[0].getAttribute('for') === input.getAttribute('id'));
+  check('기본값이 실려 있다', input.value === 'auto');
+
+  // 세 형태가 전부 통과해야 한다. 형식을 강제하지 않는다.
+  const CASES = [
+    ['영역 이름', 'header'],
+    ['네 라인 지정', '1 / 1 / 3 / 2'],
+    ['auto', 'auto'],
+    ['span 섞인 형태', 'header-start / 1 / span 2 / -1'],
+  ];
+
+  CASES.forEach(([label, value]) => {
+    const before = calls.length;
+    input.value = value;
+    fire(input, 'input', { target: input });
+    const last = calls[calls.length - 1];
+    check(`${label} — 그대로 통과`, calls.length === before + 1
+      && last[0] === entry.jsProp && last[1] === value, JSON.stringify(last));
   });
+
+  // 빈 입력에서 통지하지 않는다 (length 컨트롤에서 겪은 자리)
+  const before = calls.length;
+  input.value = '';
+  fire(input, 'input', { target: input });
+  check('비워도 통지하지 않는다', calls.length === before, `${calls.length - before}회`);
+  check('비운 칸을 되쓰지 않는다', input.value === '', '지울 수 있어야 한다');
+
+  input.value = '   ';
+  fire(input, 'input', { target: input });
+  check('공백만 있어도 통지하지 않는다', calls.length === before);
+
+  input.value = 'main';
+  fire(input, 'input', { target: input });
+  check('다시 적으면 통지한다', calls[calls.length - 1][1] === 'main');
+
+  // sync
+  sync('sidebar');
+  check('sync로 밖에서 바꾼 값이 되비친다', input.value === 'sidebar');
+
+  // 거드는 목록 — 호출자가 준다
+  const plain = build(entry, entry.default).root;
+  check('제안을 안 주면 datalist도 없다',
+    walk(plain).every((n) => n.tagName !== 'DATALIST'));
+
+  const withList = createControl(entry, { value: entry.default, doc, suggestions: ['header', 'sidebar', 'main'] });
+  const datalist = walk(withList.root).find((n) => n.tagName === 'DATALIST');
+  const field = walk(withList.root).find((n) => n.tagName === 'INPUT');
+  check('제안을 주면 datalist가 붙는다', Boolean(datalist));
+  check('입력 칸이 그 목록을 가리킨다',
+    field.getAttribute('list') === datalist.getAttribute('id'));
+  check('제안이 전부 들어간다',
+    walk(withList.root).filter((n) => n.tagName === 'OPTION').map((n) => n.getAttribute('value')).join(',')
+      === 'header,sidebar,main');
+
+  const typed = [];
+  const suggested = createControl(entry, {
+    value: entry.default, doc, suggestions: ['header'], onChange: (p, v) => typed.push(v),
+  });
+  const sField = walk(suggested.root).find((n) => n.tagName === 'INPUT');
+  sField.value = '목록에 없는 값';
+  fire(sField, 'input', { target: sField });
+  check('제안 밖의 값도 그대로 나간다', typed[0] === '목록에 없는 값',
+    'datalist는 고르는 목록이 아니라 거드는 목록이다');
+
+  check('controls.js는 여전히 store를 모른다',
+    !/from '.*store/.test(readFileSync(new URL('../js/ui/controls.js', import.meta.url), 'utf8')),
+    '제안 목록은 호출자가 넘긴다');
 }
 
 /* ==========================================================================
