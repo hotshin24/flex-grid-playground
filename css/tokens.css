@@ -117,6 +117,12 @@
   --dur-fast:      150ms;
   --dur-preview:   350ms;
 
+  /* 부팅 안전망 — 자바스크립트가 실패해도 본문을 드러내는 시한.
+     트랜지션이 아니라 타임아웃이므로 위 세 값과 성격이 다르고,
+     아래 prefers-reduced-motion 블록에서 0 으로 내리지 않는다.
+     0 이 되면 본문이 마운트 전에 드러나 CLS 가 되살아난다 */
+  --dur-boot-fallback: 3500ms;
+
   /* 레이어 */
   --z-base:    0;
   --z-sticky:  10;
@@ -314,6 +320,7 @@
   :root {
     --dur-fast:    var(--dur-instant);
     --dur-preview: var(--dur-instant);
+    /* --dur-boot-fallback 은 여기에 넣지 않는다. 움직임이 아니라 시한이다 */
   }
 }
 

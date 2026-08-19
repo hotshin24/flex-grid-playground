@@ -41,7 +41,7 @@
 .fgp-booting .fgp-tabs,
 .fgp-booting .fgp-topics {
   visibility: hidden;
-  animation: fgp-reveal 0s linear calc(var(--dur-preview) * 10) forwards;
+  animation: fgp-reveal 0s linear var(--dur-boot-fallback) forwards;
 }
 
 @keyframes fgp-reveal {
