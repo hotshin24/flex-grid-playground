@@ -9,8 +9,10 @@
 
 import { readFileSync } from 'node:fs';
 import { FLEX_PRESETS } from '../js/topics/flex/presets.js';
+import { GRID_PRESETS } from '../js/topics/grid/presets.js';
 import { FLEX_SCHEMA } from '../js/topics/flex/schema.js';
-import { partitionByScope, defaultsFrom } from '../js/core/schema-spec.js';
+import { GRID_SCHEMA } from '../js/topics/grid/schema.js';
+import { partitionByScope, defaultsFrom, CONTROL_TYPES } from '../js/core/schema-spec.js';
 import { generateCss } from '../js/core/codegen.js';
 import { createStore } from '../js/core/store.js';
 
@@ -231,12 +233,240 @@ section('토픽 분리');
 
 {
   const src = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
-  check('main.js가 토픽 레지스트리로 받음', /PRESETS\s*=\s*\{\s*flex:/.test(src));
+  check('main.js가 토픽 레지스트리로 받음', /PRESETS\s*=\s*\{[^}]*flex:[^}]*grid:/.test(src));
   check('토픽 키로 조회', /PRESETS\[/.test(src));
 
   const presetSrc = readFileSync(new URL('../js/topics/flex/presets.js', import.meta.url), 'utf8');
   check('색상 리터럴 0건', (presetSrc.match(/#[0-9a-fA-F]{3,8}\b|rgba?\(/g) ?? []).length === 0);
   check('presets.js는 store를 모른다', !/store/i.test(presetSrc));
+}
+
+/* ==========================================================================
+   Grid 프리셋 (F-11)
+
+   Flex 5종은 v0.1 이관이라 원본과 대조하지만 Grid 5종은 신규 작성이라 대조할
+   원본이 없다. 대신 스키마 정합성과, 빠뜨렸을 때 조용히 틀리는 것들을 본다.
+   ========================================================================== */
+section('Grid 프리셋 — 목록');
+
+const G_SCOPED = partitionByScope(GRID_SCHEMA);
+const G_CONTAINER = new Map(G_SCOPED.container.map((e) => [e.jsProp, e]));
+const G_ITEM = new Map(G_SCOPED.item.map((e) => [e.jsProp, e]));
+
+{
+  check('Grid 프리셋 5종', GRID_PRESETS.length === 5, `${GRID_PRESETS.length}종`);
+  check('id 유일', new Set(GRID_PRESETS.map((p) => p.id)).size === GRID_PRESETS.length);
+
+  const clash = GRID_PRESETS.map((p) => p.id).filter((id) => FLEX_PRESETS.some((f) => f.id === id));
+  check('Flex 프리셋과 id 충돌 없음', clash.length === 0,
+    clash.join(', ') || `${GRID_PRESETS.length + FLEX_PRESETS.length}종 전부 다름`);
+
+  check('label·desc 전량 보유', GRID_PRESETS.every((p) => p.label?.trim() && p.desc?.trim()));
+  check('label 중복 없음', new Set(GRID_PRESETS.map((p) => p.label)).size === GRID_PRESETS.length);
+
+  const src = readFileSync(new URL('../js/topics/grid/presets.js', import.meta.url), 'utf8');
+  check('색상 리터럴 0건', (src.match(/#[0-9a-fA-F]{3,8}\b|rgba?\(/g) ?? []).length === 0);
+  check('store 를 모른다', !/\bstore\b/i.test(src));
+  check('신규 작성이라는 성격이 주석에 남아 있다', /v1\.0 신규 작성/.test(src));
+}
+
+/* --------------------------------------------------------------------------
+   컨테이너 — 12키를 전부 적어야 한다
+
+   빠뜨린 키는 이전 프리셋의 값이 그대로 남는다. 무엇을 눌렀느냐가 아니라 그
+   전에 무엇을 눌렀느냐에 따라 그림이 달라지는, 재현되지 않는 상태가 된다.
+   -------------------------------------------------------------------------- */
+section('Grid 프리셋 — 컨테이너');
+
+{
+  const keys = [...G_CONTAINER.keys()];
+  check('스키마 컨테이너 속성이 12개', keys.length === 12, `${keys.length}개`);
+
+  const missing = GRID_PRESETS.flatMap((p) => keys.filter((k) => !(k in p.container)).map((k) => `${p.id}.${k}`));
+  check('5종이 12키를 전부 명시', missing.length === 0,
+    missing.join(', ') || `${GRID_PRESETS.length}종 × ${keys.length}키`);
+
+  const extra = GRID_PRESETS.flatMap((p) => Object.keys(p.container)
+    .filter((k) => !G_CONTAINER.has(k)).map((k) => `${p.id}.${k}`));
+  check('스키마에 없는 키 0건', extra.length === 0, extra.join(', ') || '오타 0건');
+
+  const badEnum = GRID_PRESETS.flatMap((p) => Object.entries(p.container)
+    .filter(([k, v]) => {
+      const entry = G_CONTAINER.get(k);
+      return entry?.values && !entry.values.some((x) => x.val === v);
+    })
+    .map(([k, v]) => `${p.id}.${k}=${v}`));
+  check('enum 값이 전부 스키마 values 에 있음', badEnum.length === 0, badEnum.join(', ') || '이상 0건');
+
+  // track-list 는 배열이어야 한다. 문자열로 적으면 렌더러가 그대로 얹어 버린다
+  const TRACKS = ['gridTemplateColumns', 'gridTemplateRows'];
+  const notArray = GRID_PRESETS.flatMap((p) => TRACKS
+    .filter((k) => !Array.isArray(p.container[k])).map((k) => `${p.id}.${k}`));
+  check('track-list 값이 배열', notArray.length === 0, notArray.join(', ') || TRACKS.join(' · '));
+
+  const rep = GRID_PRESETS.filter((p) => JSON.stringify(p.container).includes('repeat('));
+  check('repeat() 0건', rep.length === 0,
+    rep.map((p) => p.id).join(', ') || '파서가 트랙 수를 잃는다');
+
+  // 트랙 원소가 계약이 읽는 모양인가
+  const badTrack = GRID_PRESETS.flatMap((p) => TRACKS.flatMap((k) => (p.container[k] ?? [])
+    .filter((t) => !t || typeof t !== 'object' || !t.unit)
+    .map(() => `${p.id}.${k}`)));
+  check('트랙 원소가 { size, unit } 모양', badTrack.length === 0, badTrack.join(', ') || '이상 0건');
+}
+
+/* --------------------------------------------------------------------------
+   아이템 — 스키마 7키 + 기하값, id 는 없다
+   -------------------------------------------------------------------------- */
+section('Grid 프리셋 — 아이템');
+
+{
+  const keys = [...G_ITEM.keys()];
+  const GEOMETRY = ['width', 'height'];
+  check('스키마 아이템 속성이 7개', keys.length === 7, `${keys.length}개`);
+
+  const missing = GRID_PRESETS.flatMap((p) => (p.items ?? []).flatMap((it, i) =>
+    keys.filter((k) => !(k in it)).map((k) => `${p.id}[${i}].${k}`)));
+  check('아이템이 7키를 전부 명시', missing.length === 0, missing.join(', ') || `${keys.length}키`);
+
+  const geoMissing = GRID_PRESETS.flatMap((p) => (p.items ?? []).flatMap((it, i) =>
+    GEOMETRY.filter((k) => !Number.isFinite(it[k])).map((k) => `${p.id}[${i}].${k}`)));
+  check('width·height 가 숫자', geoMissing.length === 0, geoMissing.join(', ') || GEOMETRY.join(' · '));
+
+  const extra = GRID_PRESETS.flatMap((p) => (p.items ?? []).flatMap((it, i) =>
+    Object.keys(it).filter((k) => !G_ITEM.has(k) && !GEOMETRY.includes(k)).map((k) => `${p.id}[${i}].${k}`)));
+  check('스키마·기하값 밖의 키 0건', extra.length === 0, extra.join(', ') || '오타 0건');
+
+  const hasId = GRID_PRESETS.filter((p) => (p.items ?? []).some((it) => it.id !== undefined));
+  check('아이템에 id 를 넣지 않음', hasId.length === 0,
+    hasId.map((p) => p.id).join(', ') || 'id 는 적용 시점에 붙는다');
+
+  const badEnum = GRID_PRESETS.flatMap((p) => (p.items ?? []).flatMap((it, i) =>
+    Object.entries(it).filter(([k, v]) => {
+      const entry = G_ITEM.get(k);
+      return entry?.values && !entry.values.some((x) => x.val === v);
+    }).map(([k, v]) => `${p.id}[${i}].${k}=${v}`)));
+  check('아이템 enum 값이 스키마에 있음', badEnum.length === 0, badEnum.join(', ') || '이상 0건');
+
+  // span 값은 계약이 읽는 형태여야 한다
+  const SPAN_KEYS = [...G_ITEM.entries()].filter(([, e]) => e.control === 'span').map(([k]) => k);
+  const badSpan = GRID_PRESETS.flatMap((p) => (p.items ?? []).flatMap((it, i) =>
+    SPAN_KEYS.filter((k) => {
+      const round = CONTROL_TYPES.span.serialize(CONTROL_TYPES.span.parse(it[k]));
+      return round !== String(it[k]);
+    }).map((k) => `${p.id}[${i}].${k}=${it[k]}`)));
+  check('span 값이 계약을 그대로 왕복', badSpan.length === 0, badSpan.join(', ') || SPAN_KEYS.join(' · '));
+}
+
+/* --------------------------------------------------------------------------
+   areas — 이름과 판이 맞아야 한다
+
+   어긋나면 아이템이 자동 배치로 떨어지고 이름만 남은 행이 0px 로 접힌다.
+   화면에는 "고장 난 것 같은 그림" 만 남고 오류는 어디에도 나오지 않는다.
+   -------------------------------------------------------------------------- */
+section('Grid 프리셋 — areas');
+
+{
+  const withAreas = GRID_PRESETS.filter((p) => p.container.gridTemplateAreas !== 'none');
+  check('areas 를 쓰는 프리셋이 있다', withAreas.length > 0,
+    withAreas.map((p) => p.id).join(', '));
+
+  withAreas.forEach((p) => {
+    const parsed = CONTROL_TYPES['area-grid'].parse(p.container.gridTemplateAreas);
+    const cols = p.container.gridTemplateColumns.length;
+    const rows = p.container.gridTemplateRows.length;
+
+    check(`${p.id} — 계약 검증 통과`, parsed.errors.length === 0, parsed.errors.join(' / ') || '오류 0건');
+    check(`${p.id} — areas 행 수 = 행 트랙 수`, parsed.rows.length === rows,
+      `areas ${parsed.rows.length}행 · rows ${rows}트랙`);
+    check(`${p.id} — 행마다 칸 수 = 열 트랙 수`,
+      parsed.rows.every((r) => r.length === cols),
+      `칸 ${[...new Set(parsed.rows.map((r) => r.length))].join(',')} · 열 ${cols}`);
+
+    const names = new Set(parsed.rows.flat().filter((n) => n !== '.'));
+    const used = (p.items ?? []).map((it) => it.gridArea).filter((a) => a && a !== 'auto');
+    const orphan = used.filter((n) => !names.has(n));
+    check(`${p.id} — 아이템의 gridArea 가 판에 있는 이름`, orphan.length === 0,
+      orphan.join(', ') || `${used.length}개 · 판의 이름 ${[...names].join(' ')}`);
+
+    const unused = [...names].filter((n) => !used.includes(n));
+    check(`${p.id} — 판의 이름이 전부 쓰인다`, unused.length === 0,
+      unused.join(', ') || '빈 영역 없음');
+  });
+
+  // areas 가 none 인 프리셋은 gridArea 도 auto 여야 한다
+  const plain = GRID_PRESETS.filter((p) => p.container.gridTemplateAreas === 'none');
+  const stray = plain.flatMap((p) => (p.items ?? [])
+    .filter((it) => it.gridArea && it.gridArea !== 'auto').map((it) => `${p.id}=${it.gridArea}`));
+  check('판이 없으면 gridArea 도 auto', stray.length === 0,
+    stray.join(', ') || `${plain.length}종`);
+}
+
+/* --------------------------------------------------------------------------
+   적용 — dispatch 1회 · undo 1회
+   -------------------------------------------------------------------------- */
+section('Grid 프리셋 — 적용');
+
+{
+  /** main.js 와 같은 방식. 토픽 스키마의 기본값 위에 프리셋을 얹는다. */
+  const applyGrid = (store, preset) => {
+    const state = store.getState();
+    const source = preset.items ?? [];
+    const count = preset.itemCount ?? source.length;
+    const base = { ...defaultsFrom(GRID_SCHEMA, 'item'), ...(state.items[0] ?? {}) };
+    const items = Array.from({ length: count }, (_, i) => ({
+      ...base, ...(source[i] ?? source[source.length - 1] ?? {}), id: i + 1,
+    }));
+    store.dispatch({ container: preset.container, items, selectedId: items[0]?.id ?? null });
+  };
+
+  const itemKeys = Object.keys(defaultsFrom(GRID_SCHEMA, 'item'));
+
+  GRID_PRESETS.forEach((preset) => {
+    const store = createStore({ grid: GRID_SCHEMA });
+    const before = JSON.stringify(store.getState());
+
+    let notified = 0;
+    store.subscribe(() => { notified++; });
+
+    applyGrid(store, preset);
+    const state = store.getState();
+
+    const containerOk = Object.entries(preset.container)
+      .every(([k, v]) => JSON.stringify(state.container[k]) === JSON.stringify(v));
+    const countOk = state.items.length === preset.items.length;
+    const itemOk = preset.items.every((expected, i) =>
+      Object.entries(expected).every(([k, v]) => state.items[i][k] === v));
+    const complete = state.items.every((it) => itemKeys.every((k) => it[k] !== undefined));
+
+    check(`${preset.id} — 적용`, containerOk && countOk && itemOk && complete,
+      `container ${containerOk ? 'OK' : 'X'} · 개수 ${state.items.length} · items ${itemOk ? 'OK' : 'X'} · 빈 키 ${complete ? '없음' : '있음'}`);
+    check(`${preset.id} — dispatch 1회`, notified === 1, `${notified}회 통지`);
+
+    check(`${preset.id} — 아이템 id 는 1부터 연번`,
+      eq(state.items.map((it) => it.id), state.items.map((_, i) => i + 1)));
+    check(`${preset.id} — 선택은 첫 아이템`, state.selectedId === 1);
+
+    const css = generateCss(state, GRID_SCHEMA);
+    check(`${preset.id} — 생성 CSS에 빈 선언 없음`, !/:\s*;/.test(css),
+      (css.match(/^.*:\s*;.*$/m) ?? ['없음'])[0].trim());
+
+    store.undo();
+    check(`${preset.id} — undo 1회로 원복`, JSON.stringify(store.getState()) === before);
+    check(`${preset.id} — 되돌린 뒤 더 되돌릴 것 없음`, store.canUndo() === false);
+  });
+
+  // 토픽이 섞이지 않는다
+  const store = createStore({ flex: FLEX_SCHEMA, grid: GRID_SCHEMA });
+  store.setTopic('grid');
+  applyGrid(store, GRID_PRESETS[0]);
+  store.setTopic('flex');
+  check('Grid 프리셋이 Flex 상태를 건드리지 않는다',
+    JSON.stringify(store.getState().container) === JSON.stringify(defaultsFrom(FLEX_SCHEMA, 'container')));
+  store.setTopic('grid');
+  check('토픽을 오가도 Grid 상태는 그대로',
+    JSON.stringify(store.getState().container.gridTemplateAreas)
+    === JSON.stringify(GRID_PRESETS[0].container.gridTemplateAreas));
 }
 
 /* ========================================================================== */

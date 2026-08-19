@@ -23,6 +23,7 @@ import { createGridOverlay } from './ui/grid-overlay.js';
 import { FLEX_EXPLAIN_NOTES, FLEX_EXPLAIN_SAMPLES, AXIS_LABELS } from './topics/flex/explain.js';
 import { GRID_EXPLAIN_NOTES, GRID_EXPLAIN_SAMPLES, GRID_EXPLAIN_DEMOS, GRID_DISPLAY } from './topics/grid/explain.js';
 import { FLEX_PRESETS } from './topics/flex/presets.js';
+import { GRID_PRESETS } from './topics/grid/presets.js';
 import { FLEX_EXAMPLES } from './topics/flex/examples.js';
 import { GRID_EXAMPLES } from './topics/grid/examples.js';
 import { FLEX_CHALLENGES } from './topics/flex/challenges.js';
@@ -63,7 +64,7 @@ const EXPLAIN = {
     display: GRID_DISPLAY,
   },
 };
-const PRESETS = { flex: FLEX_PRESETS };
+const PRESETS = { flex: FLEX_PRESETS, grid: GRID_PRESETS };
 const EXAMPLES = { flex: FLEX_EXAMPLES, grid: GRID_EXAMPLES };
 const CHALLENGES = { flex: FLEX_CHALLENGES, grid: GRID_CHALLENGES };
 
