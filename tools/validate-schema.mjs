@@ -219,6 +219,34 @@ check('선언 없으면 항상 활성', isInactive({ prop: 'gap' }, { flexWrap: 
   check('in — 빠지면 활성', isInactive(e, { container: { flexWrap: 'wrap' } }).inactive === false);
 }
 
+/* --------------------------------------------------------------------------
+   equalsSelf — 상대 값을 리터럴이 아니라 내 현재 값과 견준다
+
+   "부모 justify-items 와 같으면 아무 변화가 없다" 를 리터럴 비교로는 적을 수
+   없다. 값 조합마다 규칙을 늘려야 하고 그건 값 하드코딩이다.
+   -------------------------------------------------------------------------- */
+
+{
+  const e = { prop: 'justify-self', jsProp: 'justifySelf',
+    inactiveWhen: { source: 'container', prop: 'justifyItems', equalsSelf: true, reason: REASON, hint: '다른 값을 고르세요' } };
+  const judge = (parent, mine) => isInactive(e, { container: { justifyItems: parent }, item: { justifySelf: mine } });
+
+  check('같은 값 → 비활성', judge('stretch', 'stretch').inactive === true);
+  check('사유와 힌트 전달', judge('stretch', 'stretch').reason === REASON
+    && judge('stretch', 'stretch').hint === '다른 값을 고르세요');
+  check('다른 값 → 활성', judge('stretch', 'center').inactive === false);
+  check('부모가 무엇이든 같기만 하면 비활성', judge('center', 'center').inactive === true
+    && judge('end', 'end').inactive === true);
+
+  check('item 을 안 넘기면 활성으로 떨어짐',
+    isInactive(e, { container: { justifyItems: 'stretch' } }).inactive === false,
+    '넘기지 않던 호출부가 그대로 동작한다');
+  check('상대 값이 없으면 활성',
+    isInactive(e, { container: {}, item: { justifySelf: 'stretch' } }).inactive === false);
+  check('둘 다 없으면 활성', isInactive(e, {}).inactive === false,
+    'undefined === undefined 로 비활성이 되면 안 된다');
+}
+
 check('참조 값이 없으면 활성', isInactive(ENTRY({ prop: 'flexWrap', equals: 'nowrap', reason: REASON }), { container: {} }).inactive === false);
 check('인자를 안 넘겨도 죽지 않음', isInactive(ENTRY({ prop: 'flexWrap', equals: 'nowrap', reason: REASON })).inactive === false);
 
@@ -275,6 +303,65 @@ check('전 선언에 reason 존재', declaredInactive.every((e) => e.inactiveWhe
   check('container 만 넘기면 상태 참조는 활성으로 떨어짐',
     isInactive(order, { container: { flexWrap: 'nowrap' } }).inactive === false);
 }
+
+/* ==========================================================================
+   Grid 의 새 선언 3건 (F-13 12/12)
+   ========================================================================== */
+
+{
+  const gridDefaults = defaultsFrom(GRID, 'container');
+  const itemDefaults = defaultsFrom(GRID, 'item');
+  const find = (prop) => GRID.find((e) => e.prop === prop);
+
+  /* A — grid-area. 계약을 늘리지 않고 기존 equals 로 적었다. */
+  const area = find('grid-area');
+  check('grid-area 에 선언 있음', Boolean(area?.inactiveWhen));
+  check('grid-area 는 기존 equals 를 쓴다',
+    area.inactiveWhen.equals === 'none' && area.inactiveWhen.equalsSelf === undefined,
+    '계약 확장 없이 표현된다');
+  const areaOff = isInactive(area, { container: gridDefaults, item: itemDefaults });
+  check('areas 가 none 이면 비활성', areaOff.inactive === true);
+  check('사유가 "이름이 하나도 없다" 는 뜻', /하나도 없어/.test(areaOff.reason), areaOff.reason);
+  check('사유가 정밀 판정을 흉내내지 않는다', !/해당 이름/.test(areaOff.reason),
+    '이 이름이 판에 있는지까지는 보지 않는다');
+  check('힌트가 areas 를 먼저 정하라고 안내', /grid-template-areas/.test(areaOff.hint), areaOff.hint);
+  check('판을 만들면 활성',
+    isInactive(area, { container: { ...gridDefaults, gridTemplateAreas: '"hd hd"' }, item: itemDefaults })
+      .inactive === false);
+
+  /* B — justify-self · align-self. equalsSelf 를 쓴다. */
+  [['justify-self', 'justifySelf', 'justifyItems'], ['align-self', 'alignSelf', 'alignItems']]
+    .forEach(([prop, jsProp, parent]) => {
+      const entry = find(prop);
+      check(`${prop} 에 선언 있음`, Boolean(entry?.inactiveWhen));
+      check(`${prop} 는 equalsSelf 를 쓴다`, entry.inactiveWhen.equalsSelf === true);
+      check(`${prop} 가 부모 ${parent} 를 가리킨다`, entry.inactiveWhen.prop === parent);
+
+      const same = isInactive(entry, { container: { [parent]: 'center' }, item: { [jsProp]: 'center' } });
+      const diff = isInactive(entry, { container: { [parent]: 'center' }, item: { [jsProp]: 'end' } });
+      check(`${prop} — 부모와 같으면 비활성`, same.inactive === true && Boolean(same.reason));
+      check(`${prop} — 부모와 다르면 활성`, diff.inactive === false);
+
+      /* auto 는 부모를 그대로 따르므로 기본 상태에서는 늘 걸린다. 그게 auto 의 뜻이다.
+         다만 값이 문자열로 같을 때만 걸리므로, 부모가 stretch 이고 내가 auto 면
+         "다른 값" 으로 읽혀 활성이다 — 계약이 값의 뜻까지 알지는 못한다. */
+      const autoOnStretch = isInactive(entry, { container: { [parent]: 'stretch' }, item: { [jsProp]: 'auto' } });
+      check(`${prop} — auto 와 stretch 는 글자가 달라 활성`, autoOnStretch.inactive === false,
+        '계약은 값의 뜻이 아니라 값을 본다');
+    });
+
+  // 두 선언이 실제 기본 상태에서 어떻게 판정되는지
+  const atDefault = ['justify-self', 'align-self'].map((prop) =>
+    `${prop}=${isInactive(find(prop), { container: gridDefaults, item: itemDefaults }).inactive}`);
+  check('기본 상태 판정을 기록한다', true, atDefault.join(' · '));
+}
+
+check('F-13 선언이 PRD 5.5 목록 12건을 덮는다', (() => {
+  const decls = [...FLEX, ...GRID].reduce((n, e) => n
+    + (e.inactiveWhen ? 1 : 0) + (e.measuredInactive ? 1 : 0)
+    + (e.values ?? []).filter((v) => v.measuredInactive).length, 0);
+  return decls === 14;
+})(), '선언 14개 = 유형A 5 · 유형B/C 속성 6 · 값 3 (dense 는 두 값이라 대상 12건에 선언 14개)');
 
 check('선언이 항목 수를 늘리지 않음', FLEX.length === EXPECTED.flex.total, `${FLEX.length}/${EXPECTED.flex.total}`);
 check('선언 없는 속성은 여전히 활성 (기존 무영향)',

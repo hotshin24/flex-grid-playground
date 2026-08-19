@@ -636,6 +636,37 @@ const noteOf = (root) => findByClass(root, NOTE_CLASS)[0];
 }
 
 {
+  // equalsSelf 선언 (justify-self) — 부모 값과 내 값을 견준다
+  const entry = byProp(GRID_SCHEMA, 'justify-self');
+  const { root, setInactive } = build(entry);
+
+  setInactive(isInactive(entry, { container: { justifyItems: 'center' }, item: { justifySelf: 'center' } }));
+  check('부모와 같은 값 → 비활성', ariaOf(root) === 'true');
+  check('사유 문구 표시', findByClass(root, REASON_CLASS)[0].textContent === entry.inactiveWhen.reason);
+  check('해법 문구 표시', findByClass(root, REMEDY_CLASS)[0].textContent === entry.inactiveWhen.hint);
+
+  setInactive(isInactive(entry, { container: { justifyItems: 'center' }, item: { justifySelf: 'end' } }));
+  check('부모와 다른 값 → 활성', ariaOf(root) === 'false');
+
+  setInactive(isInactive(entry, { container: { justifyItems: 'center' } }));
+  check('item 을 안 넘기면 활성', ariaOf(root) === 'false', '옛 호출부가 그대로 동작한다');
+}
+
+{
+  // grid-area — 계약을 늘리지 않고 기존 equals 로 적은 선언
+  const entry = byProp(GRID_SCHEMA, 'grid-area');
+  const { root, setInactive } = build(entry);
+
+  setInactive(isInactive(entry, { container: { gridTemplateAreas: 'none' } }));
+  check('areas 가 none → 비활성', ariaOf(root) === 'true');
+  check('text 컨트롤의 입력에도 상태 전달',
+    findByClass(root, 'fgp-control__field').every((el) => ariaOf(el) === 'true'));
+
+  setInactive(isInactive(entry, { container: { gridTemplateAreas: '"hd hd"' } }));
+  check('판을 만들면 활성', ariaOf(root) === 'false');
+}
+
+{
   // 선언이 없는 속성은 언제나 활성
   const entry = byProp(FLEX_SCHEMA, 'justify-content');
   const { root, setInactive } = build(entry);

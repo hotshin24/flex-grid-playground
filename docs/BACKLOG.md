@@ -37,6 +37,41 @@ v1.0 범위 밖으로 미룬 것. 각 항목은 왜 지금 못 하는지와 무�
 **되살릴 수 있는 것.** areas 4건과 dense 2건. 각각 `grid-area` 와
 `grid-column: span N` 을 아이템에 줄 수 있으면 desc 가 말하는 그림이 나온다.
 
+### grid-area 정밀 판정 (F-13 옵션 C)
+
+지금 잡는 것은 **"판에 이름이 하나도 없을 때"** 뿐이다. `grid-template-areas` 가
+`none` 이면 `grid-area` 컨트롤이 흐려진다.
+
+잡지 못하는 것: `grid-area: header` 인데 판이 `"hd hd"` 인 경우. 이름이 판에
+없어 아이템이 자동 배치로 떨어지는데 화면에는 단서가 없다.
+
+구현하려면 셋이 필요하다.
+
+1. **네 번째 종류의 연산자** (`notNamedIn` 같은 것). 지금 연산자 넷
+   (`equals`·`notEquals`·`in`·`equalsSelf`)은 전부 **값 하나와의 비교**다.
+   이건 areas 문자열을 파싱해 **이름 목록을 뽑아** 그 안에 있는지를 본다 —
+   종류가 다르다. `schema-spec.js` 의 `INACTIVE_OPERATORS` 주석이 그 선을
+   긋고 있다: 목록·파싱이 필요하면 연산자로 만들지 않는다.
+2. **`areaNamesFrom` 을 `js/ui/area-editor.js` 에서 `schema-spec.js` 로 이동.**
+   순수 함수이고 이미 `parseAreaGrid` 위에 얹혀 있다. `toCssValue` 를 옮겼을
+   때와 같은 상황이다. import 3곳이 따라온다.
+3. **core 에 컨트롤 타입 분기.** "상대가 `area-grid` 컨트롤이면 이름 목록을
+   뽑는다" 는 판단이 `isInactive` 안에 생긴다. 속성 이름 분기는 아니지만
+   타입 지식이 core 로 들어오는 첫 자리다.
+
+이득이 상대적으로 작아 미뤘다 — areas 편집기가 이미 정의된 이름 목록을 화면에
+보여 주고 있어, 오타는 그쪽을 보면 드러난다.
+
+### justify-self 의 속성 설명 탭 사례 부재
+
+`GRID_EXPLAIN_SAMPLES` 에 enum 7속성(`justify-items` · `align-items` ·
+`justify-content` · `align-content` · `grid-auto-flow` · `justify-self` ·
+`align-self`)의 항목이 없다. `values[].desc` 로 사례가 자동 생성되는지 확인이
+필요하다.
+
+`justify-self` 는 대조 뷰(GR-09)에도 챌린지에도 없어, 자동 생성이 안 되고
+있다면 그 속성만 학습 경로가 비어 있는 셈이다. M6 남은 작업에서 확인한다.
+
 ### 슬라이더 드래그의 히스토리 병합
 
 `store.dispatch` 는 부르는 족족 히스토리를 하나씩 쌓고 병합하지 않는다. 슬라이더는

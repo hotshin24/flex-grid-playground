@@ -265,7 +265,9 @@ function syncItemControls(state, measured = renderer.getMeasured()) {
 
   itemControls.forEach(({ entry, sync, setInactive, setValueInactive }) => {
     sync(target[entry.jsProp]);
-    setInactive(isInactive(entry, { container: state.container, state: derived, measured }));
+    // item 은 equalsSelf 가 쓴다 — 상대 값을 리터럴이 아니라 고른 아이템의
+    // 현재 값과 견주는 연산자다. 컨테이너 컨트롤 쪽에는 넘길 것이 없다.
+    setInactive(isInactive(entry, { container: state.container, item: target, state: derived, measured }));
     setValueInactive(inactiveValues(entry, measured));
   });
 }

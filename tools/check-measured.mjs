@@ -102,6 +102,17 @@ section('선언');
 {
   check('선언 9건 (8건 · dense가 값 두 개)', DECLS.length === 9, `${DECLS.length}건`);
 
+  /* 유형 A 가 늘어도 유형 B·C 는 그대로여야 한다. 계약상 한 항목에 둘을 함께
+     쓸 수 없으므로, grid-area·justify-self·align-self 에 inactiveWhen 이 붙은
+     뒤에도 여기 숫자는 움직이지 않는다. */
+  const typeA = [...FLEX_SCHEMA, ...GRID_SCHEMA].filter((e) => e.inactiveWhen);
+  check('유형 A 는 5건', typeA.length === 5, typeA.map((e) => e.prop).join(' · '));
+  check('한 항목에 A 와 B·C 가 겹치지 않는다',
+    typeA.every((e) => e.measuredInactive === undefined),
+    '계약이 막고 있고 데이터도 그렇다');
+  check('A 와 B·C 를 합치면 14건', typeA.length + DECLS.length === 14,
+    'PRD 5.5 대상 12건 · dense 가 값 두 개라 선언은 더 많다');
+
   const props = [...new Set(DECLS.map((d) => `${d.topic} ${d.entry.prop}`))];
   check('대상 속성 8개', props.length === 8, props.join(' · '));
 

@@ -263,6 +263,16 @@ export const GRID_SCHEMA = [
     tip: '이름으로 배치하면 라인 번호를 세지 않아도 되고, 반응형에서 areas만 다시 그리면 배치가 통째로 바뀝니다.',
     mdn: MDN + 'grid-area',
     demo: { itemCount: 4 },
+    // 판에 이름이 하나도 없으면 이름으로 배치할 것이 없다. 이 이름이 그 판에
+    // 있는지까지는 보지 않는다 — 그 판정은 areas 문자열을 파싱해야 해서
+    // 연산자로 만들지 않았다 (schema-spec 의 INACTIVE_OPERATORS 주석 참조).
+    inactiveWhen: {
+      source: 'container',
+      prop: 'gridTemplateAreas',
+      equals: 'none',
+      reason: 'grid-template-areas에 정의된 이름이 하나도 없어 이름으로 배치할 수 없습니다.',
+      hint: 'grid-template-areas를 먼저 정하면 그 이름을 여기에 적을 수 있습니다.',
+    },
   },
 
   /* ====================== 아이템 — 셀 내부 정렬 ====================== */
@@ -274,6 +284,15 @@ export const GRID_SCHEMA = [
     tip: 'Flex의 align-self와 같은 역할이지만, Grid에는 가로·세로 두 방향이 각각 존재합니다.',
     mdn: MDN + 'justify-self',
     demo: { itemCount: 6 },
+    // 부모와 같은 값이면 덮어쓸 것이 없다. auto 는 부모를 그대로 따르므로
+    // 부모가 무엇이든 늘 여기 걸린다 — 그게 auto 의 뜻이다.
+    inactiveWhen: {
+      source: 'container',
+      prop: 'justifyItems',
+      equalsSelf: true,
+      reason: '부모의 justify-items와 같은 값이라 이 아이템만 달라지는 것이 없습니다.',
+      hint: '부모와 다른 값을 고르면 이 아이템만 그 자리로 갑니다.',
+    },
     values: [
       { val: 'auto',    desc: '부모 justify-items를 따름 (기본값)' },
       { val: 'stretch', desc: '이 아이템만 셀 너비를 꽉 채움' },
@@ -291,6 +310,14 @@ export const GRID_SCHEMA = [
     mdn: MDN + 'align-self',
     relatedTo: ['align-self'],
     demo: { itemCount: 6, containerStyle: { height: '260px' } },
+    // justify-self 와 같은 이유. 축만 다르다.
+    inactiveWhen: {
+      source: 'container',
+      prop: 'alignItems',
+      equalsSelf: true,
+      reason: '부모의 align-items와 같은 값이라 이 아이템만 달라지는 것이 없습니다.',
+      hint: '부모와 다른 값을 고르면 이 아이템만 그 자리로 갑니다.',
+    },
     values: [
       { val: 'auto',    desc: '부모 align-items를 따름 (기본값)' },
       { val: 'stretch', desc: '이 아이템만 셀 높이를 꽉 채움' },

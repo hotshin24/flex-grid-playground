@@ -122,7 +122,10 @@ export const CONTROL_TYPES = {
                                  //   container — 같은 스키마의 다른 속성 값
                                  //   state     — INACTIVE_STATE_KEYS 의 파생 상태
        prop:   'flexWrap',       // source 에 따라 jsProp 또는 상태 키
-       equals: 'nowrap',         // equals | notEquals | in 중 정확히 하나
+       equals: 'nowrap',         // equals | notEquals | in | equalsSelf 중 정확히 하나
+                                 //   equalsSelf: true 는 상대 값을 내 현재 값과 비교한다.
+                                 //   비교 대상이 리터럴이 아니라 이 항목의 값이므로
+                                 //   scopes.item 이 필요하다 (아래 isInactive 참조)
        reason: '...',            // 비활성 사유 문장. 화면에 그대로 나간다
        hint:   '...'             // 선택. 해결 방법 안내
      }
@@ -167,8 +170,25 @@ export const CONTROL_TYPES = {
 const REQUIRED_FIELDS = ['prop', 'jsProp', 'scope', 'control', 'default', 'desc', 'urlKey'];
 const VALID_SCOPES = ['container', 'item'];
 
-/** inactiveWhen 이 가질 수 있는 비교 연산자. 정확히 하나만 쓴다. */
-const INACTIVE_OPERATORS = ['equals', 'notEquals', 'in'];
+/**
+ * inactiveWhen 이 가질 수 있는 비교 연산자. 정확히 하나만 쓴다.
+ *
+ * 오래 셋이었다. equalsSelf 를 더해 넷이 된 것은 "부모 justify-items 와 같으면
+ * 아무 변화가 없다" 를 리터럴 비교로는 적을 수 없기 때문이다 — 값 조합마다
+ * 규칙을 늘려야 하고, 그건 값 하드코딩이다.
+ *
+ * 앞으로 늘리는 기준을 여기 못 박는다.
+ *
+ *   값 하나와의 비교로 표현되면 연산자를 더한다.
+ *   목록을 뽑거나 문자열을 파싱해야 하면 연산자로 만들지 않는다 —
+ *   스키마 밖에서 Boolean 으로 계산해 INACTIVE_STATE_KEYS 로 넘긴다.
+ *
+ * 이 선을 그은 이유는 파싱이 들어오는 순간 core 가 컨트롤 타입을 알아야 하고,
+ * 그 지식이 한 번 들어오면 속성별 판정이 스키마에서 core 로 새기 때문이다.
+ * grid-area 의 정밀 판정(내 이름이 판에 있는가)이 그 선 바깥의 예다 —
+ * areas 문자열을 파싱해 이름 목록을 뽑아야 하므로 연산자로 만들지 않았다.
+ */
+const INACTIVE_OPERATORS = ['equals', 'notEquals', 'in', 'equalsSelf'];
 
 /** inactiveWhen 에 허용된 키. 오타를 잡기 위해 화이트리스트로 검사한다. */
 const INACTIVE_FIELDS = ['source', 'prop', ...INACTIVE_OPERATORS, 'reason', 'hint'];
@@ -377,6 +397,10 @@ function validateInactive(entry, at, byJsProp, errors) {
     errors.push(`${at}: inactiveWhen.hint 는 비어 있지 않은 문자열이어야 함`);
   }
 
+  if (rule.equalsSelf !== undefined && rule.equalsSelf !== true) {
+    errors.push(`${at}: inactiveWhen.equalsSelf 는 true 만 쓸 수 있음 (현재 ${JSON.stringify(rule.equalsSelf)})`);
+  }
+
   const used = INACTIVE_OPERATORS.filter((op) => rule[op] !== undefined);
   if (used.length !== 1) {
     errors.push(
@@ -455,6 +479,18 @@ function validateInactive(entry, at, byJsProp, errors) {
         errors.push(`${at}: inactiveWhen 이 비교하는 값 '${v}' 가 '${target.prop}' 의 values 에 없음`);
       }
     });
+  }
+
+  /* equalsSelf 는 두 속성의 값끼리 견준다. 겹치는 값이 하나도 없으면 규칙이
+     영원히 맞지 않는다 — 조용히 죽은 선언이 되므로 여기서 잡는다. */
+  if (rule.equalsSelf === true
+      && entry.control === 'enum' && Array.isArray(entry.values)
+      && target.control === 'enum' && Array.isArray(target.values)) {
+    const mine = entry.values.map((v) => v.val);
+    const theirs = new Set(target.values.map((v) => v.val));
+    if (!mine.some((v) => theirs.has(v))) {
+      errors.push(`${at}: inactiveWhen.equalsSelf 인데 '${target.prop}' 와 겹치는 값이 없음`);
+    }
   }
 }
 
@@ -536,13 +572,18 @@ export function deriveState(state = {}) {
  * 'state'는 state를 본다. 위치 인자를 늘리는 대신 이렇게 둔 것은, 참조원이
  * 더 생겨도 호출부 모양이 바뀌지 않기 때문이다.
  *
+ * item 은 equalsSelf 만 쓴다. 그 연산자는 상대 값을 리터럴이 아니라 이 항목의
+ * 현재 값과 비교하므로, 판정에 아이템 값이 있어야 한다. 안 넘기면 비교할 값이
+ * 없어 활성으로 떨어진다 — 넘기지 않던 호출부가 그대로 동작한다.
+ *
  * @param {Object} entry   스키마 항목
  * @param {Object} [scopes]
  * @param {Object} [scopes.container] { [jsProp]: value }
+ * @param {Object} [scopes.item]      { [jsProp]: value } — 고른 아이템의 값
  * @param {Object} [scopes.state]     deriveState() 결과
  * @returns {{inactive: boolean, reason?: string, hint?: string}}
  */
-export function isInactive(entry, { container = {}, state = {}, measured = null } = {}) {
+export function isInactive(entry, { container = {}, item = {}, state = {}, measured = null } = {}) {
   // 유형 B·C 가 먼저다. 계약상 inactiveWhen 과 함께 쓸 수 없으므로 겹치지 않는다.
   const measuredRule = normalizeMeasured(entry?.measuredInactive);
   if (measuredRule) return judgeMeasured(measuredRule, measured);
@@ -557,6 +598,12 @@ export function isInactive(entry, { container = {}, state = {}, measured = null 
   if (rule.equals !== undefined) matched = actual === rule.equals;
   else if (rule.notEquals !== undefined) matched = actual !== rule.notEquals;
   else if (Array.isArray(rule.in)) matched = rule.in.includes(actual);
+  else if (rule.equalsSelf === true) {
+    // 상대 값을 내 현재 값과 견준다. 어느 속성끼리 견줄지는 스키마의 prop 이
+    // 정하므로 여기에 속성 이름이 등장하지 않는다.
+    const mine = item[entry.jsProp];
+    matched = mine !== undefined && actual !== undefined && mine === actual;
+  }
 
   if (!matched) return { inactive: false };
 
