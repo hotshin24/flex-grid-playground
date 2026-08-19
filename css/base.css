@@ -74,14 +74,6 @@ button:disabled {
   line-height: var(--lh-tight);
 }
 
-.fgp-subtitle {
-  font-size: var(--fs-3xs);
-  font-weight: var(--fw-bold);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--fgp-text-muted);
-}
-
 .fgp-mono {
   font-family: var(--fgp-font-numeric);
 }
