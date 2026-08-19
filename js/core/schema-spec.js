@@ -116,8 +116,12 @@ export const CONTROL_TYPES = {
        reason: '...',            // 비활성 사유 문장. 화면에 그대로 나간다
        hint:   '...'             // 선택. 해결 방법 안내
      }
-     measuredInactive: 'hasFreeSpace'   // 유형 B·C. renderer 측정 키 이름만 담는다.
-                                        // 판정 로직은 renderer가 소유하며 스키마는 키만 안다
+     measuredInactive: {                // 유형 B·C. renderer 측정 키 이름만 담는다.
+       key:    'hasFreeSpace',          // 이 키가 참이어야 속성이 일한다
+       reason: '...',                   // 거짓일 때 화면에 나갈 사유
+       hint:   '...'                    // 선택. 유형 C 는 해법까지 적는다 (F-13-5)
+     }
+     // 키만 쓰는 옛 표기('hasFreeSpace')도 받는다. 사유가 없을 뿐이다.
    }
 */
 
@@ -129,6 +133,38 @@ const INACTIVE_OPERATORS = ['equals', 'notEquals', 'in'];
 
 /** inactiveWhen 에 허용된 키. 오타를 잡기 위해 화이트리스트로 검사한다. */
 const INACTIVE_FIELDS = ['source', 'prop', ...INACTIVE_OPERATORS, 'reason', 'hint'];
+
+/** measuredInactive 에 허용된 키. */
+const MEASURED_FIELDS = ['key', 'reason', 'hint'];
+
+/**
+ * renderer 가 재는 키 목록.
+ *
+ * 스키마가 참조할 수 있는 이름을 여기에 모아 둔다. 오타는 판정이 영원히 거짓이
+ * 되는 방식으로 조용히 틀리므로 화이트리스트로 잡는다. inactiveWhen 의
+ * INACTIVE_STATE_KEYS 와 같은 이유다.
+ *
+ * 값의 뜻은 전부 "그 속성이 일할 조건" 이다. 참이면 활성, 거짓이면 비활성이다.
+ */
+export const MEASURED_KEYS = {
+  lineCount: '실제 줄 수',
+  hasFreeSpace: '주축에 남는 공간이 있는가',
+  hasCrossFreeSpace: '교차축에 남는 공간이 있는가',
+  isOverflowing: '아이템이 컨테이너를 넘쳤는가',
+  shrinkBlocked: '하한에 막혀 더 줄지 못하는가',
+  canShrink: '넘쳤고 아직 더 줄 수 있는가',
+  crossAuto: '아이템이 교차축 크기를 스스로 정하지 않았는가',
+  hasImplicitColumns: '암시적 열이 생겼는가',
+  hasImplicitRows: '암시적 행이 생겼는가',
+  hasPlacementGaps: '배치되지 않은 빈 칸이 있는가',
+};
+
+/** 키만 쓴 옛 표기도 받는다. 안쪽에서는 늘 객체로 다룬다. */
+export function normalizeMeasured(rule) {
+  if (rule === undefined || rule === null) return null;
+  if (typeof rule === 'string') return { key: rule };
+  return rule;
+}
 
 /** inactiveWhen.source 가 가질 수 있는 값. 생략하면 'container'. */
 const INACTIVE_SOURCES = ['container', 'state'];
@@ -230,6 +266,34 @@ export function validateSchema(schema, topicName) {
   return errors;
 }
 
+/** measuredInactive 선언 하나를 검사한다. 키 오타와 빠진 사유를 잡는다. */
+function validateMeasured(rule, at, errors) {
+  const normalized = normalizeMeasured(rule);
+
+  if (typeof rule === 'string') {
+    if (rule.trim() === '') errors.push(`${at}: measuredInactive 가 비어 있음`);
+  } else if (normalized === null || typeof normalized !== 'object' || Array.isArray(normalized)) {
+    errors.push(`${at}: measuredInactive 는 문자열이거나 객체여야 함`);
+    return;
+  } else {
+    Object.keys(normalized).forEach((k) => {
+      if (!MEASURED_FIELDS.includes(k)) errors.push(`${at}: measuredInactive 에 알 수 없는 필드 '${k}'`);
+    });
+    if (typeof normalized.reason !== 'string' || normalized.reason.trim() === '') {
+      errors.push(`${at}: measuredInactive.reason 이 비어 있음 (F-13-3)`);
+    }
+  }
+
+  const key = normalized?.key;
+  if (typeof key !== 'string' || key.trim() === '') {
+    errors.push(`${at}: measuredInactive.key 가 비어 있음`);
+    return;
+  }
+  if (!Object.prototype.hasOwnProperty.call(MEASURED_KEYS, key)) {
+    errors.push(`${at}: measuredInactive.key '${key}' 는 renderer가 재지 않는 키`);
+  }
+}
+
 /**
  * 조건부 비활성 선언을 검사한다 (F-13 유형 A).
  *
@@ -239,13 +303,18 @@ export function validateSchema(schema, topicName) {
  */
 function validateInactive(entry, at, byJsProp, errors) {
   if (entry.measuredInactive !== undefined) {
-    if (typeof entry.measuredInactive !== 'string' || entry.measuredInactive.trim() === '') {
-      errors.push(`${at}: measuredInactive 는 비어 있지 않은 문자열이어야 함`);
-    }
+    validateMeasured(entry.measuredInactive, at, errors);
     if (entry.inactiveWhen !== undefined) {
       errors.push(`${at}: inactiveWhen 과 measuredInactive 를 함께 쓸 수 없음 (유형 A vs B·C)`);
     }
   }
+
+  // 값 하나에만 걸리는 선언(유형 B·C 중 값 단위)도 같은 규칙으로 본다
+  (entry.values ?? []).forEach((v) => {
+    if (v.measuredInactive !== undefined) {
+      validateMeasured(v.measuredInactive, `${at} 값 '${v.val}'`, errors);
+    }
+  });
 
   const rule = entry.inactiveWhen;
   if (rule === undefined) return;
@@ -351,6 +420,45 @@ function validateInactive(entry, at, byJsProp, errors) {
 }
 
 /* ==========================================================================
+   측정 판정 (F-13 유형 B·C)
+   ========================================================================== */
+
+/**
+ * 키가 가리키는 것은 "그 속성이 일할 조건" 이다. 참이면 활성, 거짓이면 비활성이다.
+ *
+ * 아직 재지 않았으면(measured 가 없으면) 활성으로 둔다 — 재기 전에 죽여 놓으면
+ * 첫 화면에서 멀쩡한 컨트롤이 회색으로 뜬다.
+ *
+ * 속성명 분기가 없다. 어떤 속성이 어떤 키에 매여 있는지는 스키마가 정하고,
+ * 그 키를 무엇으로 재는지는 renderer 가 정한다. 이 함수는 둘을 잇기만 한다.
+ */
+export function judgeMeasured(rule, measured) {
+  if (!rule || !measured || !(rule.key in measured)) return { inactive: false };
+  if (measured[rule.key]) return { inactive: false };
+  return { inactive: true, reason: rule.reason, hint: rule.hint };
+}
+
+/**
+ * 값 하나에만 걸리는 측정 판정.
+ *
+ * align-items 의 stretch 와 grid-auto-flow 의 dense 는 속성이 아니라 값 하나가
+ * 죽는다. 속성 전체를 회색으로 만들면 같은 컨트롤의 다른 값(flex-start · row)까지
+ * 못 쓰는 것처럼 보인다. 그래서 값 단위로 따로 판정한다.
+ *
+ * @returns {Object} { [val]: {inactive, reason?, hint?} } — 죽은 값만 담긴다
+ */
+export function inactiveValues(entry, measured) {
+  const out = {};
+  (entry?.values ?? []).forEach((v) => {
+    const rule = normalizeMeasured(v.measuredInactive);
+    if (!rule) return;
+    const verdict = judgeMeasured(rule, measured);
+    if (verdict.inactive) out[v.val] = verdict;
+  });
+  return out;
+}
+
+/* ==========================================================================
    조건부 비활성 판정 (F-13 유형 A)
    ========================================================================== */
 
@@ -395,7 +503,11 @@ export function deriveState(state = {}) {
  * @param {Object} [scopes.state]     deriveState() 결과
  * @returns {{inactive: boolean, reason?: string, hint?: string}}
  */
-export function isInactive(entry, { container = {}, state = {} } = {}) {
+export function isInactive(entry, { container = {}, state = {}, measured = null } = {}) {
+  // 유형 B·C 가 먼저다. 계약상 inactiveWhen 과 함께 쓸 수 없으므로 겹치지 않는다.
+  const measuredRule = normalizeMeasured(entry?.measuredInactive);
+  if (measuredRule) return judgeMeasured(measuredRule, measured);
+
   const rule = entry?.inactiveWhen;
   if (!rule) return { inactive: false };
 
