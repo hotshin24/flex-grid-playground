@@ -1,5 +1,5 @@
 /**
- * controls.js — 스키마 → 컨트롤 DOM (M1)
+ * controls.js — 스키마 → 컨트롤 DOM
  *
  * 스키마 항목 하나를 받아 그에 맞는 컨트롤 요소를 만든다.
  * 속성별 버튼을 마크업에 하드코딩하지 않는 것이 이 파일의 존재 이유다.
@@ -283,12 +283,19 @@ function bindText(root, entry, state, onChange) {
   });
 }
 
-/** M3 대상. 자리만 만들고 조작 수단은 두지 않는다. */
+/**
+ * 편집기가 없는 컨트롤 타입의 자리.
+ *
+ * 지금 스키마가 쓰는 일곱 타입은 전부 아래 switch 에 있으므로 이 함수는
+ * 실행되지 않는다. 남겨 두는 이유는 여덟 번째 타입이 CONTROL_TYPES 에
+ * 등록됐는데 편집기를 아직 안 만든 순간이다. 그때 컨트롤이 통째로 사라지는
+ * 대신 자리와 문구가 남아 무엇이 빠졌는지 화면에서 보인다.
+ */
 function buildPending(entry, doc) {
   const note = doc.createElement('div');
   note.className = VALUES_CLASS;
-  note.setAttribute('data-pending', 'M3');
-  note.textContent = `${entry.control} 컨트롤은 M3에서 구현`;
+  note.setAttribute('data-pending', '');
+  note.textContent = `${entry.control} 컨트롤은 아직 편집기가 없습니다`;
   return note;
 }
 
@@ -638,7 +645,7 @@ export function createControl(entry, { value, onChange, suggestions, doc = globa
       break;
     }
     case 'area-grid': {
-      // 1차는 텍스트 입력 + 검증까지다. 시각 편집은 M5 이후.
+      // 텍스트 입력 + 검증까지다. 셀을 끌어 그리는 시각 편집은 v1.1 후보다.
       const editor = createAreaEditor(entry, { value: current, onChange: notify, doc });
       root.appendChild(editor.root);
       state.interactive = editor.interactive;

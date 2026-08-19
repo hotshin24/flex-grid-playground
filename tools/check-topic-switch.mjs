@@ -177,7 +177,7 @@ section('Grid 컨트롤');
   check('속성 이름이 전부 붙어 있다',
     built.every((b) => b.root.getAttribute('data-prop') === b.entry.prop));
 
-  const pending = built.filter((b) => walk(b.root).some((n) => n.getAttribute('data-pending') === 'M3'));
+  const pending = built.filter((b) => walk(b.root).some((n) => n.getAttribute('data-pending') !== null));
   const live = built.filter((b) => !pending.includes(b));
 
   /**
