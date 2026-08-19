@@ -23,6 +23,7 @@ import { FLEX_EXPLAIN_NOTES, FLEX_EXPLAIN_SAMPLES, AXIS_LABELS } from './topics/
 import { GRID_EXPLAIN_NOTES, GRID_EXPLAIN_SAMPLES, GRID_EXPLAIN_DEMOS, GRID_DISPLAY } from './topics/grid/explain.js';
 import { FLEX_PRESETS } from './topics/flex/presets.js';
 import { FLEX_EXAMPLES } from './topics/flex/examples.js';
+import { GRID_EXAMPLES } from './topics/grid/examples.js';
 import { FLEX_CHALLENGES } from './topics/flex/challenges.js';
 import { isInactive, inactiveValues, deriveState, partitionByScope, defaultsFrom } from './core/schema-spec.js';
 import { generateCode } from './core/codegen.js';
@@ -55,7 +56,7 @@ const EXPLAIN = {
   },
 };
 const PRESETS = { flex: FLEX_PRESETS };
-const EXAMPLES = { flex: FLEX_EXAMPLES };
+const EXAMPLES = { flex: FLEX_EXAMPLES, grid: GRID_EXAMPLES };
 const CHALLENGES = { flex: FLEX_CHALLENGES };
 
 /** 아이템 개수 한계. 스키마와 무관한 프리뷰 구성값이다. */
@@ -433,12 +434,6 @@ const tabs = createTabs({
 
 /**
  * 속성 설명 탭. 한 번만 만들고 이후에는 손대지 않는다 — 데모는 정적이며
- * 메인 상태와 무관하다. store를 건드리지 않는다.
- *
- * Flex 콘텐츠만 있다. Grid 것은 M3 후속 단계에서 만들고, 그때까지는
- * syncTabs 가 안내 문구로 덮는다.
- */
-/**
  * 속성 설명 탭. 토픽이 바뀌면 다시 짓는다.
  *
  * 데모는 정적 스냅숏이라 store 를 건드리지 않는다. 콘텐츠가 통째로 달라지므로
@@ -448,7 +443,7 @@ const explainRoot = document.getElementById(panelId('explain'));
 
 function buildExplain(topic) {
   const config = EXPLAIN[topic];
-  clear(explainRoot);
+  resetPanel('explain');
   if (!config) return;
   createExplain({ ...config, root: explainRoot });
 }
@@ -472,6 +467,20 @@ const pendingNotes = new Map(Object.keys(TAB_CONTENT).map((name) => {
   return [name, note];
 }));
 
+/**
+ * 콘텐츠를 다시 짓기 전에 패널을 비운다.
+ *
+ * 안내 문구는 패널의 직계 자식이어야 한다 — components.css 가
+ * `.is-topic-pending > .fgp-topic-pending` 으로 고른다. 그냥 비우면 문구까지
+ * 딸려 나가고, 그 뒤로는 떨어져 나간 노드에 글자만 넣게 되어 안내가 영영
+ * 뜨지 않는다. 비운 자리에 도로 붙인다.
+ */
+function resetPanel(name) {
+  const host = tabPanels.get(name);
+  clear(host);
+  host.appendChild(pendingNotes.get(name));
+}
+
 function syncTabs(state) {
   tabs.sync(state.tab);
   tabPanels.forEach((panel, name) => {
@@ -480,7 +489,7 @@ function syncTabs(state) {
 
   pendingNotes.forEach((note, name) => {
     const ready = Boolean(TAB_CONTENT[name][state.topic]);
-    note.textContent = ready ? '' : `${TOPIC_LABELS[state.topic] ?? state.topic} 콘텐츠는 M3 후속 단계에서 만듭니다.`;
+    note.textContent = ready ? '' : `${TOPIC_LABELS[state.topic] ?? state.topic} 콘텐츠는 후속 단계에서 만듭니다.`;
     tabPanels.get(name).classList.toggle('is-topic-pending', !ready);
   });
 }
@@ -538,17 +547,24 @@ async function copyText(text, button) {
 }
 
 /* --------------------------------------------------------------------------
-   실전 예제 (F-08)
+   실전 예제 (F-08 · GR-07)
 
-   속성 설명 탭과 같다. 한 번 만들고 두지 않는다 — 예제는 고정 콘텐츠라
-   store 와 무관하다. 복사는 플레이그라운드와 같은 copyText 를 쓴다.
+   속성 설명 탭과 같다. 토픽이 바뀌면 다시 짓는다 — 예제는 고정 콘텐츠라
+   store 와 무관하고, 목록도 카테고리 필터도 통째로 갈리므로 갱신할 것이
+   없다. 복사는 플레이그라운드와 같은 copyText 를 쓴다.
+
+   카테고리 목록은 넘겨받은 예제에서 나온다. 여기에도 ui/examples.js 에도
+   카테고리 이름이 없으므로, 토픽이 다른 카테고리를 쓰더라도 이 줄은 그대로다.
    -------------------------------------------------------------------------- */
 
-createExamples({
-  examples: EXAMPLES[initial.topic],
-  root: document.getElementById(panelId('examples')),
-  onCopy: (text, button) => copyText(text, button),
-});
+const examplesRoot = document.getElementById(panelId('examples'));
+
+function buildExamples(topic) {
+  const examples = EXAMPLES[topic];
+  resetPanel('examples');
+  if (!examples) return;
+  createExamples({ examples, root: examplesRoot, onCopy: (text, button) => copyText(text, button) });
+}
 
 /* --------------------------------------------------------------------------
    챌린지 (F-09 · F-10)
@@ -737,6 +753,7 @@ function rebuildForTopic(state) {
   buildItemControls(state.topic, state);
   buildPresets(state.topic);
   buildExplain(state.topic);
+  buildExamples(state.topic);
 }
 
 /**

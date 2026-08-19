@@ -15,6 +15,7 @@
 
 import { readFileSync } from 'node:fs';
 import { FLEX_EXAMPLES } from '../js/topics/flex/examples.js';
+import { GRID_EXAMPLES } from '../js/topics/grid/examples.js';
 import {
   createExamples, categoriesFrom, ALL,
   CARD_CLASS, CAT_CLASS, FRAME_CLASS, CODE_CLASS, FILTER_ITEM_CLASS, COUNT_CLASS,
@@ -432,6 +433,167 @@ section('방어');
   check('없는 카테고리는 무시', api.filtered() === ALL && api.visible() === 18);
   api.select('없는 예제');
   check('없는 예제 id는 무시', api.selected() === FLEX_EXAMPLES[0].id);
+}
+
+/* ==========================================================================
+   Grid 예제 (GR-07)
+
+   Flex 것은 v0.1 이관이라 원본과 글자 대조를 하지만 Grid 18건은 신규 작성이라
+   대조할 원본이 없다. 대신 형식이 Flex 와 같은지, 그리고 예제 코드가 실제로
+   그림을 만들어 내는지를 본다.
+
+   ui/examples.js 가 토픽을 모르는지도 여기서 확인한다 — 같은 함수에 다른
+   데이터를 넣어 세워 보고, 카테고리 · 필터 · 개수가 전부 그 데이터에서
+   나오는지 본다.
+   ========================================================================== */
+section('Grid 예제');
+
+{
+  check('Grid 예제 18건', GRID_EXAMPLES.length === 18, `${GRID_EXAMPLES.length}건`);
+  check('id 유일', new Set(GRID_EXAMPLES.map((e) => e.id)).size === GRID_EXAMPLES.length);
+
+  const missing = [];
+  GRID_EXAMPLES.forEach((ex) => {
+    REQUIRED.forEach((key) => {
+      const v = ex[key];
+      if (v === undefined || v === null || v === '') missing.push(`${ex.id}.${key}`);
+    });
+  });
+  check('필수 필드 7종 전량 보유', missing.length === 0, missing.join(', ') || REQUIRED.join(' · '));
+
+  check('previewHeight는 숫자', GRID_EXAMPLES.every((e) => Number.isFinite(e.previewHeight)));
+  check('categoryColor 필드 없음', GRID_EXAMPLES.every((e) => !('categoryColor' in e)));
+
+  // Flex 와 한 화면에 같이 나오지는 않지만, 해시 주소와 저장값이 id 로 오간다.
+  // 겹치면 토픽이 바뀐 뒤에도 같은 id 가 먹혀 엉뚱한 예제가 열린다.
+  const clash = GRID_EXAMPLES.map((e) => e.id).filter((id) => FLEX_EXAMPLES.some((f) => f.id === id));
+  check('Flex 예제와 id 충돌 없음', clash.length === 0, clash.join(', ') || '36건 전부 다름');
+
+  const flexCats = categoriesFrom(FLEX_EXAMPLES);
+  const gridCats = categoriesFrom(GRID_EXAMPLES);
+  check('카테고리가 Flex 와 같은 5종', JSON.stringify(flexCats) === JSON.stringify(gridCats),
+    `${gridCats.length}종 — ${gridCats.join(' · ')}`);
+  check('카테고리 합이 예제 수와 같음',
+    gridCats.reduce((n, c) => n + GRID_EXAMPLES.filter((e) => e.category === c).length, 0) === 18);
+
+  // 순서까지 같아야 하는 이유: 강조색과 칩 자리가 등장 순서로 정해진다.
+  // 어긋나면 토픽을 갈아탈 때 같은 카테고리의 색과 자리가 흔들린다.
+  check('카테고리 등장 순서까지 Flex 와 같음',
+    flexCats.every((c, i) => gridCats[i] === c), gridCats.join(' → '));
+
+  const META = REQUIRED.filter((k) => k !== 'css' && k !== 'html');
+  const dirty = [];
+  GRID_EXAMPLES.forEach((ex) => {
+    META.forEach((key) => {
+      if (COLOR.test(String(ex[key]))) dirty.push(`${ex.id}.${key}`);
+      COLOR.lastIndex = 0;
+    });
+  });
+  check('예제 메타데이터에 색상 0건', dirty.length === 0, dirty.join(', ') || META.join(' · '));
+}
+
+/* --------------------------------------------------------------------------
+   html 의 클래스가 css 에 있는가
+
+   액자 안에서만 도는 코드라 오타가 나도 아무 데서도 터지지 않는다. 스타일이
+   안 먹은 채 "이게 원래 이런 그림인가" 싶은 화면만 남는다. 학습자가 그대로
+   복사해 가는 코드이므로 여기서 잡는다.
+   -------------------------------------------------------------------------- */
+
+{
+  const classesIn = (html) => new Set(
+    [...html.matchAll(/class="([^"]+)"/g)].flatMap((m) => m[1].trim().split(/\s+/)));
+
+  // 클래스 선택자로 등장하는지. 뒤에 -, 글자, 숫자가 붙으면 다른 이름이다
+  const defined = (css, name) => new RegExp(`\\.${name}(?![\\w-])`).test(css);
+
+  [['Flex', FLEX_EXAMPLES], ['Grid', GRID_EXAMPLES]].forEach(([label, list]) => {
+    const orphan = [];
+    list.forEach((ex) => {
+      [...classesIn(ex.html)].forEach((name) => {
+        if (!defined(ex.css, name)) orphan.push(`${ex.id}.${name}`);
+      });
+    });
+    const total = list.reduce((n, ex) => n + classesIn(ex.html).size, 0);
+    check(`${label} — html 클래스가 전부 css 에 있음`, orphan.length === 0,
+      orphan.join(', ') || `${total}개 전부 정의됨`);
+  });
+
+  // 판정이 실제로 잡는지. 없는 클래스를 하나 끼워 넣어 본다
+  const fake = { css: '.a { color: red; }', html: '<div class="a b"></div>' };
+  const names = [...new Set([...fake.html.matchAll(/class="([^"]+)"/g)].flatMap((m) => m[1].split(' ')))];
+  check('없는 클래스를 실제로 잡는다',
+    names.filter((n) => !new RegExp(`\\.${n}(?![\\w-])`).test(fake.css)).join(',') === 'b');
+
+  // 접두어가 같은 이름을 같은 것으로 세지 않는지
+  check('접두어가 겹치는 이름을 구분한다',
+    !new RegExp('\\.card(?![\\w-])').test('.card-body { color: red; }'));
+}
+
+/* --------------------------------------------------------------------------
+   토픽 무관 — 같은 함수에 Grid 데이터를 넣어 세운다
+   -------------------------------------------------------------------------- */
+
+{
+  const root = createElement('section');
+  const api = createExamples({ examples: GRID_EXAMPLES, root, doc });
+
+  const cards = byClass(root, CARD_CLASS);
+  const items = byClass(root, LIST_ITEM_CLASS);
+  const chips = byClass(root, FILTER_ITEM_CLASS);
+  const gridCats = categoriesFrom(GRID_EXAMPLES);
+
+  check('카드 18개 · 목록 18개', cards.length === 18 && items.length === 18,
+    `${cards.length} · ${items.length}`);
+  check('칩이 Grid 카테고리에서 나온다',
+    JSON.stringify(chips.map((c) => c.textContent)) === JSON.stringify([ALL, ...gridCats]),
+    chips.map((c) => c.textContent).join(' · '));
+  check('처음에는 Grid 첫 예제', api.selected() === GRID_EXAMPLES[0].id, String(api.selected()));
+  check('액자에 Grid css·html 이 실림',
+    byClass(root, FRAME_CLASS).every((f, i) => f.srcdoc.includes(GRID_EXAMPLES[i].css)
+      && f.srcdoc.includes(GRID_EXAMPLES[i].html)));
+
+  const reachable = GRID_EXAMPLES.filter((ex) => {
+    api.select(ex.id);
+    return api.selected() === ex.id && cards.filter((c) => !c.hidden).length === 1;
+  });
+  check('18건 전부 고를 수 있다', reachable.length === 18, `${reachable.length}건`);
+
+  gridCats.forEach((cat) => {
+    const expected = GRID_EXAMPLES.filter((e) => e.category === cat).length;
+    api.filter(cat);
+    check(`${cat} — ${expected}건`, api.visible() === expected, `${api.visible()}건`);
+  });
+  api.filter(ALL);
+  check('전체로 돌아오면 18건', api.visible() === 18);
+
+  // 강조색 순번도 Grid 자신의 카테고리 순서에서 나온다
+  const expectedAt = (i) => String((gridCats.indexOf(GRID_EXAMPLES[i].category) % 8) + 1);
+  check('카드 순번이 Grid 카테고리와 맞음',
+    cards.every((card, i) => card.getAttribute('data-category') === expectedAt(i)));
+
+  // 같은 카테고리는 두 토픽에서 같은 순번이어야 한다 — 색이 흔들리지 않는다
+  const flexCats = categoriesFrom(FLEX_EXAMPLES);
+  check('같은 카테고리가 두 토픽에서 같은 색 순번',
+    gridCats.every((c) => flexCats.indexOf(c) === gridCats.indexOf(c)),
+    gridCats.map((c, i) => `${c}=${i + 1}`).join(' · '));
+}
+
+/* --------------------------------------------------------------------------
+   배선 — main.js 가 레지스트리로 받는가
+   -------------------------------------------------------------------------- */
+
+{
+  const src = codeOnly(read('../js/main.js'));
+  check('main.js 가 토픽 레지스트리로 예제를 받는다',
+    /EXAMPLES\s*=\s*\{[^}]*flex:[^}]*grid:/.test(src));
+  check('토픽이 바뀌면 예제 탭도 다시 짓는다',
+    /buildExamples\(state\.topic\)/.test(src) && /function rebuildForTopic/.test(src));
+  check('예제 탭을 한 토픽으로 못박아 두지 않았다', !/EXAMPLES\[initial\.topic\]/.test(src));
+
+  const gridSrc = read('../js/topics/grid/examples.js');
+  check('grid/examples.js 는 store 를 모른다', !/\bstore\b/i.test(codeOnly(gridSrc)));
+  check('grid/examples.js 는 ui 를 import 하지 않는다', !/^import /m.test(gridSrc));
 }
 
 /* ========================================================================== */
