@@ -106,12 +106,28 @@ section('구조 규칙');
   check('색상 리터럴 0건', (src.match(/#[0-9a-fA-F]{3,8}\b|rgba?\(/g) ?? []).length === 0);
   check('innerHTML 미사용', !/\.innerHTML/.test(src));
 
-  const html = readFileSync(new URL('../index-v1.html', import.meta.url), 'utf8');
-  check('마크업에 인라인 onclick 0건', !/onclick=/i.test(html));
+  const raw = readFileSync(new URL('../index-v1.html', import.meta.url), 'utf8');
+  // 주석을 걷어내고 센다. 구조를 설명한 주석에 role="tabpanel" 이 적혀 있으면
+  // 세는 쪽이 한 건 더 잡는다 — 실제로 그렇게 어긋났다.
+  const html = raw.replace(/<!--[\s\S]*?-->/g, ' ');
+  check('마크업에 인라인 onclick 0건', !/onclick=/i.test(raw));
   check('탭 수만큼 패널이 있음',
     TABS.every((t) => html.includes(`id="${panelId(t)}"`)),
     TABS.map(panelId).join(', '));
   check('패널에 role=tabpanel', (html.match(/role="tabpanel"/g) ?? []).length === TABS.length);
+
+  /* 본문 랜드마크. 패널마다 role="tabpanel" 이 붙어 암시 역할을 덮으므로
+     main 은 패널 바깥에 있어야 한다. 안쪽에 두면 문서에 본문이 없어진다. */
+  check('main 이 하나 있다', (html.match(/<main\b/g) ?? []).length === 1);
+  check('main 에 role 이 없다', !/<main[^>]*role=/.test(html),
+    'role 을 얹으면 암시 역할이 덮인다');
+  check('패널 넷이 전부 main 안에 있다', (() => {
+    const at = html.indexOf('<main');
+    const end = html.indexOf('</main>');
+    const inside = html.slice(at, end);
+    return TABS.every((t) => inside.includes(`id="${panelId(t)}"`));
+  })(), TABS.map(panelId).join(', '));
+  check('main 자체는 패널이 아니다', !/<main[^>]*id="fgp-panel-/.test(html));
 }
 
 /* ==========================================================================

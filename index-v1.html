@@ -35,7 +35,12 @@
 <!-- 탭 버튼 마운트 지점. 목록은 store의 TABS에서 나온다 -->
 <nav class="fgp-tabs" role="tablist" aria-label="화면 전환" id="fgp-tabs"></nav>
 
-<main class="fgp-shell" id="fgp-panel-playground" role="tabpanel" aria-labelledby="fgp-tab-playground">
+<!-- 탭 패널 넷을 감싸는 본문 랜드마크.
+     패널마다 role="tabpanel" 이 붙어 암시 역할을 덮으므로, main 은 바깥에
+     따로 두어야 문서에 본문 랜드마크가 생긴다. -->
+<main class="fgp-main">
+
+<div class="fgp-shell" id="fgp-panel-playground" role="tabpanel" aria-labelledby="fgp-tab-playground">
 
   <aside class="fgp-panel">
     <section class="fgp-panel__section" aria-labelledby="fgp-presets-title">
@@ -103,7 +108,7 @@
     </section>
   </section>
 
-</main>
+</div>
 
 <!-- 속성 설명 마운트 지점. 목록과 데모는 스키마에서 나온다 -->
 <section id="fgp-panel-explain" role="tabpanel" aria-labelledby="fgp-tab-explain" hidden></section>
@@ -113,6 +118,8 @@
 
 <!-- 챌린지 마운트 지점. 문제도 컨트롤도 topics/flex/challenges.js와 스키마에서 나온다 -->
 <section id="fgp-panel-challenge" role="tabpanel" aria-labelledby="fgp-tab-challenge" hidden></section>
+
+</main>
 
 <script type="module" src="js/main.js"></script>
 </body>
