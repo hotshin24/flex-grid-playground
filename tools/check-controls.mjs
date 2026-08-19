@@ -361,10 +361,13 @@ section('인라인 onclick · style 0건');
 section('M3 보류 컨트롤');
 
 {
-  // track-list 는 GR-03, span 은 GR-02 에서 구현했다. 남은 것은 area-grid · text 다.
-  const pending = ['area-grid', 'text'];
+  /**
+   * PENDING_CONTROLS 는 GR-02 · GR-03 · GR-04 를 지나며 비었다. 이제 자리만
+   * 잡히는 것은 switch 의 default 로 떨어지는 종류, 즉 text 하나뿐이다.
+   */
+  const pending = ['text'];
   const entries = pending.map((c) => GRID_SCHEMA.find((e) => e.control === c));
-  check('grid 스키마에서 남은 보류 2종 확보', entries.every(Boolean), entries.map((e) => e?.prop).join(', '));
+  check('grid 스키마에서 남은 보류 1종 확보', entries.every(Boolean), entries.map((e) => e?.prop).join(', '));
 
   const roots = entries.map((entry) => build(entry).root);
   /**
@@ -380,7 +383,7 @@ section('M3 보류 컨트롤');
   check('조작 요소 없음', roots.every((r) => optionsOf(r).length === 0));
   check('라벨은 그대로 생성', roots.every((r) => findByClass(r, PROP_CLASS)[0].textContent.length > 0));
 
-  ['track-list', 'span'].forEach((control) => {
+  ['track-list', 'span', 'area-grid'].forEach((control) => {
     const entry = GRID_SCHEMA.find((e) => e.control === control);
     const built = build(entry).root;
     check(`${control}는 더 이상 보류가 아니다`,

@@ -251,7 +251,8 @@ section('controls.js 연결');
 {
   const controls = codeOnly(read('../js/ui/controls.js'));
   check('PENDING_CONTROLS에서 빠졌다', !/PENDING_CONTROLS[^;]*'span'/.test(controls));
-  check('area-grid만 남았다', /PENDING_CONTROLS = new Set\(\['area-grid'\]\)/.test(controls));
+  check('PENDING_CONTROLS가 비었다', /PENDING_CONTROLS = new Set\(\)/.test(controls),
+    'area-grid는 GR-04에서 빠졌다');
   check('토픽을 모른다', !/topic/.test(controls));
 
   ENTRIES.forEach((entry) => {

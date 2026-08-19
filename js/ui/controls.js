@@ -15,6 +15,7 @@
 import { CONTROL_TYPES } from '../core/schema-spec.js';
 import { createTrackEditor } from './track-editor.js';
 import { createSpanEditor } from './span-editor.js';
+import { createAreaEditor } from './area-editor.js';
 
 /* --------------------------------------------------------------------------
    DOM 계약 — components.css가 받는 이름
@@ -39,8 +40,12 @@ export const REMEDY_CLASS = 'fgp-control__remedy';
 /** 숫자가 앞에 붙는 단위. 나머지(auto·content 등)는 키워드로 본다. */
 const NUMERIC_UNITS = new Set(['px', 'rem', 'em', '%', 'fr', 'vh', 'vw', 'ch']);
 
-/** M3에서 구현할 컨트롤. track-list는 GR-03, span은 GR-02에서 빠졌다. */
-const PENDING_CONTROLS = new Set(['area-grid']);
+/**
+ * 아직 구현하지 않은 컨트롤. GR-03(track-list) · GR-02(span) · GR-04(area-grid)를
+ * 지나며 비었다. 남겨 두는 이유는 새 control 타입이 계약에 먼저 들어오고
+ * 편집기가 나중에 붙는 순서가 앞으로도 반복되기 때문이다.
+ */
+const PENDING_CONTROLS = new Set();
 
 /** label 요소와 입력을 for/id로 잇기 위한 일련번호. */
 let uid = 0;
@@ -558,6 +563,14 @@ export function createControl(entry, { value, onChange, doc = globalThis.documen
     case 'span': {
       // 트랙 편집기와 같은 짜임이다. 값 변환은 계약에 맡긴다.
       const editor = createSpanEditor(entry, { value: current, onChange: notify, doc });
+      root.appendChild(editor.root);
+      state.interactive = editor.interactive;
+      sync = editor.sync;
+      break;
+    }
+    case 'area-grid': {
+      // 1차는 텍스트 입력 + 검증까지다. 시각 편집은 M5 이후.
+      const editor = createAreaEditor(entry, { value: current, onChange: notify, doc });
       root.appendChild(editor.root);
       state.interactive = editor.interactive;
       sync = editor.sync;

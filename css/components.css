@@ -1046,6 +1046,120 @@ code.fgp-pane__item__name {
 }
 
 /* --------------------------------------------------------------------------
+   영역 이름 편집기 (GR-04, 1차 — 텍스트 입력 + 검증)
+   -------------------------------------------------------------------------- */
+
+.fgp-area {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+.fgp-area__mode {
+  display: flex;
+  gap: var(--sp-1);
+}
+
+.fgp-area__option {
+  flex: 1;
+  padding: var(--sp-1);
+  border: 1px solid var(--fgp-border-default);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--fgp-text-secondary);
+  font-family: var(--fgp-font-code);
+  font-size: var(--fs-3xs);
+}
+
+.fgp-area__option:hover {
+  color: var(--fgp-text-primary);
+  border-color: var(--fgp-border-strong);
+}
+
+.fgp-area__option[aria-checked='true'] {
+  background: var(--fgp-accent-faint);
+  border-color: var(--fgp-accent-quiet);
+  color: var(--fgp-accent-text);
+}
+
+/* 행이 그대로 보여야 하므로 줄바꿈을 살린다 */
+.fgp-area__input {
+  width: 100%;
+  padding: var(--sp-2);
+  border: 1px solid var(--fgp-border-default);
+  border-radius: var(--radius-sm);
+  background: var(--fgp-surface-sunken);
+  color: var(--fgp-text-primary);
+  font-family: var(--fgp-font-code);
+  font-size: var(--fs-3xs);
+  line-height: var(--lh-base);
+  resize: vertical;
+  white-space: pre;
+}
+
+.fgp-area__input[hidden] {
+  display: none;
+}
+
+/* 오류가 있는 동안에는 입력 칸 테두리로도 알린다. 글자만으로 알리지 않는다 */
+.fgp-area.is-invalid .fgp-area__input {
+  border-color: var(--fgp-state-incorrect);
+}
+
+.fgp-area__status {
+  margin: var(--sp-0);
+  color: var(--fgp-text-muted);
+  font-size: var(--fs-3xs);
+  line-height: var(--lh-base);
+}
+
+.fgp-area.is-invalid .fgp-area__status {
+  color: var(--fgp-state-incorrect);
+}
+
+.fgp-area__errors {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-0);
+  margin: var(--sp-0);
+  padding-left: var(--sp-4);
+}
+
+.fgp-area__errors[hidden] {
+  display: none;
+}
+
+.fgp-area__error {
+  color: var(--fgp-state-incorrect);
+  font-size: var(--fs-3xs);
+  line-height: var(--lh-base);
+}
+
+/* grid-area가 참조할 이름들. 지금은 보여 주기만 한다 */
+.fgp-area__names {
+  margin: var(--sp-0);
+  color: var(--fgp-text-muted);
+  font-family: var(--fgp-font-code);
+  font-size: var(--fs-3xs);
+}
+
+.fgp-area__names[hidden] {
+  display: none;
+}
+
+.fgp-area__preview {
+  padding: var(--sp-1) var(--sp-2);
+  background: var(--fgp-code-bg);
+  border: 1px solid var(--fgp-border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--fgp-code-value);
+  font-family: var(--fgp-font-code);
+  font-size: var(--fs-3xs);
+  white-space: pre;
+  overflow-x: auto;
+}
+
+/* --------------------------------------------------------------------------
    토픽 전환 (F-01)
    -------------------------------------------------------------------------- */
 
