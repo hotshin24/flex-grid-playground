@@ -53,8 +53,15 @@ const PREV_KEYS = new Set(['ArrowLeft', 'ArrowUp']);
  *
  * 액자는 별개 문서라 토큰(--p-font-*)이 건너가지 않는다. 그래서 여기만은
  * 글꼴 이름을 글자로 적는다. 예제 콘텐츠의 일부이지 우리 스타일시트가 아니다.
+ *
+ * html·body 의 100% 는 v0.1 에 없던 한 줄이다. Flex 예제는 높이를 px 로만
+ * 잡아 필요가 없었지만 Grid 예제 다섯 건이 컨테이너에 height: 100% 를 준다.
+ * 조상 높이가 auto 면 백분율 높이는 풀리지 않아 auto 로 되돌아가고, 그러면
+ * 1fr 행이 내용 높이로 주저앉아 "가진 높이를 행끼리 나눈다"는 그림 자체가
+ * 사라진다. Flex 예제 18건에는 백분율 높이가 한 건도 없어 이 줄이 닿지 않는다.
  */
-const FRAME_RESET = "*{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',system-ui,sans-serif}";
+const FRAME_RESET = "*{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',system-ui,sans-serif}"
+  + 'html,body{height:100%}';
 
 /** 데이터에 나온 순서대로. 이름을 코드에 적지 않으려고 순번으로만 다룬다. */
 export function categoriesFrom(examples) {
