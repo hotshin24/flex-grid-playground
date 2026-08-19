@@ -264,7 +264,7 @@
   display: none;
 }
 
-/* M3 대기 컨트롤 — 자리만 있고 조작 수단은 없다 */
+/* 편집기가 없는 컨트롤의 자리 — 조작 수단 없이 무엇이 빠졌는지만 알린다 */
 .fgp-control__values[data-pending] {
   padding: var(--sp-2);
   border: 1px dashed var(--fgp-border-default);

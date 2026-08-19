@@ -1,5 +1,5 @@
 /**
- * renderer.js — 프리뷰 DOM 렌더링 (M1)
+ * renderer.js — 프리뷰 DOM 렌더링
  *
  * store를 구독해 상태가 바뀔 때마다 프리뷰를 갱신한다.
  *
