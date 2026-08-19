@@ -6,7 +6,7 @@
  * 이 6개가 v0.1 구조로 확장 불가능했던 직접적 원인이다.
  */
 
-const MDN = 'https://developer.mozilla.org/ko/docs/Web/CSS/';
+const MDN = 'https://developer.mozilla.org/en-US/docs/Web/CSS/';
 
 export const GRID_SCHEMA = [
   /* ====================== 컨테이너 — 명시적 트랙 ====================== */

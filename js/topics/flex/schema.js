@@ -5,7 +5,7 @@
  * v0.1 EXPLAIN_DATA 의 설명문을 이관하고 스키마 규격에 맞춰 재구성.
  */
 
-const MDN = 'https://developer.mozilla.org/ko/docs/Web/CSS/';
+const MDN = 'https://developer.mozilla.org/en-US/docs/Web/CSS/';
 
 export const FLEX_SCHEMA = [
   /* ====================== 컨테이너 ====================== */
