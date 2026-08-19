@@ -876,6 +876,61 @@ code.fgp-pane__item__name {
 }
 
 /* --------------------------------------------------------------------------
+   토픽 전환 (F-01)
+   -------------------------------------------------------------------------- */
+
+.fgp-topics {
+  display: flex;
+  gap: var(--sp-1);
+  padding: var(--sp-0);
+}
+
+.fgp-topic {
+  padding: var(--sp-1) var(--sp-3);
+  border: 1px solid var(--fgp-border-default);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--fgp-text-secondary);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+}
+
+.fgp-topic:hover {
+  color: var(--fgp-text-primary);
+  border-color: var(--fgp-border-strong);
+}
+
+.fgp-topic[aria-checked='true'] {
+  background: var(--fgp-accent-faint);
+  border-color: var(--fgp-accent-quiet);
+  color: var(--fgp-accent-text);
+}
+
+/**
+ * 토픽 콘텐츠가 아직 없는 탭.
+ *
+ * 패널의 원래 내용을 감추고 안내만 남긴다. Flex 로 지어 둔 화면이 Grid 에서도
+ * 그대로 보이면 Grid 설명인 줄 읽게 된다.
+ */
+.fgp-topic-pending {
+  display: none;
+  margin: var(--sp-0);
+  padding: var(--sp-4);
+  color: var(--fgp-text-muted);
+  font-size: var(--fs-xs);
+}
+
+/* 패널이 2열 격자라 그냥 두면 왼쪽 좁은 칸에 끼어 줄이 꺾인다 */
+.is-topic-pending > .fgp-topic-pending {
+  display: block;
+  grid-column: 1 / -1;
+}
+
+.is-topic-pending > :not(.fgp-topic-pending) {
+  display: none;
+}
+
+/* --------------------------------------------------------------------------
    실전 예제 (F-08) — 틀은 fgp-pane 이 잡는다. 여기는 그 탭에만 있는 것들이다
    -------------------------------------------------------------------------- */
 

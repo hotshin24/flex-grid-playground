@@ -25,10 +25,26 @@ import { FLEX_CHALLENGES } from './topics/flex/challenges.js';
 import { isInactive, deriveState, partitionByScope, defaultsFrom } from './core/schema-spec.js';
 import { generateCode } from './core/codegen.js';
 import { FLEX_SCHEMA } from './topics/flex/schema.js';
+import { GRID_SCHEMA } from './topics/grid/schema.js';
 
-const SCHEMAS = { flex: FLEX_SCHEMA };
+/**
+ * 토픽 레지스트리. store 는 이 키들로 상태와 히스토리를 따로 관리하고,
+ * 토픽 목록도 여기서 나온다 — 화면에 토픽 이름을 적어 두지 않는다.
+ */
+const SCHEMAS = { flex: FLEX_SCHEMA, grid: GRID_SCHEMA };
+
+/** 토픽 버튼에 붙일 표시 이름. 목록 자체는 store.getTopics()가 정한다. */
+const TOPIC_LABELS = { flex: 'Flex', grid: 'Grid' };
 
 /** 토픽에서 주입받는다. M3의 Grid는 자기 목록을 여기에 더한다. */
+const EXPLAIN = {
+  flex: {
+    schema: FLEX_SCHEMA,
+    notes: FLEX_EXPLAIN_NOTES,
+    samples: FLEX_EXPLAIN_SAMPLES,
+    axisLabels: AXIS_LABELS,
+  },
+};
 const PRESETS = { flex: FLEX_PRESETS };
 const EXAMPLES = { flex: FLEX_EXAMPLES };
 const CHALLENGES = { flex: FLEX_CHALLENGES };
@@ -87,18 +103,32 @@ createRenderer({ store, schemas: SCHEMAS, root: stage });
 const panel = document.getElementById('fgp-controls');
 const initial = store.getState();
 
-/** 컨테이너와 아이템의 차이는 scope 하나뿐이다. 목록은 여기서 한 번에 나온다. */
-const SCOPED = partitionByScope(FLEX_SCHEMA);
+/**
+ * 컨트롤은 토픽이 바뀔 때마다 다시 만든다.
+ *
+ * 속성 목록도 컨트롤 종류도 스키마가 정하므로, 여기서 하는 일은 "지금 토픽의
+ * 스키마를 다시 순회한다" 하나뿐이다. Flex 6개든 Grid 12개든 코드가 같다.
+ * 아직 구현하지 않은 컨트롤 종류(track-list · area-grid · span · text)는
+ * controls.js 가 자리만 만들어 data-pending 을 붙인다 — 누락이 아니라 예정이다.
+ */
+let containerControls = [];
+let itemControls = [];
 
-const containerControls = SCOPED.container
-  .map((entry) => {
+function clear(node) {
+  while (node.firstChild) node.removeChild(node.firstChild);
+}
+
+function buildContainerControls(topic, state) {
+  clear(panel);
+  containerControls = partitionByScope(SCHEMAS[topic]).container.map((entry) => {
     const { root, sync, setInactive } = createControl(entry, {
-      value: initial.container[entry.jsProp],
+      value: state.container[entry.jsProp],
       onChange: (jsProp, value) => store.dispatch({ container: { [jsProp]: value } }),
     });
     panel.appendChild(root);
     return { entry, sync, setInactive };
   });
+}
 
 /**
  * undo처럼 컨트롤 밖에서 상태가 바뀌면 패널도 따라가야 한다.
@@ -129,14 +159,17 @@ const itemPanel = document.getElementById('fgp-item-controls');
 const itemPanelSection = itemPanel.closest('.fgp-panel__section');
 const itemTargetLabel = document.getElementById('fgp-item-props-target');
 
-const itemControls = SCOPED.item.map((entry) => {
-  const { root, sync, setInactive } = createControl(entry, {
-    value: selectedItem(initial)?.[entry.jsProp],
-    onChange: patchSelectedItem,
+function buildItemControls(topic, state) {
+  clear(itemPanel);
+  itemControls = partitionByScope(SCHEMAS[topic]).item.map((entry) => {
+    const { root, sync, setInactive } = createControl(entry, {
+      value: selectedItem(state)?.[entry.jsProp],
+      onChange: patchSelectedItem,
+    });
+    itemPanel.appendChild(root);
+    return { entry, sync, setInactive };
   });
-  itemPanel.appendChild(root);
-  return { entry, sync, setInactive };
-});
+}
 
 function syncItemControls(state) {
   const target = selectedItem(state);
@@ -233,25 +266,34 @@ function applyPreset(preset) {
   });
 }
 
-PRESETS[initial.topic]?.forEach((preset) => {
-  const button = document.createElement('button');
-  button.className = 'fgp-preset';
-  button.type = 'button';
-  button.dataset.preset = preset.id;
-  button.title = preset.desc;
+const presetSection = presetBar.closest('.fgp-panel__section');
 
-  const label = document.createElement('span');
-  label.className = 'fgp-preset__label';
-  label.textContent = preset.label;
-  button.appendChild(label);
+/** 프리셋도 토픽 것이다. 없는 토픽에서는 칸 자체를 접는다. */
+function buildPresets(topic) {
+  clear(presetBar);
+  const list = PRESETS[topic] ?? [];
+  presetSection.hidden = list.length === 0;
 
-  const desc = document.createElement('span');
-  desc.className = 'fgp-preset__desc';
-  desc.textContent = preset.desc;
-  button.appendChild(desc);
+  list.forEach((preset) => {
+    const button = document.createElement('button');
+    button.className = 'fgp-preset';
+    button.type = 'button';
+    button.dataset.preset = preset.id;
+    button.title = preset.desc;
 
-  presetBar.appendChild(button);
-});
+    const label = document.createElement('span');
+    label.className = 'fgp-preset__label';
+    label.textContent = preset.label;
+    button.appendChild(label);
+
+    const desc = document.createElement('span');
+    desc.className = 'fgp-preset__desc';
+    desc.textContent = preset.desc;
+    button.appendChild(desc);
+
+    presetBar.appendChild(button);
+  });
+}
 
 presetBar.addEventListener('click', (event) => {
   const button = event.target.closest('[data-preset]');
@@ -260,6 +302,60 @@ presetBar.addEventListener('click', (event) => {
   const preset = PRESETS[store.getTopic()]?.find((p) => p.id === button.dataset.preset);
   if (preset) applyPreset(preset);
 });
+
+/* --------------------------------------------------------------------------
+   토픽 전환 (F-01)
+
+   목록은 store.getTopics()가 준다. 이 파일에 토픽 이름을 적어 두지 않으므로
+   레지스트리에 하나 더 넣으면 버튼도 따라 늘어난다.
+
+   role="radiogroup" + aria-checked 에 roving tabindex 를 얹는다. 탭 · 카테고리
+   필터와 같은 짜임이라 키보드 습관이 화면마다 달라지지 않는다.
+   -------------------------------------------------------------------------- */
+
+const topicBar = document.getElementById('fgp-topics');
+const TOPICS = store.getTopics();
+
+const NEXT_KEYS = new Set(['ArrowRight', 'ArrowDown']);
+const PREV_KEYS = new Set(['ArrowLeft', 'ArrowUp']);
+
+const topicButtons = TOPICS.map((topic) => {
+  const button = document.createElement('button');
+  button.className = 'fgp-topic';
+  button.type = 'button';
+  button.setAttribute('role', 'radio');
+  button.dataset.topic = topic;
+  button.textContent = TOPIC_LABELS[topic] ?? topic;
+  topicBar.appendChild(button);
+  return button;
+});
+
+topicBar.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-topic]');
+  if (button) store.setTopic(button.dataset.topic);
+});
+
+topicBar.addEventListener('keydown', (event) => {
+  if (!NEXT_KEYS.has(event.key) && !PREV_KEYS.has(event.key)) return;
+
+  const at = TOPICS.indexOf(store.getTopic());
+  const step = NEXT_KEYS.has(event.key) ? 1 : -1;
+  const next = (at + step + TOPICS.length) % TOPICS.length;
+
+  event.preventDefault();
+  store.setTopic(TOPICS[next]);
+  topicButtons[next].focus();
+});
+
+function syncTopics(state) {
+  topicButtons.forEach((button, i) => {
+    const on = TOPICS[i] === state.topic;
+    button.setAttribute('aria-checked', on ? 'true' : 'false');
+    button.setAttribute('tabindex', on ? '0' : '-1');
+    button.classList.toggle('is-selected', on);
+  });
+  document.getElementById('fgp-topic-badge').textContent = `display: ${state.topic}`;
+}
 
 /* --------------------------------------------------------------------------
    탭 (F-02)
@@ -281,19 +377,44 @@ const tabs = createTabs({
 /**
  * 속성 설명 탭. 한 번만 만들고 이후에는 손대지 않는다 — 데모는 정적이며
  * 메인 상태와 무관하다. store를 건드리지 않는다.
+ *
+ * Flex 콘텐츠만 있다. Grid 것은 M3 후속 단계에서 만들고, 그때까지는
+ * syncTabs 가 안내 문구로 덮는다.
  */
 createExplain({
-  schema: FLEX_SCHEMA,
-  notes: FLEX_EXPLAIN_NOTES,
-  samples: FLEX_EXPLAIN_SAMPLES,
-  axisLabels: AXIS_LABELS,
+  ...EXPLAIN[initial.topic],
   root: document.getElementById(panelId('explain')),
 });
+
+/**
+ * 토픽 데이터가 아직 없는 탭에 붙일 안내.
+ *
+ * 속성 설명 · 실전 예제 · 챌린지는 Flex 콘텐츠로 한 번만 지어 두었다. Grid 로
+ * 바꿨을 때 그 화면이 그대로 남아 있으면 Grid 설명인 줄 읽게 된다. 콘텐츠가
+ * 없는 토픽에서는 패널의 원래 내용을 감추고 이 문구만 보인다.
+ *
+ * 어느 탭에 콘텐츠가 있는지는 레지스트리가 답한다 — 탭 이름을 코드에 적지 않는다.
+ */
+const TAB_CONTENT = { explain: EXPLAIN, examples: EXAMPLES, challenge: CHALLENGES };
+
+const pendingNotes = new Map(Object.keys(TAB_CONTENT).map((name) => {
+  const host = tabPanels.get(name);
+  const note = document.createElement('p');
+  note.className = 'fgp-topic-pending';
+  host.appendChild(note);
+  return [name, note];
+}));
 
 function syncTabs(state) {
   tabs.sync(state.tab);
   tabPanels.forEach((panel, name) => {
     if (panel) panel.hidden = name !== state.tab;
+  });
+
+  pendingNotes.forEach((note, name) => {
+    const ready = Boolean(TAB_CONTENT[name][state.topic]);
+    note.textContent = ready ? '' : `${TOPIC_LABELS[state.topic] ?? state.topic} 콘텐츠는 M3 후속 단계에서 만듭니다.`;
+    tabPanels.get(name).classList.toggle('is-topic-pending', !ready);
   });
 }
 
@@ -532,7 +653,27 @@ function syncHistoryButtons() {
   redoBtn.disabled = !store.canRedo();
 }
 
+/**
+ * 토픽이 바뀌면 스키마가 통째로 달라진다. 컨트롤과 프리셋을 다시 짓는다.
+ *
+ * 나머지는 손대지 않는다 — renderer 는 상태의 topic 을 보고 display 를 정하고,
+ * codegen 도 같은 표를 쓰며, store 는 토픽별 상태와 히스토리를 이미 따로
+ * 들고 있다. 이 파일만 고치면 되는 것이 M0~M1 설계의 요점이다.
+ */
+let builtTopic = null;
+
+function rebuildForTopic(state) {
+  if (state.topic === builtTopic) return;
+  builtTopic = state.topic;
+
+  buildContainerControls(state.topic, state);
+  buildItemControls(state.topic, state);
+  buildPresets(state.topic);
+}
+
 function sync(state) {
+  rebuildForTopic(state);
+  syncTopics(state);
   syncItembar(state);
   syncItemSize(state);
   syncItemControls(state);
@@ -546,5 +687,3 @@ function sync(state) {
 
 store.subscribe(sync);
 sync(store.getState());
-
-document.getElementById('fgp-topic-badge').textContent = `display: ${store.getTopic()}`;
