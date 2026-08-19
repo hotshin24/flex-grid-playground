@@ -229,10 +229,29 @@ export function createRenderer({ store, schemas, root, doc = globalThis.document
 
     applyStyles(el, styles);
 
+    /**
+     * 선택 표시는 aria-current 로 한다.
+     *
+     * aria-selected 를 쓰던 자리인데, 그 속성은 option · tab · row · gridcell
+     * 같은 역할에만 허용된다. 프리뷰 아이템은 역할 없는 div 라 axe 가
+     * aria-allowed-attr 위반으로 잡았다(4건).
+     *
+     * 역할을 주는 쪽은 택하지 않았다. option 을 붙이려면 listbox 부모와
+     * 포커스 이동이 따라와야 하는데, 지금 프리뷰 아이템은 tabindex 가 없어
+     * 키보드로 고를 수 없다. 구현하지 않은 위젯 패턴을 선언하면 보조 기술에
+     * 없는 조작을 약속하는 셈이고, 역할만 붙이면 위반이 다른 이름으로 옮겨갈
+     * 뿐이다. aria-current 는 전역 속성이라 역할을 요구하지 않으면서
+     * "여럿 중 지금 이것" 을 그대로 뜻한다.
+     *
+     * 고르지 않은 아이템에는 속성을 지운다. aria-current="false" 는 아무것도
+     * 알리지 않으면서 접근성 트리만 채운다 — 아이템이 스무 개까지 늘어난다.
+     */
     const selected = item.id === selectedId;
     el.classList.toggle(SELECTED_CLASS, selected);
     el.setAttribute('data-item-id', String(item.id));
-    el.setAttribute('aria-selected', String(selected));
+
+    if (selected) el.setAttribute('aria-current', 'true');
+    else el.removeAttribute('aria-current');
 
     const label = String(index + 1);
     if (el.textContent !== label) el.textContent = label;

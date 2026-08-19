@@ -9,6 +9,7 @@
  *   node tools/check-renderer.mjs
  */
 
+import { readFileSync } from 'node:fs';
 import { createStore } from '../js/core/store.js';
 import { createRenderer, toCssValue, ITEM_CLASS, CONTAINER_CLASS, SELECTED_CLASS } from '../js/core/renderer.js';
 import { FLEX_SCHEMA } from '../js/topics/flex/schema.js';
@@ -73,6 +74,7 @@ function makeDom() {
         return child;
       },
       setAttribute(name, value) { this.attrs[name] = String(value); },
+      removeAttribute(name) { delete this.attrs[name]; },
       getAttribute(name) { return this.attrs[name] ?? null; },
     };
 
@@ -265,14 +267,26 @@ section('선택 상태');
 
   check('초기 선택은 1번', container.children[0].classList.contains(SELECTED_CLASS));
   check('나머지는 미선택', !container.children[1].classList.contains(SELECTED_CLASS));
-  check('aria-selected 반영',
-    container.children[0].getAttribute('aria-selected') === 'true' &&
-    container.children[1].getAttribute('aria-selected') === 'false');
+  // aria-selected 가 아니라 aria-current 다. 역할 없는 div 에 aria-selected 를
+  // 붙이면 axe 가 aria-allowed-attr 로 잡는다.
+  check('aria-current 로 알린다',
+    container.children[0].getAttribute('aria-current') === 'true');
+  check('고르지 않은 것에는 속성이 없다',
+    container.children[1].getAttribute('aria-current') === null,
+    'aria-current="false" 는 아무것도 알리지 않으면서 트리만 채운다');
+  // 주석은 걷어내고 본다 — 왜 안 쓰는지 적어 둔 설명까지 위반으로 세면 곤란하다
+  const rendererCode = readFileSync(new URL('../js/core/renderer.js', import.meta.url), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .replace(/^\s*\/\/.*$/gm, ' ');
+  check('aria-selected 를 쓰지 않는다',
+    container.children.every((c) => c.getAttribute('aria-selected') === null)
+    && !/aria-selected/.test(rendererCode));
 
   store.dispatch({ selectedId: 3 });
   check('선택 이동', !container.children[0].classList.contains(SELECTED_CLASS) &&
     container.children[2].classList.contains(SELECTED_CLASS));
-  check('aria-selected 이동', container.children[2].getAttribute('aria-selected') === 'true');
+  check('aria-current 이동', container.children[2].getAttribute('aria-current') === 'true'
+    && container.children[0].getAttribute('aria-current') === null);
 }
 
 /* ==========================================================================
