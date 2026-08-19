@@ -550,7 +550,8 @@ section('createRangeControl');
 }
 
 {
-  // 아이템 기하값처럼 null을 쓰지 않는 용례
+  // nullText 를 주지 않은 경우. 값이 null 이어도 수치로 떨어진다 —
+  // 그래서 null 을 쓰는 컨트롤은 반드시 nullText 를 함께 줘야 한다
   const calls = [];
   const { root, sync } = createRangeControl({
     key: 'width', label: '너비', min: 20, max: 400, step: 10, value: 80,
@@ -559,6 +560,10 @@ section('createRangeControl');
   const readout = findByClass(root, 'fgp-control__readout')[0];
 
   check('nullText 없으면 항상 수치 표시', readout.textContent === '80px', readout.textContent);
+  sync(null);
+  check('nullText 없이 null이면 최솟값을 적는다', readout.textContent === '20px',
+    `${readout.textContent} — 실제로는 auto 인데 20px 이라고 말하게 된다`);
+  sync(80);
   check('data-default는 false', root.getAttribute('data-default') === 'false');
   sync(160);
   check('sync로 값 갱신', readout.textContent === '160px' && findByClass(root, 'fgp-control__field')[0].value === '160');
@@ -789,6 +794,52 @@ section('방어');
   let ok = true;
   try { createControl(entry, { doc }); } catch { ok = false; }
   check('onChange 없어도 생성 가능', ok);
+}
+
+/* ==========================================================================
+   main.js 배선 — null 을 쓰는 컨트롤은 nullText 를 갖는다
+   ========================================================================== */
+section('nullText 배선');
+
+{
+  const src = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
+
+  const block = (name) => {
+    const at = src.indexOf(`const ${name} = [`);
+    return at === -1 ? '' : src.slice(at, src.indexOf('];', at));
+  };
+
+  const itemBlock = block('ITEM_SIZE_CONTROLS');
+
+  /* 뷰 설정은 nullText 를 배열이 아니라 createRangeControl 호출부에서 준다.
+     두 곳이 다른 것은 정리할 여지이지만 지금 확인할 것은 문구가 갈리는지다. */
+  const viewAt = src.indexOf('const viewControls =');
+  const viewBlock = viewAt === -1 ? '' : src.slice(viewAt, src.indexOf('});', viewAt));
+
+  check('ITEM_SIZE_CONTROLS 를 찾았다', itemBlock.length > 0);
+  check('뷰 설정 컨트롤을 찾았다', viewBlock.length > 0);
+
+  const texts = (b) => [...b.matchAll(/nullText:\s*'([^']+)'/g)].map((m) => m[1]);
+  const itemTexts = texts(itemBlock);
+  const viewTexts = texts(viewBlock);
+
+  /* 아이템 크기는 프리셋이 null 로 둘 수 있다. nullText 가 없으면 readout 이
+     슬라이더 최솟값을 적어, 자동인 것을 20px 이라고 말한다. */
+  check('아이템 크기 컨트롤이 전부 nullText 를 갖는다',
+    itemTexts.length === (itemBlock.match(/key:/g) ?? []).length && itemTexts.length > 0,
+    `${itemTexts.length}개 — ${itemTexts.join(' · ')}`);
+
+  check('아이템 크기의 문구가 하나로 통일',
+    new Set(itemTexts).size === 1, itemTexts.join(' · '));
+
+  /* 뷰 설정과 문구가 달라야 한다. 그쪽은 "컨테이너 크기를 정하지 않았다",
+     이쪽은 "크기가 auto 다" 로 뜻이 다르다. */
+  check('뷰 설정과 문구가 다르다',
+    viewTexts.length > 0 && itemTexts.every((t) => !viewTexts.includes(t)),
+    `아이템 ${itemTexts[0]} · 뷰 ${viewTexts[0]}`);
+
+  check('문구가 readout 폭에 들어간다', itemTexts.every((t) => t.length <= 4),
+    `${itemTexts[0]} (${itemTexts[0]?.length}자)`);
 }
 
 /* ========================================================================== */

@@ -77,9 +77,22 @@ const MAX_ITEMS = 20;
  * width·height는 CSS 속성이 아니라 프리뷰 구성값이므로 스키마에 없다.
  * 선택된 아이템 하나에만 적용된다.
  */
+/**
+ * 아이템 기하값 슬라이더의 범위와 문구.
+ *
+ * nullText 는 값이 null 일 때 readout 에 적을 말이다. 프리셋이 크기를 null 로
+ * 두면(칸을 채우는 프리셋이 그렇다) renderer 가 크기를 얹지 않아 CSS 의
+ * width·height: auto 가 산다. 그때 슬라이더 최솟값인 20px 을 적으면 실제로는
+ * 자동인 것을 20px 이라고 말하는 셈이라 화면이 거짓말을 한다.
+ *
+ * 뷰 설정의 '기본값' 과 문구를 나눈 이유는 뜻이 다르기 때문이다. 그쪽은
+ * 컨테이너 크기를 정하지 않아 CSS 기본값(vh)이 산다는 뜻이고, 이쪽은 크기가
+ * auto 라는 뜻이다 — 늘리는 정렬을 만나면 칸을 채우고 아니면 내용만큼이 된다.
+ * 결과가 판에 따라 달라지므로 "칸 채움" 이라 적지 않고 auto 를 그대로 옮긴다.
+ */
 const ITEM_SIZE_CONTROLS = [
-  { key: 'width', label: '너비', min: 20, max: 400, step: 10 },
-  { key: 'height', label: '높이', min: 20, max: 300, step: 10 },
+  { key: 'width', label: '너비', min: 20, max: 400, step: 10, nullText: '자동' },
+  { key: 'height', label: '높이', min: 20, max: 300, step: 10, nullText: '자동' },
 ];
 
 /**
