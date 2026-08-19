@@ -11,7 +11,7 @@
  * 학습자가 가져갈 CSS와 무관하다 (PRD 4.4).
  */
 
-import { toCssValue } from './renderer.js';
+import { toCssValue } from './schema-spec.js';
 
 /* --------------------------------------------------------------------------
    출력 계약

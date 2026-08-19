@@ -11,7 +11,7 @@
 
 import { readFileSync } from 'node:fs';
 import { CONTROL_TYPES, parseSpan, spanToCss, AUTO, validateSchema } from '../js/core/schema-spec.js';
-import { toCssValue } from '../js/core/renderer.js';
+import { toCssValue } from '../js/core/schema-spec.js';
 import { GRID_SCHEMA } from '../js/topics/grid/schema.js';
 import { createControl } from '../js/ui/controls.js';
 import {
@@ -152,10 +152,10 @@ section('유효한 CSS 값');
   check('슬래시가 섞이지 않는다', produced.every((v) => !v.includes('/')),
     '개별 속성에 쌍을 넣으면 브라우저가 선언을 버린다');
 
-  // 렌더러를 통해도 같아야 한다
+  // 계약의 CSS 변환을 통해도 같아야 한다
   const viaRenderer = [{ line: 3 }, { line: -1 }, { span: 2 }, { line: AUTO }, 'auto']
     .map((v) => toCssValue(ENTRY, v));
-  check('renderer의 toCssValue도 같은 형태', viaRenderer.every((v) => VALID.test(v)),
+  check('toCssValue도 같은 형태', viaRenderer.every((v) => VALID.test(v)),
     viaRenderer.join(' · '));
 
   // 스키마 기본값도 검사를 통과해야 한다

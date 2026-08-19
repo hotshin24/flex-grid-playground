@@ -587,6 +587,37 @@ export function defaultsFrom(schema, scope) {
    값 파서 / 직렬화 헬퍼
    ========================================================================== */
 
+/** areas 2차원 배열 → '"hd hd" "sd mn"' */
+function areasToCss(rows) {
+  return rows.map((row) => `"${row.join(' ')}"`).join(' ');
+}
+
+/**
+ * 스키마 항목 하나의 상태값을 CSS 값으로 바꾼다.
+ *
+ * 문자열·숫자는 그대로 통과하므로 enum·length·number·text 는 분기가 없다.
+ * CONTROL_TYPES 의 serialize 와 겹쳐 보이지만 쓰임이 다르다 — 그쪽은 편집기가
+ * 값을 주고받는 정규형이고, 이쪽은 element.style 에 바로 얹을 CSS 값이다.
+ * areas 만 그 차이가 드러난다: 정규형은 행마다 줄을 바꾸고, 여기서는 한 줄로 잇는다.
+ */
+export function toCssValue(entry, raw) {
+  if (raw === undefined || raw === null) return '';
+
+  if (entry.control === 'track-list' && Array.isArray(raw)) {
+    return raw.map(trackToCss).join(' ');
+  }
+
+  if (entry.control === 'area-grid' && Array.isArray(raw)) {
+    return areasToCss(raw);
+  }
+
+  if (entry.control === 'span' && typeof raw === 'object') {
+    return spanToCss(raw);
+  }
+
+  return String(raw);
+}
+
 export function trackToCss(t) {
   if (t.unit === 'auto' || t.unit === 'min-content' || t.unit === 'max-content') return t.unit;
   if (t.unit === 'minmax') return `minmax(${t.min}, ${t.max})`;

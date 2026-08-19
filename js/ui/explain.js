@@ -6,13 +6,13 @@
  * 토픽별 explain.js 에서 받는다. 이 파일에 문장이 없다.
  *
  * 데모는 renderer.js를 쓰지 않는다. 근거는 아래 buildDemo 주석에 적었다.
- * 값 → CSS 문자열 변환만 renderer의 toCssValue를 재사용해, 데모와 프리뷰가
+ * 값 → CSS 문자열 변환만 schema-spec의 toCssValue를 재사용해, 데모와 프리뷰가
  * 같은 표기를 내도록 맞춘다.
  *
  * store를 import하지 않는다. 데모는 메인 상태와 무관한 정적 스냅숏이다.
  */
 
-import { toCssValue } from '../core/renderer.js';
+import { toCssValue } from '../core/schema-spec.js';
 
 export const ROOT_CLASS = 'fgp-explain';
 export const NAV_CLASS = 'fgp-explain__nav';

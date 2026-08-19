@@ -36,7 +36,7 @@
  */
 
 import { DEMO_CLASS, DEMO_ITEM_CLASS } from './explain.js';
-import { toCssValue } from '../core/renderer.js';
+import { toCssValue } from '../core/schema-spec.js';
 
 export const ROOT_CLASS = 'fgp-compare';
 export const SUMMARY_CLASS = 'fgp-compare__summary';

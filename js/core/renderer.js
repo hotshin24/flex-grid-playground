@@ -17,7 +17,11 @@
  * 색상은 CSS가 담당한다. 이 파일은 클래스와 사용자 설정값만 얹는다.
  */
 
-import { trackToCss, spanToCss } from './schema-spec.js';
+import { toCssValue } from './schema-spec.js';
+
+/* toCssValue 는 schema-spec 에 있다. 스키마 항목의 내부 표현을 CSS 값으로
+   옮기는 일이라 계약 쪽에 속하고, 예전에 여기 있던 탓에 codegen 과 UI 두
+   파일이 값 변환 하나를 얻으려고 renderer 를 import 하고 있었다. */
 
 /* --------------------------------------------------------------------------
    DOM 계약
@@ -41,38 +45,6 @@ const DEFAULT_DISPLAY = 'flex';
 const ITEM_ACCENT_COUNT = 8;
 const ITEM_ACCENT_PROP = '--fgp-item-accent';
 const ITEM_ACCENT_DEEP_PROP = '--fgp-item-accent-deep';
-
-/* --------------------------------------------------------------------------
-   값 직렬화
-   스키마의 내부 표현을 CSS 값 문자열로 바꾼다.
-   -------------------------------------------------------------------------- */
-
-/** areas 2차원 배열 → '"hd hd" "sd mn"' */
-function areasToCss(rows) {
-  return rows.map((row) => `"${row.join(' ')}"`).join(' ');
-}
-
-/**
- * 스키마 항목 하나의 상태값을 CSS 값으로 바꾼다.
- * 문자열·숫자는 그대로 통과하므로 enum·length·number·text는 분기가 없다.
- */
-export function toCssValue(entry, raw) {
-  if (raw === undefined || raw === null) return '';
-
-  if (entry.control === 'track-list' && Array.isArray(raw)) {
-    return raw.map(trackToCss).join(' ');
-  }
-
-  if (entry.control === 'area-grid' && Array.isArray(raw)) {
-    return areasToCss(raw);
-  }
-
-  if (entry.control === 'span' && typeof raw === 'object') {
-    return spanToCss(raw);
-  }
-
-  return String(raw);
-}
 
 /* --------------------------------------------------------------------------
    스타일 적용

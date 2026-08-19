@@ -17,7 +17,7 @@
 
 import { readFileSync } from 'node:fs';
 import { CONTROL_TYPES, parseAreaGrid } from '../js/core/schema-spec.js';
-import { toCssValue } from '../js/core/renderer.js';
+import { toCssValue } from '../js/core/schema-spec.js';
 import { GRID_SCHEMA } from '../js/topics/grid/schema.js';
 import { createControl } from '../js/ui/controls.js';
 import {
@@ -162,7 +162,7 @@ section('none');
     [NONE, '', '   ', null, undefined].every(isNone) && !isNone('"a a" "b b"'));
   check('inspect가 none을 그대로 낸다', inspect(NONE).css === NONE && inspect(NONE).none === true);
   check('빈 문자열도 none', inspect('').css === NONE);
-  check('renderer도 none을 그대로 낸다', toCssValue(ENTRY, NONE) === NONE);
+  check('toCssValue도 none을 그대로 낸다', toCssValue(ENTRY, NONE) === NONE);
 
   const { root, calls } = build(NONE);
   check('처음에는 none', previewOf(root) === NONE && inputOf(root).hidden === true);

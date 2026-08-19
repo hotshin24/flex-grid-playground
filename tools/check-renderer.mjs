@@ -11,7 +11,9 @@
 
 import { readFileSync } from 'node:fs';
 import { createStore } from '../js/core/store.js';
-import { createRenderer, toCssValue, ITEM_CLASS, CONTAINER_CLASS, SELECTED_CLASS } from '../js/core/renderer.js';
+import { createRenderer, ITEM_CLASS, CONTAINER_CLASS, SELECTED_CLASS } from '../js/core/renderer.js';
+// toCssValue 는 계약 쪽에 있다. 렌더러는 그것을 가져다 쓸 뿐이다.
+import { toCssValue } from '../js/core/schema-spec.js';
 import { FLEX_SCHEMA } from '../js/topics/flex/schema.js';
 import { GRID_SCHEMA } from '../js/topics/grid/schema.js';
 
