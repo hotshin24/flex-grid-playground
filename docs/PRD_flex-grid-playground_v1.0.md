@@ -3,7 +3,7 @@
 
 | 항목      | 내용                                     |
 | ------- | -------------------------------------- |
-| 문서 버전   | 1.3                                    |
+| 문서 버전   | 1.4                                    |
 | 작성일     | 2026-08-18                             |
 | 저장소     | hotshin24/flex-grid-playground         |
 | 프로젝트 성격 | 개인 학습 정리용 (전면 재설계)                     |
@@ -190,14 +190,30 @@ Flex와 Grid를 **동일한 4탭 구조로 풀 패리티** 제공하는 정적 �
     reason: 'flex-wrap이 nowrap이라 줄이 하나뿐입니다',
     hint: 'flex-wrap을 wrap으로 바꿔보세요'   // 선택
   },
-  measuredInactive: 'freeSpace' | 'implicitTracks' | 'shrinkBlocked' | ...
-                                  // 유형 B·C. renderer 측정 결과 키를 참조
+  measuredInactive: {              // 유형 B·C. 속성 단위 조건
+    key:    'hasFreeSpace',        // MEASURED_KEYS 의 키. 참이어야 속성이 일한다
+    reason: '...',                 // 거짓일 때 표시할 사유 (F-13-3)
+    hint:   '...'                  // 해결 방법 (F-13-5). 유형 C 는 필수
+  }
+
+  // 값 단위 조건은 values[] 안에 선언한다.
+  // 속성 전체가 아니라 특정 값에서만 조건부인 경우에 쓴다.
+  values: [
+    { val: 'stretch', desc: '...', measuredInactive: { key, reason, hint } },
+  ]
 }
 ```
 
-> `inactiveWhen`은 선택 필드다. 없으면 항상 활성으로 간주한다.
-> `measuredInactive`가 참조하는 측정 키의 목록과 판정 로직은 `renderer.js`가 소유하며,
-> 스키마는 키 이름만 선언한다. 스키마가 렌더링 세부를 알아서는 안 된다.
+> `inactiveWhen`과 `measuredInactive`는 모두 선택 필드다. 없으면 항상 활성으로
+> 간주한다.
+>
+> `measuredInactive.key`가 참조하는 측정 키의 목록(`MEASURED_KEYS`)과 판정 로직은
+> `renderer.js`가 소유하며, 스키마는 키 이름만 선언한다. 스키마가 렌더링 세부를
+> 알아서는 안 된다. `MEASURED_KEYS`에 없는 이름은 `validateSchema`가 잡는다.
+>
+> 속성 단위 선언은 컨트롤 전체를, 값 단위 선언은 해당 값 버튼 하나만 비활성으로
+> 표시한다. 값 단위 선언이 있어도 속성 자체의 판정에는 끼어들지 않는다
+> (`aria-disabled="false"` 유지).
 
 **컨트롤 타입 정의**
 
@@ -229,15 +245,23 @@ Flex와 Grid를 **동일한 4탭 구조로 풀 패리티** 제공하는 정적 �
     containerWidth: Number | null,   // null = components.css 기본값 사용
     containerHeight: Number | null,  // null = components.css 기본값 사용
   },
-  measured: {              // renderer가 렌더 후 기록. 유형 B·C 판정 근거
+  measured: {                    // renderer가 렌더 후 기록. 유형 B·C 판정 근거
     lineCount: Number,           // 실제 줄 수
-    hasFreeSpace: Boolean,       // 주축에 남는 공간이 있는가
-    hasCrossFreeSpace: Boolean,  // 교차축에 남는 공간이 있는가
+    hasFreeSpace: Boolean,       // 주축(Flex) · 인라인축(Grid)에 남는 공간
+    hasCrossFreeSpace: Boolean,  // 교차축 · 블록축에 남는 공간
     isOverflowing: Boolean,      // 아이템이 컨테이너를 넘쳤는가
     shrinkBlocked: Boolean,      // min-* 하한에 막혀 더 줄지 못하는가
+    canShrink: Boolean,          // 줄어들 여지가 실제로 있는가
+    crossAuto: Boolean,          // 아이템에 교차축 크기가 지정되지 않았는가
+    hasImplicitColumns: Boolean, // 암시적 열이 생성됐는가
+    hasImplicitRows: Boolean,    // 암시적 행이 생성됐는가
+    hasPlacementGaps: Boolean,   // 배치되지 않은 빈 칸이 있는가 (dense 판정용)
   }
 }
 ```
+
+> 목록은 `schema-spec.js`의 `MEASURED_KEYS`가 기준이다. 키가 늘면 여기도 갱신한다.
+> 두 곳이 어긋나면 `validateSchema`가 잡지 못하는 선언이 생긴다.
 
 - 토픽 전환 시 상태는 토픽별로 **독립 보존** (Flex에서 만든 설정이 Grid 전환 후 복귀해도 남아 있음)
 - Undo/Redo 히스토리는 토픽별 스택으로 분리
@@ -386,6 +410,11 @@ Flex와 Grid를 **동일한 4탭 구조로 풀 패리티** 제공하는 정적 �
 | A  | 다른 속성의 값   | `controls.js` (스키마 선언) | M2    |
 | B  | 렌더 결과의 치수  | `renderer.js` (측정)     | M3    |
 | C  | CSS 초기값 충돌 | `renderer.js` (측정) + 해법 안내 | M3    |
+
+> 유형 B·C 는 속성 단위와 값 단위 두 방식으로 선언한다. 대상 속성 목록에
+> `align-items: stretch` · `dense` 처럼 **값으로 적힌 항목**은 값 단위 선언이다.
+> `dense`는 `grid-auto-flow`의 `row dense` · `column dense` 두 값에 걸리므로
+> 선언 수는 대상 건수보다 많다 — 현재 대상 8건에 선언 9개다.
 
 #### 요구사항
 
@@ -548,5 +577,6 @@ v0.1에서 확인된 문제를 정량 목표로 전환한다.
 | 1.1 | 2026-08-18 | v1.0 진입점을 `index-v1.html`로 분리. M2 회귀 검증 시 v0.1 화면 비교를 위해 `index.html` 보존. M7 파일 정리 절차(7.2) 신설 |
 | 1.2 | 2026-08-18 | F-06을 너비·높이 조절로 확장. column 방향에서 `flex-wrap`·`align-content` 관찰 불가 문제. 컨테이너 크기를 뷰 설정으로 분류하고 상태 모델(4.4)에 `view` 도입 |
 | 1.3 | 2026-08-18 | F-13 조건부 속성 비활성 표시 신설(P1). 스키마에 `inactiveWhen`·`measuredInactive` 필드, 상태 모델에 `measured` 추가. M2·M3 산출물 반영 |
+| 1.4 | 2026-08-18 | M3 구현 결과 반영 — `measuredInactive`를 `{key, reason, hint}` 객체로, 값 단위 선언(`values[].measuredInactive`) 추가. 4.4 `measured` 키를 실제 10개로 갱신 |
 
 
