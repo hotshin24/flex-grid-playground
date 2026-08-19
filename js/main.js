@@ -976,6 +976,16 @@ store.subscribe(sync);
 sync(store.getState());
 
 /**
+ * 본문을 드러낸다 (layout.css 의 fgp-booting).
+ *
+ * 여기까지 왔으면 컨트롤도 프리셋도 프리뷰도 다 서 있다. 첫 페인트에 빈 껍데기를
+ * 보이고 나중에 채우면 main 이 아래로 밀려 CLS 로 잡힌다.
+ *
+ * sync() 뒤에 둔다. 그 전에 떼면 값이 아직 얹히지 않은 컨트롤이 잠깐 보인다.
+ */
+document.documentElement.classList.remove('fgp-booting');
+
+/**
  * 측정 통지 구독. store 구독과 별개 경로다.
  *
  * 순서가 중요하다 — 컨트롤이 세워진 뒤에 걸어야 첫 통지가 헛돌지 않는다.
