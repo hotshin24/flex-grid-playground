@@ -483,8 +483,8 @@ section('아이템 크기 판정');
     '데이터가 준 키를 그대로 쓴다');
 
   // 아직 배선하지 않았다는 사실을 사실대로 확인한다
-  check('itemsFor 는 아직 이 판정을 쓰지 않는다', !/stretchesItems\(/.test(src.split('export function stretchesItems')[1] ?? ''),
-    'renderer 가 width·height 를 늘 px 로 쓰므로 이음매가 없다');
+  check('itemsFor 가 이 판정을 쓴다', /stretchesItems\(/.test(src.split('export function stretchesItems')[1] ?? ''),
+    'renderer 가 유한한 수일 때만 크기를 얹으므로 크기 키를 빼면 auto 가 된다');
 }
 
 /* --------------------------------------------------------------------------
@@ -733,16 +733,50 @@ section('줄 넘김');
     const first = store.getState().items[0];
     sizes[ch.id] = { w: first.width, h: first.height, n: store.getState().items.length };
   });
-  check('줄 넘김 아닌 문제는 80×60 그대로',
-    plain.every((ch) => sizes[ch.id].w === 80 && sizes[ch.id].h === 60),
-    plain.filter((ch) => sizes[ch.id].w !== 80).map((c) => `#${c.id}`).join(', ') || `${plain.length}건`);
+  const stretching = FLEX_CHALLENGES.filter((ch) => stretchesItems(ch.target, FLEX_SCHEMA, doc));
+  const gone = (v) => !Number.isFinite(v);
+
+  check('늘어나는 답이 8건', stretching.length === 8,
+    stretching.map((c) => `#${c.id}`).join(' '));
+
+  // 줄도 안 넘고 늘지도 않는 문제만 예전 크기 그대로다
+  const stillPlain = plain.filter((ch) => !stretching.includes(ch));
+  check('줄 넘김도 늘어남도 아닌 문제는 80×60 그대로',
+    stillPlain.every((ch) => sizes[ch.id].w === 80 && sizes[ch.id].h === 60),
+    stillPlain.filter((ch) => sizes[ch.id].w !== 80).map((c) => `#${c.id}`).join(', ') || `${stillPlain.length}건`);
+
+  const onlyStretch = stretching.filter((ch) => !wrapping.includes(ch));
+  check('늘어나기만 하는 문제는 두 축을 다 뺀다',
+    onlyStretch.every((ch) => gone(sizes[ch.id].w) && gone(sizes[ch.id].h)),
+    onlyStretch.map((c) => `#${c.id}`).join(' '));
+
+  const bothWays = stretching.filter((ch) => wrapping.includes(ch));
+  check('줄도 넘고 늘어나기도 하면 폭은 남긴다',
+    bothWays.length > 0
+      && bothWays.every((ch) => sizes[ch.id].w === itemWidthFor(ch.itemCount, GAP, REFERENCE) && gone(sizes[ch.id].h)),
+    bothWays.map((c) => `#${c.id}:${sizes[c.id].w}×${sizes[c.id].h}`).join(' '));
+
   check('줄 넘김 문제는 아이템이 넓어짐',
     wrapping.every((ch) => sizes[ch.id].w === itemWidthFor(ch.itemCount, GAP, REFERENCE)),
     wrapping.map((ch) => `#${ch.id}:${sizes[ch.id].w}`).join(' '));
+
+  // 문제를 오가도 크기가 남지 않는다. 요소를 재사용하므로 이게 깨지면
+  // 앞 문제의 60px 이 stretch 문제에 그대로 남는다
+  api.select(1);
+  api.select(3);
+  const after = store.getState().items[0];
+  api.select(1);
+  const back = store.getState().items[0];
+  check('문제를 오가도 크기가 따라온다',
+    gone(after.width) && gone(after.height) && back.width === 80 && back.height === 60,
+    `#3 ${after.width}×${after.height} → #1 ${back.width}×${back.height}`);
   check('아이템 개수는 문제를 따라간다',
     FLEX_CHALLENGES.every((ch) => sizes[ch.id].n === ch.itemCount));
 
   // 판정이 이름 분기가 아니라 CSS 파서에서 온다
+  check('sizeFor 가 두 판정을 함께 본다',
+    /const wraps = wrapsLines\(/.test(read('../js/ui/challenge.js'))
+    && /const stretches = stretchesItems\(/.test(read('../js/ui/challenge.js')));
   check('wrapsLines는 nowrap을 걸러낸다', wrapsLines({ flexWrap: 'nowrap' }, doc) === false);
   check('wrapsLines는 wrap·wrap-reverse를 잡는다',
     wrapsLines({ flexWrap: 'wrap' }, doc) && wrapsLines({ flexWrap: 'wrap-reverse' }, doc));

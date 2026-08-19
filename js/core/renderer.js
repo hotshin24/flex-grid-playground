@@ -213,8 +213,20 @@ export function createRenderer({ store, schemas, root, doc = globalThis.document
     el.style.setProperty(ITEM_ACCENT_DEEP_PROP, `var(--fgp-item-${accent}-deep)`);
 
     const styles = styleBundle(schema, 'item', item);
-    styles.width = `${item.width}px`;
-    styles.height = `${item.height}px`;
+
+    // 크기를 들고 있지 않은 아이템은 크기를 얹지 않는다. 그래야 auto 가 된다.
+    //
+    // 챌린지 탭이 쓴다. stretch 가 정답인 문제에서 높이가 60px 로 박혀 있으면
+    // align-items 를 무엇으로 두든 같은 그림이라 문제가 성립하지 않는다.
+    // 인라인 선언은 클래스로 이길 수 없으므로(!important 금지) 여기서 빼는 것
+    // 말고는 방법이 없다.
+    //
+    // applyStyles 가 next 에 없는 키를 '' 로 지우므로, 크기가 있던 아이템이
+    // 크기 없는 아이템으로 바뀌어도 앞 값이 남지 않는다. 유한한 수가 아니면
+    // 빼는 것이라 NaN·undefined 가 'NaNpx' 로 새 나가던 길도 함께 막힌다.
+    if (Number.isFinite(item.width)) styles.width = `${item.width}px`;
+    if (Number.isFinite(item.height)) styles.height = `${item.height}px`;
+
     applyStyles(el, styles);
 
     const selected = item.id === selectedId;

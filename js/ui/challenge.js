@@ -441,11 +441,31 @@ export function createChallenge(config) {
   const containerDefaults = defaultsFrom(schema, 'container');
   const previewGap = Number.parseFloat(containerDefaults.gap) || 0;
 
+  /**
+   * 이 문제의 답안 아이템 크기.
+   *
+   * 크기 키를 아예 빼면 renderer 가 크기를 얹지 않아 auto 가 된다.
+   *
+   * 둘이 겹치면 줄 넘김이 정한 폭을 남긴다. 줄이 넘어가려면 주축 크기가
+   * 정해져 있어야 하고, stretch 가 늘리는 것은 교차축이라 서로 다른 축이다.
+   * 폭까지 빼 버리면 아이템이 글자 너비로 줄어 한 줄에 다 들어가고, 그러면
+   * 줄 넘김 문제가 성립하지 않는다.
+   */
+  function sizeFor(challenge) {
+    const wraps = wrapsLines(challenge.target, doc);
+    const stretches = stretchesItems(challenge.target, schema, doc);
+
+    if (wraps) {
+      const width = itemWidthFor(challenge.itemCount, previewGap);
+      return stretches ? { width } : { width, height: PLAIN_ITEM.height };
+    }
+
+    return stretches ? {} : PLAIN_ITEM;
+  }
+
   function itemsFor(challenge) {
     const base = defaultsFrom(schema, 'item');
-    const size = wrapsLines(challenge.target, doc)
-      ? { width: itemWidthFor(challenge.itemCount, previewGap), height: PLAIN_ITEM.height }
-      : PLAIN_ITEM;
+    const size = sizeFor(challenge);
     return Array.from({ length: challenge.itemCount }, (_, i) => ({ ...base, id: i + 1, ...size }));
   }
 

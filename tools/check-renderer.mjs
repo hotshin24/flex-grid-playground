@@ -335,6 +335,65 @@ section('destroy');
 }
 
 /* ==========================================================================
+   크기 없는 아이템 — 크기를 얹지 않아야 auto 가 된다
+
+   챌린지 탭이 쓴다. stretch 가 정답인 문제에서 높이가 박혀 있으면 align-items
+   를 무엇으로 두든 같은 그림이라 문제가 성립하지 않는다. 인라인 선언은
+   클래스로 이길 수 없으므로 렌더러가 아예 얹지 않는 것 말고는 방법이 없다.
+   ========================================================================== */
+section('크기 없는 아이템');
+
+{
+  const { container, store } = setup();
+
+  check('기본 아이템은 크기를 얹는다',
+    container.children[0].style.width === '80px' && container.children[0].style.height === '60px');
+
+  const strip = (items) => items.map(({ width, height, ...rest }) => rest);
+
+  store.dispatch({ items: strip(store.getState().items) });
+  check('크기 키가 없으면 얹지 않는다',
+    container.children[0].style.width === '' && container.children[0].style.height === '',
+    `w=${JSON.stringify(container.children[0].style.width)} h=${JSON.stringify(container.children[0].style.height)}`);
+  check('나머지 스타일은 그대로',
+    container.children[0].style.flexGrow === '0' && container.children[0].style.flexBasis === 'auto');
+
+  // 같은 요소를 다시 쓰므로, 되돌아올 때 앞 값이 남으면 안 된다
+  store.undo();
+  check('되돌리면 크기가 다시 붙는다',
+    container.children[0].style.width === '80px' && container.children[0].style.height === '60px',
+    `${container.children[0].style.width} × ${container.children[0].style.height}`);
+
+  // 유한한 수가 아닌 값도 같은 길로 빠진다. 예전에는 'NaNpx' 가 새 나갔다
+  [['undefined', undefined], ['null', null], ['NaN', Number.NaN], ['문자열', 'auto']].forEach(([label, bad]) => {
+    const items = store.getState().items.map((it, i) => (i === 0 ? { ...it, height: bad } : it));
+    store.dispatch({ items });
+    check(`높이가 ${label} 이면 얹지 않는다`, container.children[0].style.height === '',
+      JSON.stringify(container.children[0].style.height));
+    store.undo();
+  });
+
+  check('0 은 유효한 크기라 얹는다', (() => {
+    const items = store.getState().items.map((it, i) => (i === 0 ? { ...it, width: 0 } : it));
+    store.dispatch({ items });
+    const ok = container.children[0].style.width === '0px';
+    store.undo();
+    return ok;
+  })(), '0 과 "없음" 은 다른 상태다');
+
+  // 한 아이템만 크기를 빼도 나머지는 그대로여야 한다
+  const mixed = store.getState().items.map((it, i) => {
+    if (i !== 1) return it;
+    const { width, height, ...rest } = it;
+    return rest;
+  });
+  store.dispatch({ items: mixed });
+  check('아이템마다 따로 판정한다',
+    container.children[0].style.width === '80px' && container.children[1].style.width === '',
+    `[0]=${container.children[0].style.width} [1]=${JSON.stringify(container.children[1].style.width)}`);
+}
+
+/* ==========================================================================
    방어
    ========================================================================== */
 section('방어');
