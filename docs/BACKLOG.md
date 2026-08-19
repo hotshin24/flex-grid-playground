@@ -62,16 +62,6 @@ v1.0 범위 밖으로 미룬 것. 각 항목은 왜 지금 못 하는지와 무�
 이득이 상대적으로 작아 미뤘다 — areas 편집기가 이미 정의된 이름 목록을 화면에
 보여 주고 있어, 오타는 그쪽을 보면 드러난다.
 
-### justify-self 의 속성 설명 탭 사례 부재
-
-`GRID_EXPLAIN_SAMPLES` 에 enum 7속성(`justify-items` · `align-items` ·
-`justify-content` · `align-content` · `grid-auto-flow` · `justify-self` ·
-`align-self`)의 항목이 없다. `values[].desc` 로 사례가 자동 생성되는지 확인이
-필요하다.
-
-`justify-self` 는 대조 뷰(GR-09)에도 챌린지에도 없어, 자동 생성이 안 되고
-있다면 그 속성만 학습 경로가 비어 있는 셈이다. M6 남은 작업에서 확인한다.
-
 ### 슬라이더 드래그의 히스토리 병합
 
 `store.dispatch` 는 부르는 족족 히스토리를 하나씩 쌓고 병합하지 않는다. 슬라이더는
