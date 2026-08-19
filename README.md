@@ -126,4 +126,4 @@ Lighthouse 수치는 배포 환경(GitHub Pages) 기준이며 기본 설정(모�
 
 ## 라이선스
 
-MIT
+MIT. 전문은 [`LICENSE`](LICENSE)에 있습니다.
