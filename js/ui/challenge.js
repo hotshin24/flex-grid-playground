@@ -6,7 +6,6 @@
  * 컨트롤은 ui/controls.js 의 createControl 을 그대로 쓴다. 문제마다 어떤 속성을
  * 물을지는 데이터의 target 이 정하지만, 화면에 세우는 컨트롤은 스키마의
  * container scope 전량이다. 물어본 것만 보여 주면 답이 목록에 드러난다.
- * ignore 가 있는 이유도 그것이다 — 만지긴 하되 채점하지 않는 속성이 있다.
  *
  * 상태는 메인 플레이그라운드와 완전히 별개다. 이 파일은 store 를 만들지 않고
  * 주입받는다. main.js 가 별도 인스턴스를 넘기므로 여기서 값을 바꿔도 플레이
@@ -24,7 +23,9 @@ import { createControl } from './controls.js';
 import {
   PANE_CLASS, PANE_SIDE_CLASS, PANE_ITEM_CLASS, PANE_NAME_CLASS, PANE_META_CLASS, PANE_STAGE_CLASS,
 } from './explain.js';
-import { partitionByScope, defaultsFrom, isInactive, deriveState } from '../core/schema-spec.js';
+import {
+  partitionByScope, defaultsFrom, isInactive, deriveState, CONTROL_TYPES,
+} from '../core/schema-spec.js';
 
 /**
  * 좌우 2열 틀은 속성 설명 탭이 기준이다. 클래스 이름을 여기 다시 적지 않고
@@ -73,25 +74,109 @@ const PREV_KEYS = new Set(['ArrowLeft', 'ArrowUp']);
 /* --------------------------------------------------------------------------
    채점
 
-   ignore 에 든 키는 target 에 값이 있어도 보지 않는다. 예를 들어 '정중앙 배치'는
-   align-content 와 gap 이 무엇이든 통과해야 한다 — 정중앙이라는 목표와 무관한
-   속성이기 때문이다.
+   값을 정규형 문자열로 옮겨 놓고 비교한다. 원시값을 그대로 === 하면 두 가지가
+   깨진다. track-list 는 객체 배열이라 참조 비교가 되어 값이 같아도 늘 실패하고,
+   areas 는 같은 판을 한 줄로 적었느냐 줄바꿈으로 적었느냐에 따라 갈린다.
+
+   정규화는 컨트롤 타입이 이미 들고 있는 parse · serialize 짝을 부르는 것이
+   전부다. 여기에 속성 이름이 등장하지 않는다 — 어떤 타입이 오든 CONTROL_TYPES
+   가 답하고, 새 컨트롤 타입이 생겨도 이 함수는 그대로다.
+
+   같은 값을 태그 표시에도 쓴다. 배열을 그대로 찍으면 [object Object] 가 나온다.
+
+   ── ignore 에 대하여 ──────────────────────────────────────────────────────
+
+   ignore 는 target 에 있는 키를 채점에서 빼는 장치다. 그런데 target 에 없는
+   키는 애초에 채점되지 않으므로, target 에 없는 키만 담은 ignore 는 아무 일도
+   하지 않는다. Flex 40 건이 전부 그런 상태다 — 실제로 걸러지는 항목이 0 건이다.
+
+   남겨 둔 이유는 지우려면 데이터 40 건을 건드려야 하고 얻는 것이 없어서다.
+   새로 쓰는 데이터에는 넣지 않는다. 채점에서 빼고 싶은 속성은 target 에서
+   빼면 된다.
    -------------------------------------------------------------------------- */
+
+/**
+ * 값을 그 컨트롤 타입의 정규형 문자열로 옮긴다.
+ *
+ * 스키마 항목을 못 찾으면 문자열화만 한다. 그래야 스키마를 넘기지 않고 부른
+ * 옛 호출도 enum 문제에서는 예전과 똑같이 동작한다.
+ *
+ * @param {Object|undefined} entry   스키마 항목
+ * @param {*} value                  상태값 또는 데이터에 적힌 정답값
+ * @returns {string}
+ */
+export function normalizeValue(entry, value) {
+  const spec = CONTROL_TYPES[entry?.control];
+  if (!spec) return String(value ?? '');
+
+  try {
+    return String(spec.serialize(spec.parse(value)));
+  } catch {
+    // 계약이 읽지 못하는 값은 적힌 대로 둔다. 여기서 던지면 채점이 멈춘다.
+    return String(value ?? '');
+  }
+}
 
 /**
  * @param {Object} challenge
  * @param {Object} container   지금 답안의 컨테이너 값
+ * @param {Array}  [schema]    토픽 스키마. 없으면 문자열 비교로 떨어진다
  * @returns {{results: Array, correct: number, total: number, solved: boolean}}
  */
-export function checkAnswer(challenge, container = {}) {
+export function checkAnswer(challenge, container = {}, schema = []) {
   const ignore = new Set(challenge.ignore ?? []);
+  const byProp = new Map(schema.map((e) => [e.jsProp, e]));
 
   const results = Object.entries(challenge.target)
     .filter(([key]) => !ignore.has(key))
-    .map(([key, expected]) => ({ key, expected, actual: container[key], ok: container[key] === expected }));
+    .map(([key, expected]) => {
+      const entry = byProp.get(key);
+      const want = normalizeValue(entry, expected);
+      const got = normalizeValue(entry, container[key]);
+      return { key, expected: want, actual: got, ok: got === want };
+    });
 
   const correct = results.filter((r) => r.ok).length;
   return { results, correct, total: results.length, solved: results.length > 0 && correct === results.length };
+}
+
+/* --------------------------------------------------------------------------
+   답안이 아이템을 늘리는가
+
+   크기가 박힌 아이템에는 stretch 가 먹지 않는다. 높이가 60px 로 정해져 있으면
+   align-items 를 stretch 로 두든 start 로 두든 같은 그림이라 문제가 성립하지
+   않는다. 그런 문제는 아이템 크기를 풀어 주어야 한다.
+
+   판정은 wrapsLines 와 같은 방식이다 — 정답값을 빈 요소에 얹고 CSS 파서에게
+   무엇으로 풀렸는지 되묻는다. 속성 이름은 데이터가 준 키를 그대로 쓰므로
+   코드에 등장하지 않는다. 코드에 적히는 것은 stretch 라는 낱말 하나인데,
+   이건 속성이 아니라 "크기를 스스로 정하지 않는다" 는 뜻의 CSS 키워드다.
+   wrapsLines 가 nowrap 을 적어 둔 것과 같은 자리다.
+
+   어느 축이 늘어나는지는 묻지 않는다. Grid 에서 justify-items 는 가로,
+   align-items 는 세로를 늘리고 Flex 는 주축이 무엇이냐에 따라 갈린다. 축을
+   따지려면 속성마다 갈라야 하므로, 늘어나는 답이면 두 축을 함께 푼다.
+   -------------------------------------------------------------------------- */
+
+/** 크기를 스스로 정하지 않겠다는 CSS 키워드. */
+const STRETCH = 'stretch';
+
+/**
+ * @param {Object}   target        문제의 정답값 묶음
+ * @param {Array}    [schema]      정규화용 토픽 스키마
+ * @param {Document} [doc]
+ * @returns {boolean}
+ */
+export function stretchesItems(target = {}, schema = [], doc = globalThis.document) {
+  const probe = doc?.createElement?.('div');
+  if (!probe?.style) return false;
+
+  const byProp = new Map(schema.map((e) => [e.jsProp, e]));
+
+  return Object.entries(target).some(([key, value]) => {
+    try { probe.style[key] = normalizeValue(byProp.get(key), value); } catch { return false; }
+    return probe.style[key] === STRETCH;
+  });
 }
 
 /* --------------------------------------------------------------------------
@@ -390,8 +475,10 @@ export function createChallenge(config) {
         const tag = doc.createElement('span');
         tag.className = TAG_CLASS;
         tag.setAttribute('data-target-key', key);
-        // 표시 이름도 스키마에서 온다. 카멜케이스를 손으로 되돌리지 않는다.
-        tag.textContent = `${byProp.get(key)?.prop ?? key}: ${challenge.target[key]}`;
+        // 표시 이름도 값도 스키마에서 온다. 카멜케이스를 손으로 되돌리지 않고,
+        // 값은 채점과 같은 정규형을 쓴다 — 배열을 그대로 찍으면 [object Object] 다.
+        const entry = byProp.get(key);
+        tag.textContent = `${entry?.prop ?? key}: ${normalizeValue(entry, challenge.target[key])}`;
         tagBar.appendChild(tag);
         return tag;
       });
@@ -427,7 +514,7 @@ export function createChallenge(config) {
   }
 
   function submit() {
-    const verdict = checkAnswer(current, store.getState().container);
+    const verdict = checkAnswer(current, store.getState().container, schema);
 
     tags.forEach((tag) => {
       const hit = verdict.results.find((r) => r.key === tag.getAttribute('data-target-key'));

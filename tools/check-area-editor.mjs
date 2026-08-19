@@ -125,15 +125,15 @@ section('계약');
     '문구는 계약이 만든 것을 그대로 옮긴다');
 
   /**
-   * parse 는 { rows, errors } 를 주고 serialize 는 rows 배열을 받는다.
-   * 다른 컨트롤과 달리 serialize(parse(x)) 가 바로 물리지 않는다 — errors 를
-   * 함께 돌려주기 위한 모양이며, .rows 를 벗겨 넘기면 값은 정확하다.
+   * parse 는 { rows, errors } 를 준다. errors 를 함께 돌려주기 위한 모양이지만
+   * serialize 가 배열과 { rows } 를 모두 받으므로 serialize(parse(x)) 가 바로
+   * 물린다. 챌린지 채점이 컨트롤 타입만 보고 값을 정규형으로 옮기려면 여덟
+   * 타입이 같은 모양이어야 해서 맞춘 것이다. 예전에는 이 자리가 던졌다.
    */
-  let threw = false;
-  try { SPEC.serialize(SPEC.parse('"a a" "b c"')); } catch { threw = true; }
-  check('serialize(parse(x))는 바로 물리지 않는다', threw,
-    'parse가 { rows, errors }를 준다 — .rows를 벗겨 넘겨야 한다');
-  check('.rows를 벗기면 정확하다',
+  check('serialize(parse(x))가 바로 물린다',
+    SPEC.serialize(SPEC.parse('"a a" "b c"')) === '"a a"\n"b c"',
+    SPEC.serialize(SPEC.parse('"a a" "b c"')).replace(/\n/g, ' ⏎ '));
+  check('.rows를 벗겨 넘겨도 같다',
     SPEC.serialize(SPEC.parse('"a a" "b c"').rows) === '"a a"\n"b c"');
 
   // 왕복 — 두 번 돌려도 같다
@@ -150,9 +150,13 @@ section('none');
 
 {
   check('스키마 기본값이 none', ENTRY.default === NONE);
-  check('계약에 태우면 따옴표가 붙는다',
-    SPEC.serialize(SPEC.parse('none').rows) === '"none"',
-    '그래서 태우지 않는다');
+  check('계약도 none을 키워드로 되돌린다',
+    SPEC.serialize(SPEC.parse(NONE)) === NONE,
+    '행이 아니라 키워드다 — 예전에는 "none" 이라는 이름의 1×1 판이 되었다');
+  check('따옴표를 붙여 적으면 이름으로 읽는다',
+    SPEC.serialize(SPEC.parse('"none"')) === '"none"',
+    'none이라는 이름을 가진 판은 그대로 둔다');
+  check('빈 행 목록도 키워드로 나간다', SPEC.serialize([]) === NONE);
 
   check('isNone이 걸러낸다',
     [NONE, '', '   ', null, undefined].every(isNone) && !isNone('"a a" "b b"'));

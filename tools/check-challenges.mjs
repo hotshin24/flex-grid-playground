@@ -16,10 +16,12 @@
 import { readFileSync } from 'node:fs';
 import { FLEX_CHALLENGES } from '../js/topics/flex/challenges.js';
 import { FLEX_SCHEMA } from '../js/topics/flex/schema.js';
+import { GRID_SCHEMA } from '../js/topics/grid/schema.js';
 import { createStore } from '../js/core/store.js';
-import { partitionByScope, defaultsFrom } from '../js/core/schema-spec.js';
+import { partitionByScope, defaultsFrom, CONTROL_TYPES } from '../js/core/schema-spec.js';
 import {
-  createChallenge, checkAnswer, readProgress, writeProgress, STORAGE_KEY,
+  createChallenge, checkAnswer, normalizeValue, stretchesItems,
+  readProgress, writeProgress, STORAGE_KEY,
   wrapsLines, itemWidthFor,
   LIST_ITEM_CLASS, TAG_CLASS, GOAL_CLASS, GOAL_ITEM_CLASS, PREVIEW_CLASS,
   HINT_CLASS, RESULT_CLASS, PROGRESS_CLASS, MATCH_CLASS, MISMATCH_CLASS, SOLVED_CLASS,
@@ -224,7 +226,7 @@ section('채점');
 
   FLEX_CHALLENGES.forEach((ch) => {
     const answer = { ...defaults, ...ch.target };
-    const verdict = checkAnswer(ch, answer);
+    const verdict = checkAnswer(ch, answer, FLEX_SCHEMA);
     check(`#${ch.id} — 정답이 통과`, verdict.solved && verdict.correct === verdict.total,
       `${verdict.correct}/${verdict.total}`);
   });
@@ -238,14 +240,14 @@ section('채점');
       const other = entry.values?.find((v) => v.val !== answer[key])?.val ?? '999px';
       messed[key] = other;
     });
-    return checkAnswer(ch, messed).solved;
+    return checkAnswer(ch, messed, FLEX_SCHEMA).solved;
   });
   check('ignore 속성을 틀리게 해도 통과', ignoreProof.every(Boolean),
     `${ignoreProof.filter(Boolean).length}/${FLEX_CHALLENGES.length}건`);
 
   // ignore 속성이 채점 목록에 들어가지 않는다
   const leaked = FLEX_CHALLENGES.flatMap((ch) =>
-    checkAnswer(ch, defaults).results.map((r) => r.key).filter((k) => (ch.ignore ?? []).includes(k)));
+    checkAnswer(ch, defaults, FLEX_SCHEMA).results.map((r) => r.key).filter((k) => (ch.ignore ?? []).includes(k)));
   check('채점 목록에 ignore 키가 없음', leaked.length === 0, leaked.join(', ') || '누출 0건');
 
   // 채점 대상 하나만 틀려도 오답
@@ -254,13 +256,258 @@ section('채점');
     const key = Object.keys(ch.target).find((k) => !(ch.ignore ?? []).includes(k));
     const entry = PROPS.get(key);
     answer[key] = entry.values.find((v) => v.val !== ch.target[key]).val;
-    const verdict = checkAnswer(ch, answer);
+    const verdict = checkAnswer(ch, answer, FLEX_SCHEMA);
     return !verdict.solved && verdict.correct === verdict.total - 1;
   });
   check('채점 대상 하나가 틀리면 오답', strict.every(Boolean));
 
   check('빈 답안은 전부 통과하지 않음',
-    FLEX_CHALLENGES.filter((ch) => checkAnswer(ch, {}).solved).length === 0);
+    FLEX_CHALLENGES.filter((ch) => checkAnswer(ch, {}, FLEX_SCHEMA).solved).length === 0);
+}
+
+/* ==========================================================================
+   정규화 채점 — 값을 컨트롤 타입의 정규형으로 옮겨 놓고 비교한다
+
+   원시값 === 은 두 곳에서 깨진다. track-list 는 객체 배열이라 참조 비교가 되어
+   값이 같아도 늘 실패하고, areas 는 한 줄 표기와 줄바꿈 표기가 갈린다.
+   Flex 40 건은 전부 enum 문자열이라 정규형이 곧 원래 값이어야 한다.
+   ========================================================================== */
+section('정규화 채점 — Flex 회귀');
+
+{
+  const defaults = defaultsFrom(FLEX_SCHEMA, 'container');
+
+  /** 바뀌기 전 판정. 원시값을 그대로 === 한다. */
+  const before = (ch, container) => {
+    const ignore = new Set(ch.ignore ?? []);
+    const rows = Object.entries(ch.target)
+      .filter(([key]) => !ignore.has(key))
+      .map(([key, expected]) => container[key] === expected);
+    return rows.length > 0 && rows.every(Boolean);
+  };
+
+  const CASES = [
+    ['정답', (ch) => ({ ...defaults, ...ch.target })],
+    ['기본값', () => ({ ...defaults })],
+    ['빈 답안', () => ({})],
+  ];
+
+  CASES.forEach(([label, make]) => {
+    const diff = FLEX_CHALLENGES.filter((ch) => {
+      const c = make(ch);
+      return before(ch, c) !== checkAnswer(ch, c, FLEX_SCHEMA).solved;
+    });
+    check(`${label} — 40건 전부 이전과 같은 판정`, diff.length === 0,
+      diff.map((c) => `#${c.id}`).join(', ') || `${FLEX_CHALLENGES.length}건 일치`);
+  });
+
+  // 개별 결과까지 같아야 한다. solved 만 같고 correct 가 어긋나면 태그 표시가 달라진다
+  const rowDiff = FLEX_CHALLENGES.filter((ch) => {
+    const c = { ...defaults, ...ch.target };
+    const v = checkAnswer(ch, c, FLEX_SCHEMA);
+    return v.results.some((r) => r.ok !== (c[r.key] === ch.target[r.key]));
+  });
+  check('키별 결과도 이전과 같음', rowDiff.length === 0, `${FLEX_CHALLENGES.length}건`);
+
+  // enum 값은 정규형이 원래 값 그대로여야 한다
+  const moved = FLEX_CHALLENGES.flatMap((ch) => Object.entries(ch.target)
+    .filter(([key, v]) => normalizeValue(PROPS.get(key), v) !== v)
+    .map(([key, v]) => `#${ch.id}.${key}=${v}`));
+  check('enum 정답값이 정규화로 움직이지 않음', moved.length === 0,
+    moved.join(', ') || `${FLEX_CHALLENGES.reduce((n, c) => n + Object.keys(c.target).length, 0)}개 값 그대로`);
+
+  // 스키마를 안 넘긴 옛 호출도 enum 에서는 예전과 같아야 한다
+  const noSchema = FLEX_CHALLENGES.every((ch) => {
+    const c = { ...defaults, ...ch.target };
+    return checkAnswer(ch, c).solved === checkAnswer(ch, c, FLEX_SCHEMA).solved;
+  });
+  check('스키마 없이 부른 옛 호출도 같은 결과', noSchema, '문자열 비교로 떨어진다');
+}
+
+/* --------------------------------------------------------------------------
+   Grid 값 타입 — 아직 데이터는 없지만 판정은 지금 서 있어야 한다
+   -------------------------------------------------------------------------- */
+section('정규화 채점 — Grid 값 타입');
+
+{
+  const state = {
+    ...defaultsFrom(GRID_SCHEMA, 'container'),
+    gridTemplateColumns: [{ size: 200, unit: 'px' }, { size: 1, unit: 'fr' }],
+    gridTemplateAreas: '"hd hd"\n"sd mn"',
+  };
+  const judge = (target) => checkAnswer({ target }, state, GRID_SCHEMA).solved;
+
+  check('track-list — 배열로 적어도 통과',
+    judge({ gridTemplateColumns: [{ size: 200, unit: 'px' }, { size: 1, unit: 'fr' }] }),
+    '참조가 달라도 값이 같으면 통과');
+  check('track-list — CSS 문자열로 적어도 통과', judge({ gridTemplateColumns: '200px 1fr' }));
+  check('track-list — 값이 다르면 실패', !judge({ gridTemplateColumns: '1fr 1fr' }));
+  check('track-list — 순서가 다르면 실패', !judge({ gridTemplateColumns: '1fr 200px' }));
+
+  check('areas — 한 줄 표기로 적어도 통과', judge({ gridTemplateAreas: '"hd hd" "sd mn"' }));
+  check('areas — 줄바꿈 표기도 통과', judge({ gridTemplateAreas: '"hd hd"\n"sd mn"' }));
+  check('areas — 여분 공백도 통과', judge({ gridTemplateAreas: '  "hd  hd"   "sd mn" ' }));
+  check('areas — 따옴표 없이 적어도 통과', judge({ gridTemplateAreas: 'hd hd\nsd mn' }));
+  check('areas — 판이 다르면 실패', !judge({ gridTemplateAreas: '"hd hd" ". mn"' }));
+
+  check('length — 같은 문자열은 통과', judge({ rowGap: '12px' }));
+  check('length — 단위가 다르면 실패', !judge({ rowGap: '0.75rem' }),
+    '12px 과 0.75rem 은 루트 글꼴이 16px 일 때만 같다. 계산하지 않는다');
+
+  check('enum — 그대로 동작', judge({ alignItems: 'stretch' }) && !judge({ alignItems: 'center' }));
+
+  // 여러 키를 함께 물어도 하나만 어긋나면 오답
+  const many = { gridTemplateColumns: '200px 1fr', gridTemplateAreas: '"hd hd" "sd mn"', alignItems: 'stretch' };
+  check('여러 키를 함께 물어도 동작', judge(many));
+  check('그중 하나만 어긋나도 오답', !judge({ ...many, alignItems: 'center' }));
+}
+
+/* --------------------------------------------------------------------------
+   태그 표시 — 배열을 그대로 찍으면 [object Object] 가 나온다
+   -------------------------------------------------------------------------- */
+section('태그 표시');
+
+{
+  const entry = GRID_SCHEMA.find((e) => e.jsProp === 'gridTemplateColumns');
+  const areas = GRID_SCHEMA.find((e) => e.jsProp === 'gridTemplateAreas');
+
+  check('track-list 배열이 CSS 글자로 나온다',
+    normalizeValue(entry, [{ size: 1, unit: 'fr' }, { size: 200, unit: 'px' }]) === '1fr 200px',
+    normalizeValue(entry, [{ size: 1, unit: 'fr' }, { size: 200, unit: 'px' }]));
+  check('스키마 기본값도 글자로 나온다',
+    normalizeValue(entry, entry.default) === '1fr 1fr 1fr', normalizeValue(entry, entry.default));
+  check('[object Object] 가 나오지 않는다',
+    !normalizeValue(entry, entry.default).includes('[object'),
+    `고치기 전: ${String(entry.default)}`);
+  check('areas 도 한 가지 꼴로 나온다',
+    normalizeValue(areas, '"hd hd" "sd mn"') === '"hd hd"\n"sd mn"');
+  check('none 도 키워드 그대로', normalizeValue(areas, 'none') === 'none');
+
+  // 실제 태그 문자열을 만드는 자리가 같은 함수를 쓰는지
+  const src = codeOnly(read('../js/ui/challenge.js'));
+  check('태그가 normalizeValue 를 거친다', /tag\.textContent\s*=[^;]*normalizeValue\(/.test(src));
+  check('채점도 같은 함수를 쓴다', /normalizeValue\(entry, expected\)/.test(src));
+  check('속성 이름 분기가 없다', !/if\s*\(\s*(key|prop|jsProp)\s*===\s*['"]/.test(src));
+}
+
+/* --------------------------------------------------------------------------
+   target 무손실 — 파서가 조용히 다른 값으로 바꾸지 않는가
+
+   parseTrackList 는 아는 형태가 아닌 토큰을 조용히 {size:1, unit:'fr'} 로
+   떨어뜨린다. repeat(3, 1fr) 을 적으면 오류 없이 1fr 한 칸이 된다. 파서에서
+   던지게 만들면 트랙 편집기가 글자를 치는 도중마다 터지므로, 데이터를 받는
+   이 자리에서 잡는다.
+
+   규칙: 문자열로 적은 target 값은 파서를 지나도 (공백을 빼면) 그대로여야 한다.
+   -------------------------------------------------------------------------- */
+section('target 무손실');
+
+{
+  const flat = (v) => String(v).replace(/\s+/g, ' ').trim();
+  const lossless = (entry, value) => typeof value !== 'string'
+    || flat(normalizeValue(entry, value)) === flat(value);
+
+  const lost = FLEX_CHALLENGES.flatMap((ch) => Object.entries(ch.target)
+    .filter(([key, v]) => !lossless(PROPS.get(key), v))
+    .map(([key, v]) => `#${ch.id}.${key}=${v} → ${normalizeValue(PROPS.get(key), v)}`));
+  check('Flex 40건 target 이 전부 무손실', lost.length === 0, lost.join(', ') || '손실 0건');
+
+  const track = GRID_SCHEMA.find((e) => e.jsProp === 'gridTemplateColumns');
+
+  check('repeat() 를 잡는다', !lossless(track, 'repeat(3, 1fr)'),
+    `repeat(3, 1fr) → ${normalizeValue(track, 'repeat(3, 1fr)')} — 펼쳐 적을 것`);
+  check('공백 없는 repeat() 도 잡는다', !lossless(track, 'repeat(3,1fr)'));
+  check('모르는 토큰을 잡는다', !lossless(track, 'garbage'),
+    `garbage → ${normalizeValue(track, 'garbage')}`);
+  check('단위 없는 숫자를 잡는다', !lossless(track, '3'),
+    `3 → ${normalizeValue(track, '3')}`);
+
+  check('펼쳐 적은 값은 통과', lossless(track, '1fr 1fr 1fr') && lossless(track, '200px 1fr'));
+  check('minmax 는 통과', lossless(track, 'minmax(120px, 1fr)'));
+  check('키워드 트랙도 통과', lossless(track, 'auto') && lossless(track, 'min-content'));
+  check('배열은 검사 대상이 아님', lossless(track, [{ size: 1, unit: 'fr' }]),
+    '배열은 이미 정규형이다');
+
+  // areas 는 표기 차이를 흡수하므로 한 줄로 적어도 무손실이어야 한다
+  const areas = GRID_SCHEMA.find((e) => e.jsProp === 'gridTemplateAreas');
+  check('areas 한 줄 표기는 무손실', lossless(areas, '"hd hd" "sd mn"'));
+  // 판 모양이 틀린 것은 손실이 아니라 오류다. 계약이 errors 로 따로 답한다
+  const areaErrors = (v) => CONTROL_TYPES['area-grid'].parse(v).errors;
+  check('areas 셀 수가 어긋나면 계약이 오류를 낸다', areaErrors('"hd hd" "sd"').length > 0,
+    areaErrors('"hd hd" "sd"').join(' / '));
+  check('areas 이름이 직사각형이 아니면 오류를 낸다', areaErrors('"a b" "b a"').length > 0,
+    areaErrors('"a b" "b a"').join(' / '));
+  check('멀쩡한 판은 오류 0건', areaErrors('"hd hd" "sd mn"').length === 0);
+
+  // 모든 컨트롤 타입이 serialize(parse(x)) 를 받는가 — area-grid 가 예외였다
+  const shapes = Object.entries(CONTROL_TYPES).map(([name, spec]) => {
+    try { spec.serialize(spec.parse(name === 'number' ? '3' : 'auto')); return null; } catch { return name; }
+  }).filter(Boolean);
+  check('컨트롤 8종 전부 serialize(parse(x)) 가 물린다', shapes.length === 0,
+    shapes.join(', ') || Object.keys(CONTROL_TYPES).join(' · '));
+}
+
+/* --------------------------------------------------------------------------
+   아이템 크기 판정 — 답이 아이템을 늘리는가
+
+   크기가 박힌 아이템에는 stretch 가 먹지 않는다. 그런 문제는 크기를 풀어
+   주어야 하고, 그 판정을 속성 이름 없이 세운 것이 stretchesItems 다.
+   -------------------------------------------------------------------------- */
+section('아이템 크기 판정');
+
+{
+  const probe = (target, schema) => stretchesItems(target, schema, doc);
+
+  check('Grid — align-items: stretch 를 잡는다', probe({ alignItems: 'stretch' }, GRID_SCHEMA));
+  check('Grid — justify-items: stretch 도 잡는다', probe({ justifyItems: 'stretch' }, GRID_SCHEMA));
+  check('Grid — start·center 는 잡지 않는다',
+    !probe({ alignItems: 'start', justifyItems: 'center' }, GRID_SCHEMA));
+  check('Grid — 트랙 정의는 잡지 않는다',
+    !probe({ gridTemplateColumns: '1fr 1fr 1fr', gridTemplateRows: 'auto' }, GRID_SCHEMA));
+  check('Grid — 배열 값에도 터지지 않는다',
+    !probe({ gridTemplateColumns: [{ size: 1, unit: 'fr' }] }, GRID_SCHEMA));
+  check('Grid — 여럿 중 하나만 stretch 여도 잡는다',
+    probe({ gridTemplateColumns: '1fr 1fr', alignItems: 'stretch' }, GRID_SCHEMA));
+
+  check('Flex — align-items: stretch 를 잡는다', probe({ alignItems: 'stretch' }, FLEX_SCHEMA));
+  const flexHits = FLEX_CHALLENGES.filter((ch) => probe(ch.target, FLEX_SCHEMA));
+  check('Flex 40건 중 걸리는 문제를 센다', flexHits.length > 0,
+    `${flexHits.length}건 — ${flexHits.map((c) => `#${c.id}`).join(' ')}`);
+
+  check('빈 target·document 없음을 막지 않고 false 를 낸다',
+    !probe({}, GRID_SCHEMA) && !stretchesItems({ alignItems: 'stretch' }, GRID_SCHEMA, null));
+
+  const src = codeOnly(read('../js/ui/challenge.js'));
+  check('판정에 속성 이름이 적혀 있지 않다',
+    !/(alignItems|justifyItems|align-items|justify-items)/.test(src),
+    '데이터가 준 키를 그대로 쓴다');
+
+  // 아직 배선하지 않았다는 사실을 사실대로 확인한다
+  check('itemsFor 는 아직 이 판정을 쓰지 않는다', !/stretchesItems\(/.test(src.split('export function stretchesItems')[1] ?? ''),
+    'renderer 가 width·height 를 늘 px 로 쓰므로 이음매가 없다');
+}
+
+/* --------------------------------------------------------------------------
+   ignore — 지금 아무 일도 하지 않는다는 사실을 못 박는다
+   -------------------------------------------------------------------------- */
+section('ignore');
+
+{
+  const effective = FLEX_CHALLENGES.flatMap((ch) =>
+    (ch.ignore ?? []).filter((key) => key in ch.target).map((key) => `#${ch.id}.${key}`));
+  check('Flex 40건의 ignore 가 실제로 거르는 항목 0건', effective.length === 0,
+    effective.join(', ') || 'target 에 없는 키만 담고 있다');
+
+  check('ignore 가 무효라는 사실이 주석에 남아 있다',
+    /아무 일도[\s\S]{0,20}하지 않는다/.test(read('../js/ui/challenge.js')),
+    '새 데이터에 넣지 않는다는 것까지 적어 둔다');
+  check('새 데이터 방침도 적혀 있다',
+    /새로 쓰는 데이터에는 넣지 않는다/.test(read('../js/ui/challenge.js')));
+
+  // 그래도 장치 자체는 살아 있어야 한다 — target 에 있는 키는 실제로 빠진다
+  const ch = { target: { alignItems: 'center', justifyContent: 'center' }, ignore: ['alignItems'] };
+  const v = checkAnswer(ch, { alignItems: 'start', justifyContent: 'center' }, FLEX_SCHEMA);
+  check('target 에 있는 키를 ignore 하면 실제로 빠진다', v.solved && v.total === 1, `${v.correct}/${v.total}`);
 }
 
 /* ==========================================================================

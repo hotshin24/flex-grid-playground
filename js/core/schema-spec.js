@@ -16,6 +16,9 @@
 /** span 계약의 '자동 배치' 값. 문자열 하나를 여러 곳에 적지 않는다. */
 export const AUTO = 'auto';
 
+/** 영역을 두지 않는다는 키워드. 빈 행 목록이 CSS 로 나갈 때의 값이다. */
+export const AREA_NONE = 'none';
+
 export const CONTROL_TYPES = {
   /** 고정 값 버튼 그룹. values[] 필수. */
   enum: {
@@ -67,7 +70,13 @@ export const CONTROL_TYPES = {
    */
   'area-grid': {
     requires: [],
-    serialize: (rows) => rows.map((r) => `"${r.join(' ')}"`).join('\n'),
+    // parse 가 { rows, errors } 를 주므로 둘 다 받는다. 이래야 다른 컨트롤처럼
+    // serialize(parse(x)) 가 바로 물린다 — 채점이 컨트롤 타입만 보고 값을
+    // 정규형으로 옮길 수 있으려면 여덟 타입이 같은 모양이어야 한다.
+    serialize: (value) => {
+      const rows = Array.isArray(value) ? value : (value?.rows ?? []);
+      return rows.length === 0 ? AREA_NONE : rows.map((r) => `"${r.join(' ')}"`).join('\n');
+    },
     parse: (raw) => parseAreaGrid(raw),
   },
 
@@ -606,6 +615,10 @@ export function parseTrackList(raw) {
  */
 export function parseAreaGrid(raw) {
   if (Array.isArray(raw)) return { rows: raw, errors: [] };
+
+  // 키워드는 행이 아니다. 따옴표 없이 none 만 온 경우만 걸러 낸다 —
+  // '"none"' 은 none 이라는 이름을 가진 1×1 판이므로 그대로 읽는다.
+  if (String(raw).trim() === AREA_NONE) return { rows: [], errors: [] };
 
   // 행은 따옴표로 구분된다. 줄바꿈 여부와 무관하게 동작해야 한다.
   //   '"hd hd"\n"sd mn"'  와  '"hd hd" "sd mn"'  는 같은 결과여야 한다.
