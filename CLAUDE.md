@@ -34,8 +34,21 @@ M7 완료 시 `index-v1.html`을 `index.html`로 교체한다.
 1. **의존성 0.** npm 패키지, CDN 스크립트, 폰트 CDN 모두 금지. jQuery 절대 금지.
 2. **ES 모듈만.** `<script type="module">`. 전역 함수 노출 금지. IIFE 패턴 금지.
 3. **인라인 `onclick=` 금지.** 이벤트는 `core/events.js`의 위임으로만 바인딩한다.
-4. **인라인 `style=` 금지.** 예외는 프리뷰 아이템에 사용자 설정값을 적용하는 경우뿐이며,
-   이건 `core/renderer.js` 안에서만 일어난다.
+4. **인라인 `style=` 금지.** 예외는 **값이 데이터에서 오는 미리보기**뿐이다.
+   스키마의 `demo` · 챌린지의 `miniStyle` 처럼 CSS 파일에 미리 적을 수 없는 값이
+   해당한다. 허용 파일은 여섯이다 —
+
+   | 파일 | 무엇을 얹는가 |
+   |---|---|
+   | `core/renderer.js` | 사용자가 고른 속성값과 아이템 크기 |
+   | `ui/explain.js` | 스키마 `demo` 의 값 |
+   | `ui/compare.js` | 대조 데모의 값 |
+   | `ui/challenge.js` | 챌린지 `miniStyle` |
+   | `main.js` | 뷰 설정의 프리뷰 무대 크기 |
+   | `ui/grid-overlay.js` | 실측한 라인·트랙 좌표 (CSS 변수로) |
+
+   이 밖의 파일에 인라인 스타일이 생기면 규칙 위반이다.
+   허용 파일이 늘어야 한다고 판단되면 먼저 보고할 것.
 5. **색상 리터럴 금지.** `css/tokens.css` 밖에 hex·rgb·hsl 값이 존재해선 안 된다.
    컴포넌트는 `--fgp-*` semantic 토큰만 참조한다. `--p-*` primitive 직접 참조도 금지.
 6. **`!important` 금지.**
