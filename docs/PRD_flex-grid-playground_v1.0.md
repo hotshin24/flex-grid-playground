@@ -3,7 +3,7 @@
 
 | 항목      | 내용                                     |
 | ------- | -------------------------------------- |
-| 문서 버전   | 1.7                                    |
+| 문서 버전   | 1.8                                    |
 | 작성일     | 2026-08-18                             |
 | 저장소     | hotshin24/flex-grid-playground         |
 | 프로젝트 성격 | 개인 학습 정리용 (전면 재설계)                     |
@@ -26,6 +26,10 @@ Flexbox 학습 도구가 4탭 구조(플레이그라운드 / 속성 설명 / 실
 | `js/data.js`    | 1,453     | EXAMPLES 18 · CHALLENGES 8 · EXPLAIN_DATA 12속성 |
 | `css/style.css` | 1,544     | —                                              |
 | **합계**          | **5,035** |                                                |
+
+> 이 표는 **v0.1 감사 시점(2026-08-18)의 기록**이다. 네 파일은 M7 파일 정리
+> (7.2)에서 지웠고 지금 리포지터리에 없다. 원본은 `v0.1-archive` 태그
+> (`ae4aa07`)에 있다 — `git show v0.1-archive:js/data.js`.
 
 
 ### 1.2 재설계를 결정한 이유
@@ -134,39 +138,42 @@ Flex와 Grid를 **동일한 4탭 구조로 풀 패리티** 제공하는 정적 �
 
 ```
 /
-├─ index.html                 v0.1 참조 화면. 수정 금지. M7에서 교체 대상
 ├─ index.html                 진입점. 셸만 — 탭 컨테이너와 마운트 지점 외 마크업 없음
-├─ css/
+├─ css/                       4파일
 │  ├─ tokens.css              디자인 토큰 (primitive + semantic 2계층)
 │  ├─ base.css                리셋 · 타이포그래피
-│  ├─ layout.css              셸 · 그리드 · 반응형
+│  ├─ layout.css              셸 · 반응형 (599 / 1023) · 부팅 게이트
 │  └─ components.css          컨트롤 · 카드 · 패널
-├─ js/
+├─ js/                        26파일
+│  ├─ main.js                 부품 조립 · 프리셋 · 뷰 설정 · 아이템 조작 · 구독
 │  ├─ core/
+│  │  ├─ schema-spec.js       계약 · 검증기 · 파서 · CONTROL_TYPES · isInactive
 │  │  ├─ store.js             상태 저장소 (subscribe / dispatch / history)
-│  │  ├─ renderer.js          프리뷰 DOM 렌더링 (diffing 유지)
+│  │  ├─ renderer.js          프리뷰 DOM 렌더링 (요소 재사용 diffing) · 측정
 │  │  ├─ codegen.js           CSS · HTML 코드 생성
-│  │  ├─ router.js            URL 해시 라우팅 · 상태 직렬화
-│  │  ├─ storage.js           localStorage 영속화
-│  │  └─ events.js            이벤트 위임 바인딩
+│  │  └─ router.js            URL 해시 직렬화 (F-09)
 │  ├─ ui/
 │  │  ├─ controls.js          스키마 → 컨트롤 DOM 생성
 │  │  ├─ tabs.js              탭 전환
-│  │  ├─ track-editor.js      Grid 트랙 편집기
-│  │  └─ area-editor.js       grid-template-areas 편집기
+│  │  ├─ explain.js           속성 설명 탭
+│  │  ├─ compare.js           Flex↔Grid 대조 뷰 (GR-09)
+│  │  ├─ examples.js          실전 예제 탭
+│  │  ├─ challenge.js         챌린지 탭 · 정답 판정 · 진행률(localStorage)
+│  │  ├─ track-editor.js      Grid 트랙 편집기 (GR-03)
+│  │  ├─ area-editor.js       grid-template-areas 편집기 (GR-04, 텍스트까지)
+│  │  ├─ span-editor.js       라인 좌표 편집기 (GR-02)
+│  │  └─ grid-overlay.js      라인 번호 · 암시 트랙 (GR-05 · GR-06)
 │  └─ topics/
-│     ├─ flex/
-│     │  ├─ schema.js         속성 정의 12개
-│     │  ├─ explain.js        값별 설명 · 데모 설정
-│     │  ├─ examples.js       실전 예제 (v0.1에서 이관)
-│     │  └─ challenges.js     챌린지 (v0.1에서 이관)
-│     └─ grid/
-│        ├─ schema.js         속성 정의 19개
-│        ├─ explain.js
-│        ├─ examples.js
-│        └─ challenges.js
-└─ README.md
+│     ├─ flex/                schema(12) explain examples(18) challenges(40) presets(5)
+│     └─ grid/                schema(19) explain examples(18) challenges(40) presets(5)
+├─ tools/                     게이트 18종 + check-mdn-links.mjs (게이트 아님)
+├─ docs/                      PRD · BACKLOG
+└─ README.md · CLAUDE.md · LICENSE
 ```
+
+> `core/storage.js` 와 `core/events.js` 는 이 계획에 있었으나 만들지 않았다.
+> 진행률 저장은 `ui/challenge.js` 가 자기 것만 다루고, 이벤트는 각 UI 모듈이
+> 자기 뿌리에 위임으로 건다. 중앙 파일을 둘 이유가 생기지 않았다.
 
 
 
@@ -351,6 +358,10 @@ Flex와 Grid를 **동일한 4탭 구조로 풀 패리티** 제공하는 정적 �
 | FX-04 | 실전 예제 18건   | v0.1 이관                                                                                 |
 | FX-05 | 챌린지 8건      | v0.1 이관                                                                                 |
 
+> **최종 산출.** 위 숫자는 요구 하한이다. 실제로는 Flex 예제 18건 · 챌린지
+> **40건**(이관 7 + 재작성 1 + 신규 32) · 프리셋 5종이 들어갔다. 두 토픽을 합하면
+> 예제 36건 · 챌린지 80건 · 프리셋 10종이며, README 가 그 합계를 적는다.
+
 
 
 
@@ -362,11 +373,14 @@ Flex와 Grid를 **동일한 4탭 구조로 풀 패리티** 제공하는 정적 �
 | GR-01 | 컨테이너 속성 12개                 | `grid-template-columns/rows/areas`, `row-gap`, `column-gap`, `justify-items`, `align-items`, `justify-content`, `align-content`, `grid-auto-flow`, `grid-auto-columns`, `grid-auto-rows` |
 | GR-02 | 아이템 속성 7개                   | `grid-column-start/end`, `grid-row-start/end`, `grid-area`, `justify-self`, `align-self`                                                                                                 |
 | GR-03 | **트랙 편집기**                  | 트랙 추가/삭제/재정렬, 단위 선택 (`fr`·`px`·`%`·`auto`·`min-content`·`max-content`·`minmax()`), `repeat()` 축약 토글                                                                                      |
-| GR-04 | **grid-template-areas 편집기** | 셀 클릭·드래그로 영역 지정 → 문자열 자동 생성, 유효성 검증(직사각형 아닌 영역 거부)                                                                                                                                       |
+| GR-04 | **grid-template-areas 편집기** | 셀 클릭·드래그로 영역 지정 → 문자열 자동 생성, 유효성 검증(직사각형 아닌 영역 거부). **v1.0은 텍스트 입력 + 검증까지만 구현.** 시각 편집은 미완 — `docs/BACKLOG.md` 참조                                                                                                                                       |
 | GR-05 | **그리드 라인 번호 오버레이**          | 프리뷰 위에 라인 번호 표시 (양수·음수 동시), 토글 가능                                                                                                                                                        |
 | GR-06 | 암시적 그리드 시각 구분               | 명시적 트랙과 암시적 트랙을 다른 스타일로 표시                                                                                                                                                               |
 | GR-07 | 실전 예제 최소 15건                | 신규 작성 (홀리 그레일, 매거진 레이아웃, 대시보드, 갤러리 등)                                                                                                                                                    |
 | GR-08 | 챌린지 최소 8건                   | 신규 작성 (난이도 ⭐~⭐⭐⭐)                                                                                                                                                                        |
+
+> **최종 산출.** Grid 예제 18건 · 챌린지 40건 · 프리셋 5종. GR-04만 절반이고
+> 나머지 8건은 요구를 채웠다.
 
 
 > **GR-05가 Grid 학습 효과의 핵심이다.** `grid-column: 1 / 3`이 왜 2칸을 차지하는지는 라인 번호를 눈으로 봐야 이해된다. Flex에는 대응 개념이 없어 v0.1 렌더러에 존재하지 않는 기능이다.
@@ -508,9 +522,10 @@ v0.1에서 확인된 문제를 정량 목표로 전환한다.
 > 는 `devtools` 스로틀링을 써 같은 배포본이 중앙 89로 나온다. 설정이 다르면
 > 숫자를 비교할 수 없다.
 
-> 품질 기준의 측정 대상은 v1.0 신규 파일에 한한다. v0.1 파일
-> (`index.html` · `js/app.js` · `js/data.js` · `css/style.css`)은 참조 전용이므로
-> 위반 집계에서 제외한다. CLAUDE.md「절대 규칙의 적용 범위」와 동일한 기준이다.
+> **측정 대상은 리포지터리 전 파일이다. 빼는 파일이 없다.** M6까지는 v0.1 파일
+> 넷을 참조 전용으로 두고 집계에서 뺐으나, M7 파일 정리(7.2)로 그 파일들이
+> 사라져 예외 자체가 없어졌다. CLAUDE.md「절대 규칙의 적용 범위」와 같은 기준이다.
+> 왼쪽 `v0.1 실측` 열은 재설계의 출발점을 남긴 기록이며 지금의 집계가 아니다.
 
 **토큰 체계**: JW Anderson·HOOT UP과 동일한 2계층 구조 적용 — primitive 토큰(`--color-indigo-500`) 위에 semantic 별칭(`--surface-panel`, `--text-muted`)을 얹고, 컴포넌트는 semantic만 참조한다.
 
@@ -573,10 +588,14 @@ v0.1에서 확인된 문제를 정량 목표로 전환한다.
 4. `index.html` 삭제 후 `index-v1.html` → `index.html` 로 이름 변경
 5. `js/app.js` · `js/data.js` · `css/style.css` 삭제
 
-> **진행 — 1~4 완료 (2026-08-19), 5 남음.**
+> **진행 — 1~5 전부 완료 (2026-08-19).**
 > 회귀 검증 12/12 통과 · `v0.1-archive`(ae4aa07) 로컬·원격 반영 ·
-> 이관 대조(예제 18/18 · 챌린지 7 그대로 + 1 교체 · 값 슬롯 34/34) ·
-> 진입점 교체 완료. `js/app.js` · `js/data.js` · `css/style.css` 셋만 남았다.
+> 이관 대조(예제 18/18 · 챌린지 이관 7 + 재작성 1 · EXPLAIN_DATA 12속성
+> 값 슬롯 52/52) · 진입점 교체 · v0.1 파일 3개 삭제.
+>
+> 삭제 뒤에도 이관 대조는 살아 있다. `check-examples` 와 `check-challenges` 가
+> `v0.1-archive` 태그에서 원본을 읽는다 — 태그를 남긴 이유가 이것이다.
+> 태그를 지우거나 옮기면 그 검사가 사라진다.
 
 > 이관 확인은 삭제보다 **앞**이다. v1.4 까지는 이 항목이 5번(삭제 뒤)에 적혀
 > 있었다. "삭제 **전에** 확인" 이라는 단서를 달아 두긴 했지만, 절차를 번호대로
@@ -635,6 +654,7 @@ v0.1에서 확인된 문제를 정량 목표로 전환한다.
 | 1.2 | 2026-08-18 | F-06을 너비·높이 조절로 확장. column 방향에서 `flex-wrap`·`align-content` 관찰 불가 문제. 컨테이너 크기를 뷰 설정으로 분류하고 상태 모델(4.4)에 `view` 도입 |
 | 1.3 | 2026-08-18 | F-13 조건부 속성 비활성 표시 신설(P1). 스키마에 `inactiveWhen`·`measuredInactive` 필드, 상태 모델에 `measured` 추가. M2·M3 산출물 반영 |
 | 1.4 | 2026-08-18 | M3 구현 결과 반영 — `measuredInactive`를 `{key, reason, hint}` 객체로, 값 단위 선언(`values[].measuredInactive`) 추가. 4.4 `measured` 키를 실제 10개로 갱신 |
+| 1.8 | 2026-08-19 | M7 파일 정리 완료 반영 — 7.2 절차 1~5 완료 표시와 태그 의존 명시, 2장 v0.1 표에 "지금은 없는 파일" 주석, 6장 측정 대상에서 v0.1 예외 제거(예외 자체가 사라짐), 4.2 디렉터리 구조를 실제와 일치시킴(index.html 중복 · 만들지 않은 storage·events 정리, 빠져 있던 12파일 추가) |
 | 1.7 | 2026-08-19 | 4.5 URL 직렬화를 구현 결과에 맞춰 확정 — 예시의 `repeat(3,1fr)`를 펼친 형태로 정정(`parseTrackList`가 `repeat()`를 읽지 못해 트랙이 조용히 사라진다), 아이템 키·예약 키·인코딩·`replaceState` 근거 명시 |
 | 1.6 | 2026-08-19 | 7.2 파일 정리 절차의 항목 순서 정정 — 이관 확인(구 5번)을 삭제(구 3·4번)보다 앞으로. 번호대로 따르면 지운 뒤 확인하게 되어 되돌릴 원본이 남지 않았다 |
 | 1.5 | 2026-08-19 | M6 완료 반영 — 6장에 M6 실측값 열과 측정 환경(배포 기준·6회·기본 스로틀링) 명시. 5.5 각주 수치를 행 12 / 속성 13 / 선언 14로 정정. M7 산출물에서 기능정의서·UI/UX 가이드 제외. 9장을 「결정 기록」으로 전환(미결 0) |
