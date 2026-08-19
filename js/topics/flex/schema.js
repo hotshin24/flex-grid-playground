@@ -72,7 +72,16 @@ export const FLEX_SCHEMA = [
     relatedTo: ['align-items'],
     demo: { itemCount: 3, itemSizes: 'varied' },
     values: [
-      { val: 'stretch',    desc: '교차축을 꽉 채움 (기본값). 아이템에 크기가 없을 때만 동작' },
+      {
+        val: 'stretch',
+        desc: '교차축을 꽉 채움 (기본값). 아이템에 크기가 없을 때만 동작',
+        // 유형 C — 아이템이 교차축 크기를 스스로 정했으면 늘어날 자리가 없다
+        measuredInactive: {
+          key: 'crossAuto',
+          reason: '아이템이 교차축 크기를 스스로 정하고 있어 늘어날 여지가 없습니다.',
+          hint: '아이템의 높이(주축이 column이면 너비)를 지우면 stretch가 컨테이너를 채웁니다.',
+        },
+      },
       { val: 'flex-start', desc: '교차축 시작점' },
       { val: 'flex-end',   desc: '교차축 끝점' },
       { val: 'center',     desc: '교차축 가운데' },
@@ -123,6 +132,12 @@ export const FLEX_SCHEMA = [
     desc: '컨테이너에 <strong>남은 공간</strong>이 있을 때, 그 공간을 얼마나 차지할지 비율로 정합니다.',
     tip: '값 자체가 크기가 아니라 남은 공간의 분배 비율입니다. 1과 2를 주면 1:2로 나눠 갖습니다.',
     mdn: MDN + 'flex-grow',
+    // 유형 B — 남는 공간이 없으면 나눠 가질 것도 없다
+    measuredInactive: {
+      key: 'hasFreeSpace',
+      reason: '지금 주축에 남는 공간이 없습니다. 나눠 가질 자리가 없어 값을 올려도 그대로입니다.',
+      hint: '컨테이너를 넓히거나 아이템을 줄여 빈 자리를 만들어 보세요.',
+    },
     axisAware: true,
     // 주축을 따라 늘어나므로 row 는 너비가, column 은 높이가 커진다.
     // column 데모는 높이가 막혀 있어야 "남은 공간"이 생긴다. 아이템 3개 ×
@@ -136,6 +151,12 @@ export const FLEX_SCHEMA = [
     desc: '공간이 <strong>부족할 때</strong> 얼마나 줄어들지 비율로 정합니다. 기본값이 1이라 아이템은 기본적으로 줄어듭니다.',
     tip: '0을 주면 절대 줄어들지 않습니다. 로고나 아이콘이 찌그러질 때 쓰는 해법입니다.',
     mdn: MDN + 'flex-shrink',
+    // 유형 C — 넘치지 않으면 줄일 일이 없고, 하한에 닿았으면 더 줄지 못한다
+    measuredInactive: {
+      key: 'canShrink',
+      reason: '아이템이 넘치지 않았거나, 이미 더 줄 수 없는 크기에 닿았습니다.',
+      hint: '컨테이너를 좁혀 아이템이 넘치게 해 보세요. 넘쳤는데도 그대로면 min-width·min-height의 기본값 auto가 막고 있는 것입니다.',
+    },
     axisAware: true,
     // grow 의 반대편. column 데모는 높이가 모자라야 줄어든다. 아이템 4개 ×
     // 40px + 간격 12px + 안쪽 여백 16px = 188px 이므로 168px 이면 20px 이

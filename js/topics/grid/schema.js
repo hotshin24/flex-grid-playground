@@ -109,6 +109,12 @@ export const GRID_SCHEMA = [
     desc: '트랙 전체 너비가 컨테이너보다 작을 때, <strong>그리드 전체</strong>를 가로로 정렬합니다.',
     tip: '열 너비가 fr이면 항상 꽉 차므로 효과가 없습니다. px 같은 고정 단위일 때만 남는 공간이 생깁니다.',
     mdn: MDN + 'justify-content',
+    // 유형 B — 트랙 합이 컨테이너를 꽉 채우면 정렬할 여백이 없다
+    measuredInactive: {
+      key: 'hasFreeSpace',
+      reason: '트랙 합계가 컨테이너 너비를 꽉 채워 정렬할 여백이 없습니다.',
+      hint: '트랙을 fr 대신 px·%로 바꾸거나 개수를 줄여 가로에 빈 자리를 만들어 보세요.',
+    },
     relatedTo: ['justify-content'],
     demo: { itemCount: 3, containerStyle: { gridTemplateColumns: '80px 80px 80px' } },
     values: [
@@ -127,6 +133,12 @@ export const GRID_SCHEMA = [
     desc: '트랙 전체 높이가 컨테이너보다 작을 때, <strong>그리드 전체</strong>를 세로로 정렬합니다.',
     tip: '컨테이너에 높이가 지정돼 있어야 남는 공간이 생겨 효과가 보입니다.',
     mdn: MDN + 'align-content',
+    // 유형 B — 세로 쪽도 같다. 트랙 합이 높이를 채우면 움직일 자리가 없다
+    measuredInactive: {
+      key: 'hasCrossFreeSpace',
+      reason: '트랙 합계가 컨테이너 높이를 꽉 채워 정렬할 여백이 없습니다.',
+      hint: '컨테이너 높이를 늘리거나 행 트랙을 줄여 세로에 빈 자리를 만들어 보세요.',
+    },
     demo: { itemCount: 6, containerStyle: { height: '300px', gridTemplateRows: '60px 60px' } },
     values: [
       { val: 'start',         desc: '컨테이너 위쪽 (기본값)' },
@@ -151,8 +163,26 @@ export const GRID_SCHEMA = [
     values: [
       { val: 'row',        desc: '행을 먼저 채움. 가로로 진행 (기본값)' },
       { val: 'column',     desc: '열을 먼저 채움. 세로로 진행' },
-      { val: 'row dense',  desc: '가로로 진행하되 빈 칸을 메움' },
-      { val: 'column dense', desc: '세로로 진행하되 빈 칸을 메움' },
+      {
+        val: 'row dense',
+        desc: '가로로 진행하되 빈 칸을 메움',
+        // 유형 B — 메울 빈 칸이 없으면 dense 가 할 일이 없다
+        measuredInactive: {
+          key: 'hasPlacementGaps',
+          reason: '배치되지 않은 빈 칸이 없어 채워 넣을 자리가 없습니다.',
+          hint: '아이템에 grid-column·grid-row를 지정해 중간에 빈 칸을 만들어 보세요.',
+        },
+      },
+      {
+        val: 'column dense',
+        desc: '세로로 진행하되 빈 칸을 메움',
+        // 유형 B — 메울 빈 칸이 없으면 dense 가 할 일이 없다
+        measuredInactive: {
+          key: 'hasPlacementGaps',
+          reason: '배치되지 않은 빈 칸이 없어 채워 넣을 자리가 없습니다.',
+          hint: '아이템에 grid-column·grid-row를 지정해 중간에 빈 칸을 만들어 보세요.',
+        },
+      },
     ],
   },
   {
@@ -162,6 +192,12 @@ export const GRID_SCHEMA = [
     desc: '명시하지 않은 열이 <strong>자동 생성</strong>될 때의 너비입니다.',
     tip: 'grid-auto-flow: column 이거나 아이템이 지정 범위를 벗어날 때 생성됩니다. 프리뷰에서 점선 테두리로 표시됩니다.',
     mdn: MDN + 'grid-auto-columns',
+    // 유형 B — 암시적 열이 없으면 그 크기를 정할 대상도 없다
+    measuredInactive: {
+      key: 'hasImplicitColumns',
+      reason: '지금은 암시적 열이 없습니다. 크기를 정할 대상이 없습니다.',
+      hint: 'grid-auto-flow를 column으로 두거나 선언한 열보다 많은 칸을 쓰면 암시적 열이 생깁니다.',
+    },
     units: ['auto', 'px', 'fr', '%', 'min-content', 'max-content'],
     demo: { itemCount: 6, containerStyle: { gridAutoFlow: 'column' } },
   },
@@ -172,6 +208,12 @@ export const GRID_SCHEMA = [
     desc: '명시하지 않은 행이 <strong>자동 생성</strong>될 때의 높이입니다.',
     tip: '카드 그리드에서 실무적으로 가장 자주 쓰는 속성입니다. 행 개수를 모를 때 높이만 통일할 수 있습니다.',
     mdn: MDN + 'grid-auto-rows',
+    // 유형 B — 행 쪽도 같다
+    measuredInactive: {
+      key: 'hasImplicitRows',
+      reason: '지금은 암시적 행이 없습니다. 크기를 정할 대상이 없습니다.',
+      hint: '아이템을 늘리거나 grid-template-rows에 선언한 것보다 많은 행을 쓰면 암시적 행이 생깁니다.',
+    },
     units: ['auto', 'px', 'fr', '%', 'min-content', 'max-content'],
     demo: { itemCount: 7 },
   },
