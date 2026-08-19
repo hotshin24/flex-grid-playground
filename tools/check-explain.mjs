@@ -444,6 +444,27 @@ section('Grid — 데모 판');
   check('값 목록이 스키마 그대로',
     JSON.stringify(spans.map((s) => s.val)) === JSON.stringify(flowEntry.values.map((v) => String(v.val))));
 
+  /**
+   * areas 는 아이템이 이름을 참조해야 효과가 난다.
+   * 컨테이너에만 걸어 두면 세 값이 같은 그림이 된다 — 실제로 그랬다.
+   */
+  const areas = GRID_EXPLAIN_DEMOS['grid-template-areas'];
+  check('areas 데모가 아이템에 이름을 얹는다',
+    (areas.itemStyles ?? []).filter((s) => s.gridArea).length >= 3,
+    (areas.itemStyles ?? []).map((s) => s.gridArea ?? '-').join(' · '));
+  check('areas 이름이 사례에 실제로 있는 것',
+    (areas.itemStyles ?? []).filter((s) => s.gridArea)
+      .every((s) => GRID_EXPLAIN_SAMPLES['grid-template-areas'].some((v) => String(v.val).includes(s.gridArea))),
+    '없는 이름만 얹으면 세 값이 또 같아진다');
+  check('areas 데모는 아이템 크기를 비운다', areas.itemSizes === 'fill',
+    '크기가 박혀 있으면 hd가 두 칸을 가로지르는 것이 안 보인다');
+
+  const areaDetail = gridApi.details[GRID_SCHEMA.findIndex((e) => e.prop === 'grid-template-areas')];
+  const areaCases = byClass(areaDetail, CASE_CLASS);
+  check('areas 세 사례가 서로 다른 이름 판을 쓴다',
+    new Set(areaCases.map((c) => byClass(c, DEMO_CLASS)[0].style.gridTemplateAreas)).size === areaCases.length,
+    areaCases.map((c) => c.getAttribute('data-value')).join(' · '));
+
   // 값별 판은 여기에만 쓴다 — 다른 속성이 휩쓸리지 않았는지
   const withByValue = Object.entries(GRID_EXPLAIN_DEMOS).filter(([, d]) => d.byValue).map(([p]) => p);
   check('값별 판을 쓰는 속성은 하나뿐', withByValue.length === 1 && withByValue[0] === 'grid-auto-flow',

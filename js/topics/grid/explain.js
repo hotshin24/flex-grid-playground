@@ -106,7 +106,23 @@ export const GRID_EXPLAIN_DEMOS = {
   // 트랙 목록은 값 자체가 판이므로 컨테이너에 다른 트랙을 걸지 않는다
   'grid-template-columns': { itemCount: 5, containerStyle: { height: '80px' } },
   'grid-template-rows': { itemCount: 4, containerStyle: { height: '140px', gridTemplateColumns: 'repeat(2, 1fr)' } },
-  'grid-template-areas': { itemCount: 4, containerStyle: { height: '110px', gridTemplateColumns: 'repeat(2, 1fr)' } },
+  /**
+   * areas 는 아이템이 이름을 참조해야 효과가 난다.
+   *
+   * 컨테이너에만 areas 를 걸어 두면 아무것도 옮겨지지 않는다 — 세 값이 같은
+   * 그림이 됐던 이유다. 아이템에 grid-area 로 이름을 얹어야 그 이름이 가리키는
+   * 칸으로 간다. 정의되지 않은 이름(none 판의 hd, 점만 있는 판의 sd)은 자동
+   * 배치로 떨어지고, 그 차이가 곧 이 속성의 학습 지점이다.
+   *
+   * 크기를 비우는 것은 영역의 모양을 보이게 하려는 것이다. hd 가 두 칸을
+   * 가로지르는 것이 크기가 박혀 있으면 드러나지 않는다.
+   */
+  'grid-template-areas': {
+    itemCount: 4,
+    itemSizes: 'fill',
+    containerStyle: { height: '110px', gridTemplateColumns: 'repeat(2, 1fr)' },
+    itemStyles: [{ gridArea: 'hd' }, { gridArea: 'sd' }, { gridArea: 'mn' }, {}],
+  },
 
   'row-gap': { itemCount: 6, containerStyle: { height: '120px', gridTemplateColumns: 'repeat(3, 1fr)' } },
   'column-gap': { itemCount: 6, containerStyle: { height: '120px', gridTemplateColumns: 'repeat(3, 1fr)' } },
