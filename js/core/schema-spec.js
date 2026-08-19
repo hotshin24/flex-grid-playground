@@ -95,7 +95,8 @@ export const CONTROL_TYPES = {
      control:   CONTROL_TYPES 의 키
      default:   초기값. URL 직렬화 시 이 값과 같으면 생략
      label:     컨트롤 라벨 (미지정 시 prop 사용)
-     values:    [{ val, label?, desc }]   // control === 'enum'
+     values:    [{ val, label?, desc, measuredInactive? }]   // control === 'enum'
+                                          // measuredInactive 는 아래 값 단위 설명 참조
      units:     ['px','fr',...]            // length / track-list
      min,max,step:                          // number
      desc:      속성 설명 (속성 설명 탭 본문)
@@ -117,12 +118,41 @@ export const CONTROL_TYPES = {
        hint:   '...'             // 선택. 해결 방법 안내
      }
      measuredInactive: {                // 유형 B·C. renderer 측정 키 이름만 담는다.
-       key:    'hasFreeSpace',          // 이 키가 참이어야 속성이 일한다
-       reason: '...',                   // 거짓일 때 화면에 나갈 사유
+       key:    'hasFreeSpace',          // 이 키가 참이어야 속성이 일한다.
+                                        //   MEASURED_KEYS 에 없는 이름은 검증에서 걸린다
+       reason: '...',                   // 거짓일 때 화면에 나갈 사유 (F-13-3)
        hint:   '...'                    // 선택. 유형 C 는 해법까지 적는다 (F-13-5)
      }
      // 키만 쓰는 옛 표기('hasFreeSpace')도 받는다. 사유가 없을 뿐이다.
    }
+
+   ── 값 단위 조건 (유형 B·C 중 일부) ────────────────────────────────────
+
+   조건이 속성 전체가 아니라 값 하나에만 걸리는 경우가 있다. PRD 5.5 가 대상을
+   'align-items: stretch' · 'dense' 처럼 값으로 적어 둔 것들이다.
+
+     values: [
+       { val: 'stretch', desc: '...', measuredInactive: { key, reason, hint } },
+       { val: 'flex-start', desc: '...' },        // 이 값은 늘 동작한다
+     ]
+
+   속성 단위로 걸면 같은 컨트롤의 flex-start · center 나 row · column 까지 회색이
+   되어 못 쓰는 것처럼 보인다. 그 값들은 언제나 제대로 동작한다.
+
+   판정은 inactiveValues(entry, measured) 가 따로 하고 { [val]: verdict } 를
+   돌려준다. 표시도 따로다 — createControl 의 setValueInactive 가 버튼 하나에만
+   붙이고, 속성 자체의 aria-disabled 는 건드리지 않는다.
+
+   ── 두 선언의 관계 ─────────────────────────────────────────────────────
+
+   inactiveWhen 과 measuredInactive 는 같은 항목에 함께 쓸 수 없다 (유형 A vs B·C).
+   검증이 막는다. 값 단위 measuredInactive 는 속성 단위와 무관하므로 함께 쓸 수 있다.
+
+   판정 주체가 셋으로 나뉜다는 점이 이 계약의 요점이다.
+     스키마      어떤 속성이 어떤 조건에 매여 있는지
+     renderer   그 조건을 무엇으로 재는지 (MEASURED_KEYS)
+     schema-spec 둘을 이어 참·거짓을 판정으로 옮기는 것
+   셋 어디에도 속성 이름 분기가 없다.
 */
 
 const REQUIRED_FIELDS = ['prop', 'jsProp', 'scope', 'control', 'default', 'desc', 'urlKey'];
