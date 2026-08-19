@@ -24,14 +24,22 @@ import { parseTrackList } from '../core/schema-spec.js';
 
 export const ROOT_CLASS = 'fgp-gridlines';
 export const AXIS_CLASS = 'fgp-gridlines__axis';
+export const BANDS_CLASS = 'fgp-gridlines__bands';
+export const TRACK_CLASS = 'fgp-gridlines__track';
 export const LABEL_CLASS = 'fgp-gridlines__label';
 export const TOGGLE_CLASS = 'fgp-gridlines__toggle';
 export const IMPLICIT_CLASS = 'is-implicit';
 
-/** 축 두 개. 이름은 CSS 축이 아니라 화면상의 방향이다. */
+/**
+ * 축 두 개.
+ *
+ * prop 은 스키마 속성 목록이 아니라 CSS 가 트랙을 담아 두는 자리다. 오버레이가
+ * 하는 일이 "그리드 트랙을 읽는 것"이므로 이 두 이름은 기능의 정의에 해당한다.
+ * 스키마에 속성이 늘어도 축은 둘 그대로다.
+ */
 const AXES = [
-  { id: 'columns', prop: 'gridTemplateColumns', side: 'top' },
-  { id: 'rows', prop: 'gridTemplateRows', side: 'left' },
+  { id: 'columns', prop: 'gridTemplateColumns', side: 'top', offsetKey: 'left', sizeKey: 'width' },
+  { id: 'rows', prop: 'gridTemplateRows', side: 'left', offsetKey: 'top', sizeKey: 'height' },
 ];
 
 /** 그리드가 아닐 때 브라우저가 돌려주는 값. */
@@ -53,6 +61,31 @@ export function explicitCount(inline) {
   const raw = String(inline ?? '').trim();
   if (raw === '' || raw === NO_TRACKS) return 0;
   return parseTrackList(raw).length;
+}
+
+/**
+ * 트랙 목록 (GR-06).
+ *
+ * 어느 트랙이 암시적인가 — 브라우저가 실제로 만든 트랙 수에서, 선언한 트랙 수를
+ * 뺀 나머지다. 선언한 수는 renderer 가 컨테이너에 얹어 둔 인라인 값에서 센다.
+ * 그 값이 곧 스키마의 gridTemplateColumns · gridTemplateRows 가 CSS 로 나간
+ * 모습이므로, 상태를 읽지 않고도 같은 수를 얻는다.
+ *
+ * 축을 가리지 않는다. grid-auto-flow 가 column 이어서 암시적 열이 생기든,
+ * 아이템이 넘쳐 암시적 행이 생기든 같은 뺄셈이다.
+ */
+export function tracksFrom(computed, inline) {
+  const sizes = trackSizes(computed);
+  if (sizes.length === 0) return [];
+
+  const explicit = explicitCount(inline);
+
+  let offset = 0;
+  return sizes.map((size, i) => {
+    const at = offset;
+    offset += size;
+    return { index: i + 1, size, offset: at, explicit: i + 1 <= explicit };
+  });
 }
 
 /**
@@ -122,6 +155,14 @@ export function createGridOverlay(config) {
   layer.setAttribute('aria-hidden', 'true');
   root.appendChild(layer);
 
+  // 띠가 먼저, 번호가 나중이다. 번호가 띠 위에 얹혀야 읽힌다.
+  const bands = new Map(AXES.map((axis) => {
+    const el = doc.createElement('div');
+    el.className = `${BANDS_CLASS} ${BANDS_CLASS}--${axis.id}`;
+    layer.appendChild(el);
+    return [axis.id, el];
+  }));
+
   const axes = new Map(AXES.map((axis) => {
     const el = doc.createElement('div');
     el.className = `${AXIS_CLASS} ${AXIS_CLASS}--${axis.id}`;
@@ -148,6 +189,7 @@ export function createGridOverlay(config) {
 
   let shown = Boolean(visible);
   let current = { columns: [], rows: [] };
+  let currentTracks = { columns: [], rows: [] };
 
   function buildAxis(el, lines, side) {
     while (el.firstChild) el.removeChild(el.firstChild);
@@ -181,10 +223,46 @@ export function createGridOverlay(config) {
     const x = box.left - base.left + edge('Left');
     const y = box.top - base.top + edge('Top');
 
-    axes.forEach((el) => {
+    [...axes.values(), ...bands.values()].forEach((el) => {
       el.style.setProperty('--fgp-gridlines-x', `${x}px`);
       el.style.setProperty('--fgp-gridlines-y', `${y}px`);
     });
+  }
+
+  /**
+   * 트랙 띠 (GR-06).
+   *
+   * 명시와 암시를 색만으로 나누지 않는다. 선 모양도 함께 바꾼다 — tokens.css 의
+   * --fgp-grid-line-style-explicit(solid) · -implicit(dashed) 가 그 값이다.
+   * 색각 이상 사용자에게 정보가 통째로 사라지지 않게 하려는 것이다 (PRD 5.5).
+   */
+  function buildBands(el, tracks, axis, cross) {
+    while (el.firstChild) el.removeChild(el.firstChild);
+
+    tracks.forEach((track) => {
+      const band = doc.createElement('div');
+      band.className = TRACK_CLASS;
+      band.classList.toggle(IMPLICIT_CLASS, !track.explicit);
+      band.setAttribute('data-side', axis.side);
+      band.setAttribute('data-track', String(track.index));
+      band.setAttribute('data-explicit', String(track.explicit));
+      band.style.setProperty('--fgp-gridtrack-offset', `${track.offset}px`);
+      band.style.setProperty('--fgp-gridtrack-size', `${track.size}px`);
+      band.style.setProperty('--fgp-gridtrack-cross', `${cross}px`);
+      el.appendChild(band);
+    });
+  }
+
+  /** 컨테이너 콘텐츠 상자의 크기. 띠가 반대 축으로 가로지를 길이다. */
+  function contentSize(container, computed) {
+    const box = getRect(container);
+    if (!box) return { width: 0, height: 0 };
+
+    const gap = (a, b) => (Number.parseFloat(computed[a]) || 0) + (Number.parseFloat(computed[b]) || 0);
+    return {
+      width: box.width - gap('borderLeftWidth', 'borderRightWidth') - gap('paddingLeft', 'paddingRight'),
+      height: box.height - gap('borderTopWidth', 'borderBottomWidth') - gap('paddingTop', 'paddingBottom'),
+    };
   }
 
   /** 읽기만 한다. store 도 renderer 도 건드리지 않는다. */
@@ -199,10 +277,22 @@ export function createGridOverlay(config) {
       return acc;
     }, { columns: [], rows: [] });
 
-    const has = hasLines();
+    currentTracks = AXES.reduce((acc, axis) => {
+      acc[axis.id] = tracksFrom(computed[axis.prop], container.style?.[axis.prop]);
+      return acc;
+    }, { columns: [], rows: [] });
 
-    AXES.forEach((axis) => buildAxis(axes.get(axis.id), has && shown ? current[axis.id] : [], axis.side));
-    if (has && shown) placeAxes(container, computed);
+    const has = hasLines();
+    const on = has && shown;
+    const content = on ? contentSize(container, computed) : { width: 0, height: 0 };
+
+    AXES.forEach((axis) => {
+      buildAxis(axes.get(axis.id), on ? current[axis.id] : [], axis.side);
+      // 열 띠는 세로로, 행 띠는 가로로 가로지른다
+      const cross = axis.id === 'columns' ? content.height : content.width;
+      buildBands(bands.get(axis.id), on ? currentTracks[axis.id] : [], axis, cross);
+    });
+    if (on) placeAxes(container, computed);
 
     layer.hidden = !(has && shown);
     if (toggleButton) {
@@ -234,6 +324,7 @@ export function createGridOverlay(config) {
     isVisible: () => shown && hasLines(),
     hasLines,
     lines: () => current,
+    tracks: () => currentTracks,
   };
 }
 

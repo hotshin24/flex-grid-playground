@@ -1197,10 +1197,50 @@ code.fgp-pane__item__name {
 }
 
 /* 원점은 컨테이너의 콘텐츠 상자다. 값은 JS 가 재서 알려 준다 */
-.fgp-gridlines__axis {
+.fgp-gridlines__axis,
+.fgp-gridlines__bands {
   position: absolute;
   top: var(--fgp-gridlines-y, 0);
   left: var(--fgp-gridlines-x, 0);
+}
+
+/**
+ * 트랙 띠 (GR-06).
+ *
+ * 명시 트랙과 암시 트랙을 나눈다. 색만으로 나누지 않고 선 모양도 함께 바꾼다 —
+ * 색각 이상 사용자에게 정보가 통째로 사라지지 않게 하려는 것이다 (PRD 5.5).
+ * 두 값 다 tokens.css 가 준비해 둔 것이고 새로 만든 색은 없다.
+ *
+ * 자리와 크기는 JS 가 재서 알려 준다. 트랙 크기는 브라우저가 계산한 값이라
+ * CSS 규칙으로 미리 적을 수 없다.
+ */
+.fgp-gridlines__track {
+  position: absolute;
+  border: 1px var(--fgp-grid-line-style-explicit) var(--fgp-grid-line-explicit);
+  border-radius: var(--radius-xs);
+  opacity: var(--fgp-gridtrack-alpha, 0.35);
+}
+
+/* 암시 트랙 — 점선에 다른 색, 그리고 옅은 바탕까지 셋으로 알린다 */
+.fgp-gridlines__track.is-implicit {
+  border-style: var(--fgp-grid-line-style-implicit);
+  border-color: var(--fgp-grid-line-implicit);
+  background: color-mix(in srgb, var(--fgp-grid-line-implicit) 12%, transparent);
+  opacity: 1;
+}
+
+.fgp-gridlines__track[data-side='top'] {
+  top: 0;
+  left: var(--fgp-gridtrack-offset, 0);
+  width: var(--fgp-gridtrack-size, 0);
+  height: var(--fgp-gridtrack-cross, 0);
+}
+
+.fgp-gridlines__track[data-side='left'] {
+  left: 0;
+  top: var(--fgp-gridtrack-offset, 0);
+  height: var(--fgp-gridtrack-size, 0);
+  width: var(--fgp-gridtrack-cross, 0);
 }
 
 /* 라인 자리는 JS 가 --fgp-gridline-offset 으로 알려 준다 */

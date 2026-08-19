@@ -18,8 +18,8 @@ import { createStore } from '../js/core/store.js';
 import { FLEX_SCHEMA } from '../js/topics/flex/schema.js';
 import { GRID_SCHEMA } from '../js/topics/grid/schema.js';
 import {
-  createGridOverlay, linesFrom, trackSizes, explicitCount,
-  ROOT_CLASS, LABEL_CLASS, TOGGLE_CLASS, IMPLICIT_CLASS,
+  createGridOverlay, linesFrom, tracksFrom, trackSizes, explicitCount,
+  ROOT_CLASS, LABEL_CLASS, TRACK_CLASS, TOGGLE_CLASS, IMPLICIT_CLASS,
 } from '../js/ui/grid-overlay.js';
 
 let failed = 0;
@@ -251,6 +251,109 @@ section('표시와 갱신');
 }
 
 /* ==========================================================================
+   암시적 트랙 구분 (GR-06)
+
+   어느 트랙이 암시적인가 — 브라우저가 만든 트랙 수에서 선언한 트랙 수를 뺀
+   나머지다. 선언한 수는 renderer 가 얹어 둔 인라인 값에서 센다.
+   ========================================================================== */
+section('암시적 트랙');
+
+{
+  const bandsOn = (root, side) => byClass(root, TRACK_CLASS)
+    .filter((el) => el.getAttribute('data-side') === side);
+  const markOn = (root, side) => bandsOn(root, side)
+    .map((el) => (el.classList.contains(IMPLICIT_CLASS) ? '암시' : '명시'));
+
+  /* 순수 함수 */
+  check('선언한 만큼은 명시',
+    tracksFrom('100px 100px 100px', '1fr 1fr 1fr').every((t) => t.explicit));
+  check('넘친 만큼이 암시',
+    JSON.stringify(tracksFrom('100px 100px 100px 60px 60px', '1fr 1fr 1fr').map((t) => t.explicit))
+      === '[true,true,true,false,false]');
+  check('선언이 없으면 전부 암시',
+    tracksFrom('60px 60px', '').every((t) => !t.explicit));
+  check('그리드가 아니면 트랙 0', tracksFrom('none', '1fr 1fr').length === 0);
+  check('띠에 크기와 자리가 실린다',
+    JSON.stringify(tracksFrom('100px 60px', '1fr').map((t) => [t.offset, t.size])) === '[[0,100],[100,60]]');
+
+  /**
+   * 명시 3개 · 아이템 7개.
+   * 한 줄에 3개씩이므로 3행이 필요한데 행은 auto 하나만 선언했다 —
+   * 나머지 2행은 브라우저가 만든다.
+   */
+  const overflow = build({
+    computed: { gridTemplateColumns: '100px 100px 100px', gridTemplateRows: '60px 60px 60px' },
+    inline: { gridTemplateColumns: '1fr 1fr 1fr', gridTemplateRows: 'auto' },
+  });
+  check('명시 열 3개는 전부 명시로', JSON.stringify(markOn(overflow.host, 'top')) === '["명시","명시","명시"]');
+  check('아이템이 넘쳐 생긴 행 2개가 암시로',
+    JSON.stringify(markOn(overflow.host, 'left')) === '["명시","암시","암시"]',
+    markOn(overflow.host, 'left').join(' · '));
+  check('암시 행 개수 = 계산 트랙 - 선언 트랙',
+    overflow.tracks().rows.filter((t) => !t.explicit).length === 2);
+
+  /* grid-auto-flow: column — 암시적 열이 생긴다 */
+  const flowColumn = build({
+    computed: { gridTemplateColumns: '100px 100px 100px 100px 100px', gridTemplateRows: '60px' },
+    inline: { gridTemplateColumns: '1fr 1fr', gridTemplateRows: 'auto' },
+  });
+  check('auto-flow column에서 암시 열을 잡는다',
+    JSON.stringify(markOn(flowColumn.host, 'top')) === '["명시","명시","암시","암시","암시"]',
+    markOn(flowColumn.host, 'top').join(' · '));
+  check('같은 뺄셈이 두 축에 그대로 통한다',
+    flowColumn.tracks().columns.filter((t) => !t.explicit).length === 3
+    && overflow.tracks().rows.filter((t) => !t.explicit).length === 2,
+    '축을 가리지 않는다');
+
+  /* 갱신 */
+  let computed = { gridTemplateColumns: '100px 100px 100px', gridTemplateRows: '60px' };
+  const host = createElement('div');
+  const container = fakeContainer({ gridTemplateColumns: '1fr 1fr 1fr', gridTemplateRows: 'auto' });
+  const live = createGridOverlay({
+    getContainer: () => container, root: host, doc,
+    getStyle: () => ({ ...computed, borderLeftWidth: '0px', borderTopWidth: '0px', borderRightWidth: '0px', borderBottomWidth: '0px', paddingLeft: '0px', paddingTop: '0px', paddingRight: '0px', paddingBottom: '0px' }),
+    getRect: fakeRect,
+  });
+  check('처음에는 암시 행 없음', markOn(host, 'left').filter((m) => m === '암시').length === 0);
+
+  computed = { gridTemplateColumns: '100px 100px 100px', gridTemplateRows: '60px 60px 60px' };
+  live.refresh();
+  check('아이템이 늘면 암시 행이 생긴다',
+    JSON.stringify(markOn(host, 'left')) === '["명시","암시","암시"]', markOn(host, 'left').join(' · '));
+
+  container.style.gridTemplateRows = 'auto auto auto';
+  live.refresh();
+  check('행을 선언하면 명시로 바뀐다',
+    JSON.stringify(markOn(host, 'left')) === '["명시","명시","명시"]', markOn(host, 'left').join(' · '));
+
+  /* 표시가 색만이 아닌지 */
+  const css = read('../css/components.css');
+  const block = css.slice(css.indexOf('.fgp-gridlines__track {'), css.indexOf('토픽 전환 (F-01)'));
+  check('명시 띠는 실선 토큰',
+    /border:\s*1px var\(--fgp-grid-line-style-explicit\) var\(--fgp-grid-line-explicit\)/.test(block));
+  check('암시 띠는 선 모양을 바꾼다',
+    /\.is-implicit[^}]*border-style:\s*var\(--fgp-grid-line-style-implicit\)/.test(block),
+    '색만 바꾸면 색각 이상 사용자에게 정보가 사라진다');
+  check('암시 띠는 색도 바꾼다',
+    /\.is-implicit[^}]*border-color:\s*var\(--fgp-grid-line-implicit\)/.test(block));
+  check('선 모양 값이 실제로 다르다',
+    /--fgp-grid-line-style-explicit:\s*solid/.test(read('../css/tokens.css'))
+    && /--fgp-grid-line-style-implicit:\s*dashed/.test(read('../css/tokens.css')),
+    'solid ↔ dashed');
+  check('띠에 data-explicit이 붙는다',
+    bandsOn(overflow.host, 'left').map((el) => el.getAttribute('data-explicit')).join(',') === 'true,false,false');
+
+  /* 상태 무해 */
+  const store = createStore({ flex: FLEX_SCHEMA, grid: GRID_SCHEMA });
+  store.setTopic('grid');
+  let notified = 0;
+  store.subscribe(() => { notified += 1; });
+  const before = JSON.stringify(store.getState());
+  for (let i = 0; i < 10; i += 1) live.refresh();
+  check('띠를 다시 그려도 상태는 그대로', notified === 0 && JSON.stringify(store.getState()) === before);
+}
+
+/* ==========================================================================
    토글
    ========================================================================== */
 section('토글');
@@ -268,7 +371,8 @@ section('토글');
 
   fire(button, 'click', { target: button });
   check('끄면 감춰진다', api.isVisible() === false && api.root.hidden === true);
-  check('끄면 라벨도 걷힌다', byClass(api.host, LABEL_CLASS).length === 0);
+  check('끄면 라벨도 띠도 걷힌다',
+    byClass(api.host, LABEL_CLASS).length === 0 && byClass(api.host, TRACK_CLASS).length === 0);
   check('버튼 글자와 상태가 따라간다',
     button.getAttribute('aria-pressed') === 'false' && button.textContent.includes('보기'),
     button.textContent);
