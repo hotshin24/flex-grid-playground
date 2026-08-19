@@ -270,6 +270,8 @@
    -------------------------------------------------------------------------- */
 
 .fgp-preview__stage {
+  /* 라인 오버레이가 이 상자를 기준으로 자리를 잡는다 (GR-05) */
+  position: relative;
   padding: var(--sp-4);
   background: var(--fgp-preview-bg);
   border: 1px solid var(--fgp-border-subtle);
@@ -1157,6 +1159,80 @@ code.fgp-pane__item__name {
   font-size: var(--fs-3xs);
   white-space: pre;
   overflow-x: auto;
+}
+
+/* --------------------------------------------------------------------------
+   그리드 라인 번호 오버레이 (GR-05)
+   -------------------------------------------------------------------------- */
+
+.fgp-preview__tools {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-2);
+}
+
+.fgp-preview__tools:empty {
+  display: none;
+}
+
+/**
+ * 프리뷰 위에 겹친다.
+ *
+ * pointer-events 를 끄는 것이 핵심이다. 아이템을 눌러 고르는 동작(F-05)을
+ * 오버레이가 가로채면 라인 번호를 켠 순간 프리뷰가 죽는다.
+ *
+ * 자리는 스테이지의 안쪽 여백 안쪽이다. renderer 가 그린 컨테이너가 그 자리에
+ * 있고, 오버레이는 같은 원점을 쓴다.
+ */
+.fgp-gridlines {
+  position: absolute;
+  inset: var(--sp-4);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.fgp-gridlines[hidden] {
+  display: none;
+}
+
+/* 원점은 컨테이너의 콘텐츠 상자다. 값은 JS 가 재서 알려 준다 */
+.fgp-gridlines__axis {
+  position: absolute;
+  top: var(--fgp-gridlines-y, 0);
+  left: var(--fgp-gridlines-x, 0);
+}
+
+/* 라인 자리는 JS 가 --fgp-gridline-offset 으로 알려 준다 */
+.fgp-gridlines__label {
+  position: absolute;
+  padding: var(--sp-0) var(--sp-1);
+  border: 1px var(--fgp-grid-line-style-explicit) var(--fgp-grid-line-explicit);
+  border-radius: var(--radius-xs);
+  background: var(--fgp-grid-line-number-bg);
+  color: var(--fgp-grid-line-number-fg);
+  font-family: var(--fgp-font-numeric);
+  font-size: var(--fs-3xs);
+  line-height: var(--lh-tight);
+  white-space: nowrap;
+}
+
+/* 암시적 트랙의 라인. 색만으로 나누지 않고 선 모양도 함께 바꾼다 */
+.fgp-gridlines__label.is-implicit {
+  border-style: var(--fgp-grid-line-style-implicit);
+  border-color: var(--fgp-grid-line-implicit);
+}
+
+.fgp-gridlines__label[data-side='top'] {
+  top: 0;
+  left: var(--fgp-gridline-offset, 0);
+  transform: translate(-50%, -50%);
+}
+
+.fgp-gridlines__label[data-side='left'] {
+  left: 0;
+  top: var(--fgp-gridline-offset, 0);
+  transform: translate(-50%, -50%);
 }
 
 /* --------------------------------------------------------------------------

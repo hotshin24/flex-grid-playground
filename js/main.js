@@ -18,6 +18,7 @@ import { createTabs, panelId } from './ui/tabs.js';
 import { createExplain } from './ui/explain.js';
 import { createExamples } from './ui/examples.js';
 import { createChallenge } from './ui/challenge.js';
+import { createGridOverlay } from './ui/grid-overlay.js';
 import { FLEX_EXPLAIN_NOTES, FLEX_EXPLAIN_SAMPLES, AXIS_LABELS } from './topics/flex/explain.js';
 import { FLEX_PRESETS } from './topics/flex/presets.js';
 import { FLEX_EXAMPLES } from './topics/flex/examples.js';
@@ -93,7 +94,34 @@ const VIEW_CSS_PROP = {
 const store = createStore(SCHEMAS);
 const stage = document.getElementById('fgp-preview');
 
-createRenderer({ store, schemas: SCHEMAS, root: stage });
+const renderer = createRenderer({ store, schemas: SCHEMAS, root: stage });
+
+/* --------------------------------------------------------------------------
+   라인 번호 오버레이 (GR-05)
+
+   renderer 가 그린 결과를 읽어 그 위에 겹친다. 프리뷰 DOM 을 만들지 않으므로
+   renderer 를 고칠 일이 없다. 잰 값은 오버레이 안에만 남는다 — store 에 넣으면
+   렌더가 다시 유발돼 무한 루프가 된다.
+
+   토픽을 묻지 않는다. 브라우저가 계산한 grid-template-columns 가 'none' 이면
+   그리드가 아니라는 뜻이고 그때 스스로 사라진다. Flex 에 라인 개념이 없다는
+   사실을 코드가 아니라 브라우저가 말해 준다.
+
+   처음부터 켜 둔다. 이 기능이 있는 이유가 "결과를 읽을 수단이 없다" 이므로,
+   꺼진 채로 두면 필요한 사람이 있는 줄도 모른다. Grid 에서만 나타나므로
+   Flex 화면이 시끄러워질 일도 없다.
+   -------------------------------------------------------------------------- */
+
+const overlay = createGridOverlay({
+  getContainer: renderer.getContainer,
+  root: stage,
+  toolbar: document.getElementById('fgp-preview-tools'),
+});
+
+// 레이아웃만 달라져도 라인 자리가 바뀐다. 상태 변화로는 잡히지 않는 경로다.
+if (typeof ResizeObserver === 'function') {
+  new ResizeObserver(() => overlay.refresh()).observe(stage);
+}
 
 /* --------------------------------------------------------------------------
    컨트롤 — 스키마의 container scope 항목에서 자동 생성
@@ -673,6 +701,8 @@ function rebuildForTopic(state) {
 
 function sync(state) {
   rebuildForTopic(state);
+  // 읽기만 한다. 여기서 dispatch 하면 그대로 무한 루프다.
+  overlay.refresh();
   syncTopics(state);
   syncItembar(state);
   syncItemSize(state);
