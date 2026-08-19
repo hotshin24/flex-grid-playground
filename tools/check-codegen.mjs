@@ -10,6 +10,9 @@ import { generateCss, generateHtml, generateCode } from '../js/core/codegen.js';
 import { createStore } from '../js/core/store.js';
 import { FLEX_SCHEMA } from '../js/topics/flex/schema.js';
 import { GRID_SCHEMA } from '../js/topics/grid/schema.js';
+import { FLEX_PRESETS } from '../js/topics/flex/presets.js';
+import { GRID_PRESETS } from '../js/topics/grid/presets.js';
+import { defaultsFrom, partitionByScope } from '../js/core/schema-spec.js';
 
 let failed = 0;
 
@@ -185,6 +188,160 @@ section('Grid 스키마');
 
   const { html } = generateCode(st.getState(), GRID_SCHEMA);
   check('generateCode가 둘 다 반환', typeof css === 'string' && html.includes('<div class="container">'));
+}
+
+/* ==========================================================================
+   쓰레기 값 — 복사해 가는 코드에는 실행되는 CSS 만 있어야 한다
+
+   "빈 선언 없음"(:\s*;) 검사만으로는 부족했다. width 가 null 일 때
+   `${item.width}px` 가 "nullpx" 를 만들어도 그 검사는 통과한다. 값이 비었는지가
+   아니라 값의 모양이 CSS 인지를 봐야 한다.
+   ========================================================================== */
+section('쓰레기 값');
+
+/** 자바스크립트가 값 대신 흘려보내는 토큰. 붙어 있어도 잡아야 한다. */
+const GARBAGE = /null|undefined|NaN/;
+const EMPTY_DECL = /:\s*;/;
+
+const clean = (css) => !GARBAGE.test(css) && !EMPTY_DECL.test(css);
+
+/** 상태 하나를 손으로 짓는다. store 를 거치지 않아야 이상한 값을 넣을 수 있다. */
+const stateWith = (topic, schema, { container = {}, items }) => ({
+  topic,
+  container: { ...defaultsFrom(schema, 'container'), ...container },
+  items,
+  selectedId: items[0]?.id ?? null,
+});
+
+const itemWith = (schema, over) => ({ ...defaultsFrom(schema, 'item'), id: 1, width: 80, height: 60, ...over });
+
+{
+  /* 기하값이 null 이면 선언 자체가 나오지 않는다 */
+  const allAuto = stateWith('grid', GRID_SCHEMA, {
+    items: [itemWith(GRID_SCHEMA, { width: null, height: null }),
+      itemWith(GRID_SCHEMA, { id: 2, width: null, height: null })],
+  });
+  const autoCss = generateCss(allAuto, GRID_SCHEMA);
+  check('기하값이 null 이면 선언이 없다', !/width|height/.test(autoCss), autoCss.replace(/\n/g, ' '));
+  check('그래도 CSS 는 깨끗하다', clean(autoCss));
+
+  /* 아이템마다 다르면 값이 있는 쪽에만 붙는다 */
+  const mixed = stateWith('grid', GRID_SCHEMA, {
+    items: [itemWith(GRID_SCHEMA), itemWith(GRID_SCHEMA, { id: 2, width: null, height: null })],
+  });
+  const mixedCss = generateCss(mixed, GRID_SCHEMA);
+  check('크기가 있는 아이템에만 선언이 붙는다',
+    propsOf(ruleOf(mixedCss, '.item-1')).join(',') === 'width,height'
+    && ruleOf(mixedCss, '.item-2') === null,
+    'item-1 에만 · item-2 규칙 자체가 없다');
+  check('공통 규칙으로 묶이지 않는다', ruleOf(mixedCss, '.item') === null,
+    '하나만 값을 가지면 공통이 아니다');
+  check('섞여도 CSS 는 깨끗하다', clean(mixedCss));
+
+  /* 전부 같은 값이면 공통 규칙 하나 */
+  const same = stateWith('grid', GRID_SCHEMA, {
+    items: [itemWith(GRID_SCHEMA), itemWith(GRID_SCHEMA, { id: 2 })],
+  });
+  check('전부 같으면 공통 규칙 하나',
+    propsOf(ruleOf(generateCss(same, GRID_SCHEMA), '.item')).join(',') === 'width,height');
+
+  /* null 말고도 값이 아닌 것들 */
+  [['undefined', undefined], ['NaN', Number.NaN], ['문자열', 'auto']].forEach(([label, bad]) => {
+    const st = stateWith('grid', GRID_SCHEMA, { items: [itemWith(GRID_SCHEMA, { width: bad })] });
+    const css = generateCss(st, GRID_SCHEMA);
+    check(`너비가 ${label} 이면 선언이 없다`, !/width:/.test(css) && clean(css),
+      (css.match(/width:[^;]*;/) ?? ['선언 없음'])[0]);
+  });
+
+  check('0 은 값이므로 나온다', (() => {
+    const st = stateWith('grid', GRID_SCHEMA, { items: [itemWith(GRID_SCHEMA, { width: 0 })] });
+    return /width: 0px;/.test(generateCss(st, GRID_SCHEMA));
+  })(), '0 과 "없음" 은 다른 상태다');
+
+  check('음수도 값이므로 나온다', (() => {
+    const st = stateWith('grid', GRID_SCHEMA, { items: [itemWith(GRID_SCHEMA, { width: -5 })] });
+    return /width: -5px;/.test(generateCss(st, GRID_SCHEMA));
+  })());
+}
+
+/* --------------------------------------------------------------------------
+   스키마 값 전반 — 어느 속성에 무엇이 들어와도 새지 않아야 한다
+   -------------------------------------------------------------------------- */
+
+{
+  const BAD = [['null', null], ['undefined', undefined], ['NaN', Number.NaN], ['빈 문자열', '']];
+
+  [['flex', FLEX_SCHEMA], ['grid', GRID_SCHEMA]].forEach(([topic, schema]) => {
+    const scoped = partitionByScope(schema);
+    const leaks = [];
+
+    BAD.forEach(([label, bad]) => {
+      scoped.container.forEach((entry) => {
+        const st = stateWith(topic, schema, {
+          container: { [entry.jsProp]: bad }, items: [itemWith(schema)],
+        });
+        if (!clean(generateCss(st, schema))) leaks.push(`${entry.prop}=${label}`);
+      });
+
+      scoped.item.forEach((entry) => {
+        const st = stateWith(topic, schema, { items: [itemWith(schema, { [entry.jsProp]: bad })] });
+        if (!clean(generateCss(st, schema))) leaks.push(`${entry.prop}=${label}`);
+      });
+    });
+
+    // 트랙 원소가 깨진 경우. 배열 안쪽이라 위 검사가 닿지 않는다
+    scoped.container.filter((e) => e.control === 'track-list').forEach((entry) => {
+      [[{ size: null, unit: 'px' }], [{ unit: 'fr' }]].forEach((bad) => {
+        const st = stateWith(topic, schema, {
+          container: { [entry.jsProp]: bad }, items: [itemWith(schema)],
+        });
+        if (!clean(generateCss(st, schema))) leaks.push(`${entry.prop}=깨진 트랙`);
+      });
+    });
+
+    const props = scoped.container.length + scoped.item.length;
+    check(`${topic} — 속성 ${props}종 × 이상한 값에서 새지 않는다`, leaks.length === 0,
+      leaks.join(', ') || `${props * BAD.length}가지 조합`);
+  });
+
+  // 검사가 실제로 잡는지
+  check('쓰레기 판정이 붙어 있는 토큰도 잡는다',
+    GARBAGE.test('  width: nullpx;') && GARBAGE.test('  width: undefinedfr;') && GARBAGE.test('  width: NaNpx;'));
+  check('멀쩡한 CSS 는 잡지 않는다',
+    clean('  width: 80px;\n  grid-template-areas: "hd hd";\n  align-items: stretch;'));
+}
+
+/* --------------------------------------------------------------------------
+   프리셋 10종 — 실제로 쓰는 데이터로 확인한다
+   -------------------------------------------------------------------------- */
+
+{
+  const applyPreset = (topic, schema, preset) => {
+    const source = preset.items ?? [];
+    const count = preset.itemCount ?? source.length;
+    const base = { ...defaultsFrom(schema, 'item'), width: 80, height: 60 };
+    const items = Array.from({ length: count }, (_, i) => ({
+      ...base, ...(source[i] ?? source[source.length - 1] ?? {}), id: i + 1,
+    }));
+    return stateWith(topic, schema, { container: preset.container, items });
+  };
+
+  [['flex', FLEX_SCHEMA, FLEX_PRESETS], ['grid', GRID_SCHEMA, GRID_PRESETS]].forEach(([topic, schema, presets]) => {
+    const dirty = presets.filter((p) => {
+      const { css, html } = generateCode(applyPreset(topic, schema, p), schema);
+      return !clean(css) || !clean(html);
+    });
+    check(`${topic} 프리셋 ${presets.length}종의 생성 코드가 깨끗하다`, dirty.length === 0,
+      dirty.map((p) => p.id).join(', ') || presets.map((p) => p.id).join(' '));
+  });
+
+  // 크기를 null 로 둔 프리셋이 실제로 있어야 이 검사가 의미를 갖는다
+  const autoPresets = GRID_PRESETS.filter((p) => (p.items ?? []).some((it) => it.width === null));
+  check('크기를 null 로 둔 Grid 프리셋이 있다', autoPresets.length > 0,
+    autoPresets.map((p) => p.id).join(' '));
+  check('그 프리셋의 CSS 에 width·height 가 없다',
+    autoPresets.every((p) => !/width:|height:/.test(generateCss(applyPreset('grid', GRID_SCHEMA, p), GRID_SCHEMA))),
+    '자동 크기는 선언하지 않는다');
 }
 
 /* ==========================================================================

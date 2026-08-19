@@ -32,17 +32,44 @@ const DISPLAY_BY_TOPIC = { flex: 'flex', grid: 'grid' };
  * 스키마에 없는 아이템 기하값. CSS 속성이지만 학습 대상이 아니라 프리뷰
  * 구성값이라 schema.js에 넣지 않았다. 기본값 비교 없이 항상 내보낸다 —
  * 크기를 빼면 복사한 코드가 화면과 달라진다.
+ *
+ * 다만 크기가 없을 수도 있다. 값이 null 이면 "크기를 정하지 않는다" 는 뜻이고
+ * renderer 도 그때는 크기를 얹지 않는다. 판정을 renderer 와 같은 말로 맞춘다 —
+ * 유한한 수일 때만 선언을 만든다. null · undefined · NaN 이 전부 여기서 걸린다.
  */
 const GEOMETRY = [
   { key: 'width', prop: 'width' },
   { key: 'height', prop: 'height' },
 ];
 
+/** 내보낼 값이 없다는 표시. spread 가 이 자리를 건너뛴다. */
+const NO_VALUE = null;
+
 /* --------------------------------------------------------------------------
    조각
    -------------------------------------------------------------------------- */
 
 const declare = (prop, value) => `${INDENT}${prop}: ${value};`;
+
+/**
+ * 자바스크립트가 값 대신 흘려보내는 토큰. CSS 에는 이런 낱말이 없다.
+ *
+ * 문자열 이어 붙이기가 만든다. `${item.width}px` 는 width 가 null 이면
+ * "nullpx" 가 되고, 트랙의 size 가 비면 "undefinedfr" 이 된다. 붙어 있어도
+ * 잡아야 하므로 낱말 경계를 걸지 않는다.
+ */
+const GARBAGE = /null|undefined|NaN/;
+
+/**
+ * 선언으로 내보낼 수 있는 값인가.
+ *
+ * 빈 문자열은 "prop: ;" 를 만들고, NO_VALUE 는 애초에 값이 없다는 표시이며,
+ * 쓰레기 토큰은 복사해 가면 그대로 깨지는 코드가 된다. 셋 다 선언 자체를
+ * 만들지 않는다 — 학습자가 가져가는 것은 실행되는 CSS 여야 한다.
+ *
+ * 값의 모양만 본다. 어느 속성인지 묻지 않으므로 속성 이름 분기가 생기지 않는다.
+ */
+const usable = (value) => value !== NO_VALUE && value !== '' && !GARBAGE.test(String(value));
 
 const block = (selector, decls) =>
   (decls.length === 0 ? '' : `${selector} {\n${decls.join('\n')}\n}`);
@@ -63,7 +90,11 @@ function containerDecls(state, schema) {
   byScope(schema, 'container').forEach((entry) => {
     const value = state.container?.[entry.jsProp];
     if (value === undefined || isDefault(entry, value)) return;
-    decls.push(declare(entry.prop, toCssValue(entry, value)));
+
+    const css = toCssValue(entry, value);
+    if (!usable(css)) return;
+
+    decls.push(declare(entry.prop, css));
   });
 
   return decls;
@@ -81,18 +112,27 @@ function itemDecls(state, schema) {
   const common = [];
   const individual = items.map(() => []);
 
+  /**
+   * 값을 공통 규칙과 개별 규칙으로 가른다.
+   *
+   * 내보낼 수 없는 값(NO_VALUE · 빈 문자열)은 그 아이템에서만 빠진다. 아이템
+   * 하나가 크기를 갖고 다른 하나가 자동이면, 앞엣것에만 선언이 붙고 뒤엣것은
+   * 아무 선언도 얻지 않는다 — 그것이 화면과 같은 코드다. 전부 내보낼 수
+   * 없으면 공통 규칙도 만들지 않는다.
+   */
   const spread = (prop, values, skipDefault) => {
     if (values.length === 0) return;
 
+    const omit = (v) => !usable(v) || Boolean(skipDefault && skipDefault(v));
     const same = values.every((v) => v === values[0]);
 
     if (same) {
-      if (!skipDefault || !skipDefault(values[0])) common.push(declare(prop, values[0]));
+      if (!omit(values[0])) common.push(declare(prop, values[0]));
       return;
     }
 
     values.forEach((v, i) => {
-      if (skipDefault && skipDefault(v)) return;
+      if (omit(v)) return;
       individual[i].push(declare(prop, v));
     });
   };
@@ -103,7 +143,7 @@ function itemDecls(state, schema) {
   });
 
   GEOMETRY.forEach((g) => {
-    spread(g.prop, items.map((item) => `${item[g.key]}px`));
+    spread(g.prop, items.map((item) => (Number.isFinite(item[g.key]) ? `${item[g.key]}px` : NO_VALUE)));
   });
 
   return { common, individual };
