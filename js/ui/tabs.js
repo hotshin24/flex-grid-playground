@@ -11,7 +11,6 @@
  * 화살표로 옮긴다. 탭이 넷이면 tab 키를 네 번 눌러야 내용에 닿는 일이 없도록.
  */
 
-export const TABLIST_CLASS = 'fgp-tabs';
 export const TAB_CLASS = 'fgp-tab';
 export const SELECTED_CLASS = 'is-selected';
 

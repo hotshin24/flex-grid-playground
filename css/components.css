@@ -76,12 +76,17 @@
   font-weight: var(--fw-medium);
 }
 
-/* 뷰 설정 컨트롤. 값이 없으면 readout이 '기본값'을 흐리게 보여준다 */
-.fgp-control--view .fgp-control__readout {
+/* 수치 슬라이더. 값이 없으면 readout이 '기본값'을 흐리게 보여준다.
+
+   선택자가 --view 였다. createRangeControl 이 붙이는 이름이 --view 에서
+   --range 로 바뀐 뒤(881ce4b) CSS 가 따라오지 않아, controls.js 가
+   data-default 를 계속 달아 주는데도 흐려지는 규칙이 아무 요소에도 닿지
+   않았다. 죽은 코드가 아니라 이름이 어긋난 규칙이라 지우지 않고 맞췄다. */
+.fgp-control--range .fgp-control__readout {
   min-width: calc(var(--sp-10) + var(--sp-4));
 }
 
-.fgp-control--view[data-default='true'] .fgp-control__readout {
+.fgp-control--range[data-default='true'] .fgp-control__readout {
   color: var(--fgp-text-muted);
   font-weight: var(--fw-normal);
 }
@@ -545,27 +550,6 @@
   display: none;
 }
 
-/* 아직 내용이 없는 탭 */
-.fgp-placeholder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--sp-2);
-  padding: var(--sp-8) var(--sp-4);
-  text-align: center;
-}
-
-.fgp-placeholder__title {
-  font-size: var(--fs-lg);
-  font-weight: var(--fw-bold);
-  color: var(--fgp-text-secondary);
-}
-
-.fgp-placeholder__note {
-  font-size: var(--fs-xs);
-  color: var(--fgp-text-muted);
-}
 
 /* --------------------------------------------------------------------------
    좌우 2열 탭 — 속성 설명 · 실전 예제 · 챌린지가 같은 판을 쓴다
