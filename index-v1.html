@@ -72,9 +72,16 @@
         <output class="fgp-itembar__count" id="fgp-item-count"></output>
       </div>
 
-      <p class="fgp-control__hint">
-        선택된 아이템 <output class="fgp-mono" id="fgp-item-selected"></output> 의 크기
-      </p>
+      <!-- 뷰 설정의 '기본값으로'와 같은 자리·같은 생김새다. 크기를 자동으로
+           되돌리는 것이 여기 말고는 없어, 손으로 만든 아이템은 stretch 계열
+           정렬이 성립하는 조건을 만들 수 없었다 -->
+      <div class="fgp-panel__head">
+        <p class="fgp-control__hint">
+          선택된 아이템 <output class="fgp-mono" id="fgp-item-selected"></output> 의 크기
+        </p>
+        <button type="button" class="fgp-btn fgp-btn--quiet" data-action="item-size-auto"
+                id="fgp-item-size-auto">자동으로</button>
+      </div>
       <!-- 아이템 기하값 마운트 지점. 스키마 속성이 아니다 -->
       <div class="fgp-control-list fgp-control-list--pair" id="fgp-item-size"></div>
     </section>

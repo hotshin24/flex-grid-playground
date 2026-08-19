@@ -69,6 +69,12 @@
   flex: 1;
 }
 
+/* 제목 대신 안내 문장이 온 머리줄. 아이템 크기 칸이 쓴다 */
+.fgp-panel__head .fgp-control__hint {
+  flex: 1;
+  margin: var(--sp-0);
+}
+
 .fgp-btn--quiet {
   padding: var(--sp-1) var(--sp-2);
   background: transparent;

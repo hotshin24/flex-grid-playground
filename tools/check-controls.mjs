@@ -797,6 +797,55 @@ section('방어');
 }
 
 /* ==========================================================================
+   자동으로 버튼 — 손으로 만든 아이템도 자동 크기에 닿아야 한다
+
+   슬라이더 범위가 20 부터라 이 버튼이 없으면 자동 크기는 프리셋으로만 도달한다.
+   그러면 F-13 이 유형 C 로 분류한 align-items: stretch 의 성립 조건을
+   플레이그라운드에서 만들 수 없다.
+   ========================================================================== */
+section('자동으로 버튼');
+
+{
+  const src = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
+  const html = readFileSync(new URL('../index-v1.html', import.meta.url), 'utf8')
+    .replace(/<!--[\s\S]*?-->/g, ' ');
+  const css = readFileSync(new URL('../css/components.css', import.meta.url), 'utf8');
+
+  check('마크업에 버튼이 있다', /data-action="item-size-auto"/.test(html));
+  check('뷰 설정의 기본값으로와 같은 생김새',
+    /class="fgp-btn fgp-btn--quiet" data-action="item-size-auto"/.test(html),
+    'fgp-btn--quiet');
+  check('아이템 크기 칸의 머리줄에 있다',
+    html.indexOf('item-size-auto') > html.indexOf('fgp-items-title')
+    && html.indexOf('item-size-auto') < html.indexOf('id="fgp-item-size"'));
+  check('인라인 onclick 이 아니다', !/onclick/i.test(html));
+
+  check('ACTIONS 표에 등록됐다', /'item-size-auto':/.test(src));
+  check('두 축을 한 번의 dispatch 로 보낸다', (() => {
+    const at = src.indexOf('function makeSelectedItemAuto');
+    const body = src.slice(at, src.indexOf('\n}', at));
+    return (body.match(/store\.dispatch\(/g) ?? []).length === 1;
+  })(), '나눠 보내면 undo 도 두 번이 된다');
+  check('축 목록을 ITEM_SIZE_CONTROLS 에서 가져온다', (() => {
+    const at = src.indexOf('function makeSelectedItemAuto');
+    const body = src.slice(at, src.indexOf('\n}', at));
+    return /ITEM_SIZE_CONTROLS/.test(body) && !/'width'/.test(body) && !/'height'/.test(body);
+  })(), '축이 늘어도 이 함수는 그대로다');
+  check('이미 자동이면 dispatch 하지 않는다', /isAutoSize\(target\)\) return/.test(src),
+    '빈 히스토리를 쌓지 않는다');
+  check('이미 자동이면 버튼을 끈다', /itemSizeAutoBtn\.disabled = !target \|\| isAutoSize\(target\)/.test(src),
+    '추가·제거 버튼이 한계에서 꺼지는 것과 같다');
+
+  check('머리줄 CSS 가 안내 문장도 받는다',
+    /\.fgp-panel__head \.fgp-control__hint\s*\{[^}]*flex:\s*1/.test(css));
+  check('추가한 CSS 에 색상·간격 리터럴 0건', (() => {
+    const at = css.indexOf('.fgp-panel__head .fgp-control__hint');
+    const block = css.slice(at, css.indexOf('}', at));
+    return !/#[0-9a-fA-F]{3,8}\b|rgba?\(/.test(block) && !/:\s*-?[0-9.]+px/.test(block);
+  })());
+}
+
+/* ==========================================================================
    main.js 배선 — null 을 쓰는 컨트롤은 nullText 를 갖는다
    ========================================================================== */
 section('nullText 배선');

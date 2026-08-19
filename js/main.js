@@ -709,6 +709,7 @@ const ACTIONS = {
   'item-add': () => changeItemCount(1),
   'item-remove': () => changeItemCount(-1),
   'view-reset': () => store.resetView(),
+  'item-size-auto': () => makeSelectedItemAuto(),
   'undo': () => store.undo(),
   'redo': () => store.redo(),
   'copy-css': (button) => copyText(lastCode.css, button),
@@ -782,10 +783,40 @@ const itemSizeControls = ITEM_SIZE_CONTROLS.map((config) => {
 
 const itemSizeLabel = document.getElementById('fgp-item-selected');
 
+const itemSizeAutoBtn = document.getElementById('fgp-item-size-auto');
+
+/** 크기를 정하지 않은 상태. 두 축이 모두 그러면 더 자동으로 만들 것이 없다. */
+const isAutoSize = (item) => ITEM_SIZE_CONTROLS.every(({ key }) => item?.[key] === null);
+
+/**
+ * 고른 아이템의 크기를 자동으로 되돌린다 (F-06).
+ *
+ * 두 축을 한 번의 dispatch 로 보낸다. 나눠 보내면 히스토리가 둘 쌓여 undo 도
+ * 두 번이 된다 — 사용자가 한 번 누른 일은 한 번에 되돌아가야 한다.
+ *
+ * 이 버튼이 없으면 자동 크기에 닿는 길이 프리셋뿐이다. 슬라이더 범위가 20 부터
+ * 시작하므로 손으로 만든 아이템은 영영 자동이 되지 못하고, 그러면 F-13 이
+ * 유형 C 로 분류한 align-items: stretch 의 성립 조건(아이템에 교차축 크기가
+ * 없을 것)을 플레이그라운드에서 만들 수 없다.
+ */
+function makeSelectedItemAuto() {
+  const state = store.getState();
+  const target = selectedItem(state);
+  if (!target || isAutoSize(target)) return;
+
+  const patch = Object.fromEntries(ITEM_SIZE_CONTROLS.map(({ key }) => [key, null]));
+  store.dispatch({
+    items: state.items.map((item) => (item.id === target.id ? { ...item, ...patch } : item)),
+  });
+}
+
 function syncItemSize(state) {
   const target = selectedItem(state);
   itemSizeLabel.textContent = target ? `${state.items.indexOf(target) + 1}번` : '없음';
   itemSizeControls.forEach(({ key, control }) => control.sync(target?.[key] ?? null));
+
+  // 이미 자동이면 누를 것이 없다. 아이템 추가·제거 버튼이 한계에서 꺼지는 것과 같다
+  itemSizeAutoBtn.disabled = !target || isAutoSize(target);
 }
 
 /* --------------------------------------------------------------------------
