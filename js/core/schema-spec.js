@@ -13,6 +13,9 @@
    ui/controls.js 가 type을 보고 어떤 DOM을 그릴지 결정한다.
    ========================================================================== */
 
+/** span 계약의 '자동 배치' 값. 문자열 하나를 여러 곳에 적지 않는다. */
+export const AUTO = 'auto';
+
 export const CONTROL_TYPES = {
   /** 고정 값 버튼 그룹. values[] 필수. */
   enum: {
@@ -76,7 +79,7 @@ export const CONTROL_TYPES = {
    */
   span: {
     requires: [],
-    serialize: (v) => (v.span != null ? `${v.start} / span ${v.span}` : `${v.start} / ${v.end}`),
+    serialize: (v) => spanToCss(v),
     parse: (raw) => parseSpan(raw),
   },
 };
@@ -190,6 +193,23 @@ export function validateSchema(schema, topicName) {
       entry.values.forEach((v) => {
         if (!v.desc) errors.push(`${at}: 값 '${v.val}' 에 desc 없음`);
       });
+    }
+
+    /**
+     * span 기본값이 계약을 왕복하는지 본다.
+     *
+     * M0 에서 이 검사가 없어, 단축 속성 기준으로 쓴 계약이 개별 속성 4개짜리
+     * 스키마와 어긋난 채로 검증을 통과했다. 왕복이 깨지면 화면에 나가는 값이
+     * 스키마가 적어 둔 값과 달라진다.
+     */
+    if (entry.control === 'span' && entry.default !== undefined) {
+      const round = CONTROL_TYPES.span.serialize(CONTROL_TYPES.span.parse(entry.default));
+      if (round !== String(entry.default)) {
+        errors.push(`${at}: span default '${entry.default}' 가 계약을 왕복하지 못함 (→ '${round}')`);
+      }
+      if (/\//.test(String(entry.default))) {
+        errors.push(`${at}: span default '${entry.default}' 는 쌍 형태 — 개별 속성은 값을 하나만 갖는다`);
+      }
     }
 
     if (entry.urlKey) {
@@ -486,12 +506,43 @@ export function parseAreaGrid(raw) {
   return { rows, errors };
 }
 
+/**
+ * 라인 좌표 하나를 CSS 값으로 바꾼다.
+ *
+ * 이 계약이 다루는 것은 grid-column-start · grid-column-end · grid-row-start ·
+ * grid-row-end 넷이고, 넷 다 값을 하나만 갖는다. 'auto' · 정수 · 'span n' 이다.
+ * 쌍('1 / 3')은 단축 속성 grid-column · grid-row 의 값이며 스키마에 없다.
+ */
+export function spanToCss(v) {
+  if (v === null || v === undefined) return AUTO;
+  if (typeof v !== 'object') return String(v);
+  if (v.span !== undefined && v.span !== null) return `span ${v.span}`;
+  if (v.line !== undefined && v.line !== null) return String(v.line);
+  return AUTO;
+}
+
+/**
+ * 'auto' | '3' | '-1' | 'span 2' 를 읽는다.
+ *
+ * 쌍 형태('1 / 3')는 읽지 않는다. 스키마의 어떤 속성도 그 값을 갖지 않고,
+ * 개별 속성에 넣으면 브라우저가 선언을 통째로 버린다. 단축 속성을 스키마에
+ * 들이는 날 그때 다시 넣는다 — 지금 남겨 두면 serialize 가 표현하지 못하는
+ * 모양이 파서에서만 나오게 된다.
+ *
+ * 읽지 못한 문자열은 auto 로 떨어진다. 라인 번호에 상한도 하한도 두지 않는다 —
+ * 범위 밖 값은 암시적 트랙을 만들며, 그게 CSS 의 실제 동작이다.
+ */
 export function parseSpan(raw) {
   if (typeof raw === 'object' && raw !== null) return raw;
+
   const s = String(raw).trim();
-  const spanMatch = s.match(/^(-?\d+)\s*\/\s*span\s+(\d+)$/);
-  if (spanMatch) return { start: Number(spanMatch[1]), span: Number(spanMatch[2]) };
-  const pairMatch = s.match(/^(-?\d+)\s*\/\s*(-?\d+)$/);
-  if (pairMatch) return { start: Number(pairMatch[1]), end: Number(pairMatch[2]) };
-  return { start: 'auto', end: 'auto' };
+  if (s === AUTO || s === '') return { line: AUTO };
+
+  const spanMatch = s.match(/^span\s+(-?\d+)$/);
+  if (spanMatch) return { span: Number(spanMatch[1]) };
+
+  const lineMatch = s.match(/^-?\d+$/);
+  if (lineMatch) return { line: Number(s) };
+
+  return { line: AUTO };
 }

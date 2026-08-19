@@ -17,7 +17,7 @@
  * 색상은 CSS가 담당한다. 이 파일은 클래스와 사용자 설정값만 얹는다.
  */
 
-import { trackToCss } from './schema-spec.js';
+import { trackToCss, spanToCss } from './schema-spec.js';
 
 /* --------------------------------------------------------------------------
    DOM 계약
@@ -50,13 +50,6 @@ const ITEM_ACCENT_DEEP_PROP = '--fgp-item-accent-deep';
 /** areas 2차원 배열 → '"hd hd" "sd mn"' */
 function areasToCss(rows) {
   return rows.map((row) => `"${row.join(' ')}"`).join(' ');
-}
-
-/** span 객체 → '1 / 3' 또는 '1 / span 2' */
-function spanToCss(v) {
-  if (v.span !== undefined) return `${v.start} / span ${v.span}`;
-  if (v.end !== undefined) return `${v.start} / ${v.end}`;
-  return String(v.start);
 }
 
 /**

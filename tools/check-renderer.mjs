@@ -123,8 +123,18 @@ section('값 직렬화');
     [['hd', 'hd'], ['sd', 'mn']]
   ) === '"hd hd" "sd mn"');
 
-  check('span 객체 start/end', toCssValue({ control: 'span' }, { start: 1, end: 3 }) === '1 / 3');
-  check('span 객체 start/span', toCssValue({ control: 'span' }, { start: 1, span: 2 }) === '1 / span 2');
+  /**
+   * span 은 개별 속성 4개(grid-column-start 등)의 값이라 한 줄짜리다.
+   * 쌍('1 / 3')은 단축 속성의 값이고 스키마에 없다 — 개별 속성에 넣으면
+   * 브라우저가 선언을 버린다. M0 계약 정정에 맞춰 단언을 고쳤다.
+   */
+  check('span 객체 line', toCssValue({ control: 'span' }, { line: 3 }) === '3');
+  check('span 객체 음수 line', toCssValue({ control: 'span' }, { line: -1 }) === '-1');
+  check('span 객체 span n', toCssValue({ control: 'span' }, { span: 2 }) === 'span 2');
+  check('span 객체 auto', toCssValue({ control: 'span' }, { line: 'auto' }) === 'auto');
+  check('span 문자열은 그대로', toCssValue({ control: 'span' }, 'auto') === 'auto');
+  check('쌍 형태를 만들지 않는다',
+    ![{ line: 3 }, { span: 2 }, { line: 'auto' }].some((v) => toCssValue({ control: 'span' }, v).includes('/')));
   check('문자열은 그대로', toCssValue({ control: 'enum' }, 'flex-start') === 'flex-start');
   check('숫자는 문자열로', toCssValue({ control: 'number' }, 0) === '0');
 }
