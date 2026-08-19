@@ -30,6 +30,8 @@ export const CASE_CLASS = 'fgp-explain__case';
 export const DEMO_CLASS = 'fgp-explain__demo';
 export const DEMO_ITEM_CLASS = 'fgp-explain__demoitem';
 export const AXIS_CLASS = 'fgp-explain__axis';
+export const LINES_CLASS = 'fgp-explain__lines';
+export const LINE_CLASS = 'fgp-explain__line';
 export const RATIO_CLASS = 'fgp-explain__demo--ratio';
 export const SELECTED_CLASS = 'is-selected';
 
@@ -126,8 +128,57 @@ function sizeAt(kind, index) {
   return set[index % set.length];
 }
 
-function buildDemo(entry, value, axis, doc) {
-  const demo = entry.demo ?? {};
+/**
+ * 라인 번호 띠 (GR-05 를 데모에 옮긴 것).
+ *
+ * grid-overlay.js 를 재사용하지 않는다. 그쪽은 살아 있는 컨테이너를 재고 프레임을
+ * 미뤄 다시 그리는 물건인데, 여기 데모는 값이 고정된 정적 스냅숏이다 —
+ * renderer 를 재사용하지 않는 것과 같은 이유다.
+ *
+ * 대신 데모가 쓰는 트랙 목록을 그대로 써서 번호를 배치한다. 재지 않고도 자리가
+ * 정확한 이유는, 띠가 데모와 같은 격자를 쓰고 각 번호를 트랙 경계에 붙이기
+ * 때문이다. n번 라인은 n번 트랙의 시작, 마지막 라인은 마지막 트랙의 끝이다.
+ */
+/**
+ * 트랙 목록에 트랙이 몇 개인가.
+ *
+ * repeat(3, 1fr) 은 토큰 두 개지만 트랙 셋이고, minmax(120px, 1fr) 은 공백이
+ * 들어 있어도 트랙 하나다. 라인 번호를 매기려면 이 둘을 풀어야 한다.
+ * 계약의 parseTrackList 는 repeat 를 읽지 않으므로 여기서 세는 만큼만 푼다 —
+ * 화면에 번호를 찍기 위한 계산이고 상태로 나가지 않는다.
+ */
+export function trackCount(template) {
+  const tokens = String(template ?? '').trim().match(/[^\s()]+\([^)]*\)|[^\s()]+/g) ?? [];
+
+  return tokens.reduce((total, token) => {
+    const repeat = token.match(/^repeat\(\s*(\d+)\s*,(.*)\)$/);
+    if (!repeat) return total + 1;
+
+    const inner = repeat[2].trim().match(/[^\s()]+\([^)]*\)|[^\s()]+/g) ?? [];
+    return total + Number(repeat[1]) * inner.length;
+  }, 0);
+}
+
+function buildLines(template, count, doc) {
+  const strip = doc.createElement('div');
+  strip.className = LINES_CLASS;
+  strip.style.gridTemplateColumns = template;
+
+  for (let i = 1; i <= count + 1; i += 1) {
+    const label = doc.createElement('span');
+    label.className = LINE_CLASS;
+    // 같은 라인의 두 이름을 함께 적는다. 음수가 어디를 가리키는지 바로 읽힌다.
+    label.textContent = `${i} / ${i - count - 2}`;
+    label.style.gridColumn = String(Math.min(i, count));
+    label.setAttribute('data-edge', i > count ? 'end' : 'start');
+    strip.appendChild(label);
+  }
+
+  return strip;
+}
+
+function buildDemo(entry, value, axis, doc, config = {}) {
+  const demo = { ...(entry.demo ?? {}), ...(config.demos?.[entry.prop] ?? {}) };
   const count = demo.itemCount ?? 3;
 
   const box = doc.createElement('div');
@@ -135,7 +186,8 @@ function buildDemo(entry, value, axis, doc) {
   // 대상 하나만 달라지는 것이 보이므로 기본값을 그대로 둔다.
   box.className = sharesFreeSpace(entry, value, doc) ? `${DEMO_CLASS} ${RATIO_CLASS}` : DEMO_CLASS;
 
-  // 컨테이너 스타일: 데모 설정 → 축 → 속성 값 순으로 얹는다
+  // 컨테이너 스타일: 토픽 기본 → 데모 설정 → 축 → 속성 값 순으로 얹는다
+  if (config.display) box.style.display = config.display;
   Object.entries(demo.containerStyle ?? {}).forEach(([k, v]) => { box.style[k] = v; });
   if (axis) box.style.flexDirection = axis;
   if (entry.scope === 'container') box.style[entry.jsProp] = toCssValue(entry, value);
@@ -145,10 +197,22 @@ function buildDemo(entry, value, axis, doc) {
     item.className = DEMO_ITEM_CLASS;
     item.textContent = String(i + 1);
 
-    const { w, h } = sizeAt(demo.itemSizes, i);
-    item.style.width = `${w}px`;
-    item.style.height = `${h}px`;
+    /**
+     * 'fill' 은 크기를 주지 않는다는 뜻이다.
+     *
+     * 아이템에 크기가 박혀 있으면 stretch 계열 값이 할 일이 없다 — Flex 의
+     * align-items: stretch 가 죽는 것과 같은 이유다. 칸을 채우는 모습을 보여야
+     * 하는 데모에서는 크기를 비워 둔다.
+     */
+    if (demo.itemSizes !== 'fill') {
+      const { w, h } = sizeAt(demo.itemSizes, i);
+      item.style.width = `${w}px`;
+      item.style.height = `${h}px`;
+    }
     item.style.setProperty('--fgp-item-accent', `var(--fgp-item-${(i % 8) + 1})`);
+
+    // 데모가 특정 아이템에 자리를 지정해야 하는 경우 (dense 처럼 빈 칸이 필요할 때)
+    Object.entries(demo.itemStyles?.[i] ?? {}).forEach(([k, v]) => { item.style[k] = v; });
 
     // 아이템 속성은 첫 아이템에만 준다. 전부 같은 값을 주면 비교가 되지 않는다.
     if (entry.scope === 'item' && i === 0) {
@@ -159,14 +223,23 @@ function buildDemo(entry, value, axis, doc) {
     box.appendChild(item);
   }
 
-  return box;
+  // 라인 번호가 필요한 속성은 데모 설정이 말한다. 속성 이름을 여기 적지 않는다.
+  if (!demo.lines) return box;
+
+  const wrap = doc.createElement('div');
+  wrap.className = `${DEMO_CLASS}-wrap`;
+
+  const template = demo.containerStyle?.gridTemplateColumns ?? `repeat(${count}, 1fr)`;
+  wrap.appendChild(buildLines(template, trackCount(template), doc));
+  wrap.appendChild(box);
+  return wrap;
 }
 
 /* --------------------------------------------------------------------------
    상세
    -------------------------------------------------------------------------- */
 
-function buildCase(entry, sample, axisLabels, doc) {
+function buildCase(entry, sample, axisLabels, doc, config) {
   const wrap = doc.createElement('div');
   wrap.className = CASE_CLASS;
   wrap.setAttribute('data-value', String(sample.val));
@@ -186,7 +259,7 @@ function buildCase(entry, sample, axisLabels, doc) {
       label.textContent = axisLabels[axis] ?? axis;
       wrap.appendChild(label);
     }
-    wrap.appendChild(buildDemo(entry, sample.val, axis, doc));
+    wrap.appendChild(buildDemo(entry, sample.val, axis, doc, config));
   });
 
   const desc = doc.createElement('p');
@@ -255,7 +328,7 @@ function buildDetail(entry, config, doc) {
 
   // enum이면 스키마의 values, 아니면 explain.js가 준 표본
   const list = entry.values ?? samples[entry.prop] ?? [];
-  list.forEach((sample) => cases.appendChild(buildCase(entry, sample, axisLabels, doc)));
+  list.forEach((sample) => cases.appendChild(buildCase(entry, sample, axisLabels, doc, config)));
   detail.appendChild(cases);
 
   return detail;

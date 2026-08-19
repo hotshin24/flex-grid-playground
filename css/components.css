@@ -826,6 +826,44 @@ code.fgp-pane__item__name {
   flex: 1 1 auto;
 }
 
+/**
+ * 라인 번호 띠 (속성 설명 탭의 Grid 데모).
+ *
+ * 데모와 같은 격자를 쓰고 번호를 트랙 경계에 붙인다. 재지 않고도 자리가 맞는
+ * 이유가 그것이다 — n번 라인은 n번 트랙의 시작, 마지막 라인은 마지막 트랙의 끝.
+ */
+.fgp-explain__demo-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-0);
+}
+
+.fgp-explain__lines {
+  display: grid;
+  gap: var(--sp-1);
+  padding: var(--sp-0) var(--sp-2);
+}
+
+.fgp-explain__line {
+  padding: var(--sp-0) var(--sp-1);
+  border: 1px var(--fgp-grid-line-style-explicit) var(--fgp-grid-line-explicit);
+  border-radius: var(--radius-xs);
+  background: var(--fgp-grid-line-number-bg);
+  color: var(--fgp-grid-line-number-fg);
+  font-family: var(--fgp-font-numeric);
+  font-size: var(--fs-3xs);
+  line-height: var(--lh-tight);
+  white-space: nowrap;
+}
+
+.fgp-explain__line[data-edge='start'] {
+  justify-self: start;
+}
+
+.fgp-explain__line[data-edge='end'] {
+  justify-self: end;
+}
+
 /* 값이 걸린 아이템을 눈에 띄게 한다 */
 .fgp-explain__demoitem[data-target='true'] {
   border-width: 2px;

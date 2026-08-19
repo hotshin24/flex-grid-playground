@@ -20,6 +20,7 @@ import { createExamples } from './ui/examples.js';
 import { createChallenge } from './ui/challenge.js';
 import { createGridOverlay } from './ui/grid-overlay.js';
 import { FLEX_EXPLAIN_NOTES, FLEX_EXPLAIN_SAMPLES, AXIS_LABELS } from './topics/flex/explain.js';
+import { GRID_EXPLAIN_NOTES, GRID_EXPLAIN_SAMPLES, GRID_EXPLAIN_DEMOS, GRID_DISPLAY } from './topics/grid/explain.js';
 import { FLEX_PRESETS } from './topics/flex/presets.js';
 import { FLEX_EXAMPLES } from './topics/flex/examples.js';
 import { FLEX_CHALLENGES } from './topics/flex/challenges.js';
@@ -44,6 +45,13 @@ const EXPLAIN = {
     notes: FLEX_EXPLAIN_NOTES,
     samples: FLEX_EXPLAIN_SAMPLES,
     axisLabels: AXIS_LABELS,
+  },
+  grid: {
+    schema: GRID_SCHEMA,
+    notes: GRID_EXPLAIN_NOTES,
+    samples: GRID_EXPLAIN_SAMPLES,
+    demos: GRID_EXPLAIN_DEMOS,
+    display: GRID_DISPLAY,
   },
 };
 const PRESETS = { flex: FLEX_PRESETS };
@@ -430,10 +438,20 @@ const tabs = createTabs({
  * Flex 콘텐츠만 있다. Grid 것은 M3 후속 단계에서 만들고, 그때까지는
  * syncTabs 가 안내 문구로 덮는다.
  */
-createExplain({
-  ...EXPLAIN[initial.topic],
-  root: document.getElementById(panelId('explain')),
-});
+/**
+ * 속성 설명 탭. 토픽이 바뀌면 다시 짓는다.
+ *
+ * 데모는 정적 스냅숏이라 store 를 건드리지 않는다. 콘텐츠가 통째로 달라지므로
+ * 갱신이 아니라 새로 만드는 편이 맞다 — 스키마도 사례도 판 설정도 전부 바뀐다.
+ */
+const explainRoot = document.getElementById(panelId('explain'));
+
+function buildExplain(topic) {
+  const config = EXPLAIN[topic];
+  clear(explainRoot);
+  if (!config) return;
+  createExplain({ ...config, root: explainRoot });
+}
 
 /**
  * 토픽 데이터가 아직 없는 탭에 붙일 안내.
@@ -718,6 +736,7 @@ function rebuildForTopic(state) {
   buildContainerControls(state.topic, state);
   buildItemControls(state.topic, state);
   buildPresets(state.topic);
+  buildExplain(state.topic);
 }
 
 /**

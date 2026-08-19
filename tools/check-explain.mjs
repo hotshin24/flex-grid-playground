@@ -6,9 +6,12 @@
  */
 
 import { readFileSync } from 'node:fs';
-import { createExplain, NAV_ITEM_CLASS, CASE_CLASS, DEMO_CLASS, AXIS_CLASS } from '../js/ui/explain.js';
+import { createExplain, trackCount, NAV_ITEM_CLASS, CASE_CLASS, DEMO_CLASS, AXIS_CLASS, LINES_CLASS, LINE_CLASS } from '../js/ui/explain.js';
 import { FLEX_EXPLAIN_NOTES, FLEX_EXPLAIN_SAMPLES, AXIS_LABELS } from '../js/topics/flex/explain.js';
 import { FLEX_SCHEMA } from '../js/topics/flex/schema.js';
+import { GRID_SCHEMA } from '../js/topics/grid/schema.js';
+import { GRID_EXPLAIN_NOTES, GRID_EXPLAIN_SAMPLES, GRID_EXPLAIN_DEMOS, GRID_DISPLAY }
+  from '../js/topics/grid/explain.js';
 import { createStore } from '../js/core/store.js';
 
 let failed = 0;
@@ -308,6 +311,166 @@ section('방어');
   let ok = true;
   try { createExplain({ schema: FLEX_SCHEMA, root: createElement('div'), doc }); } catch { ok = false; }
   check('보충 콘텐츠 없어도 생성 가능', ok);
+}
+
+/* ==========================================================================
+   Grid 속성 설명 (M4)
+
+   M3 완료 기준이 "19개 전부 조작 가능" 이었다면 M4 는 "19개 전부 설명 존재" 다.
+   ========================================================================== */
+section('Grid — 항목');
+
+const gridApi = (() => {
+  const root = createElement('section');
+  const api = createExplain({
+    schema: GRID_SCHEMA,
+    notes: GRID_EXPLAIN_NOTES,
+    samples: GRID_EXPLAIN_SAMPLES,
+    demos: GRID_EXPLAIN_DEMOS,
+    display: GRID_DISPLAY,
+    root,
+    doc,
+  });
+  return { ...api, root, nav: byClass(root, NAV_ITEM_CLASS), details: byClass(root, 'fgp-explain__detail') };
+})();
+
+{
+  check('속성 19개 전부 목록에', gridApi.nav.length === 19, `${gridApi.nav.length}개`);
+  check('본문도 19개', gridApi.details.length === 19);
+  check('스키마 순서 그대로',
+    gridApi.nav.every((b, i) => b.getAttribute('data-prop') === GRID_SCHEMA[i].prop));
+  check('전부 설명 문장을 갖는다',
+    gridApi.details.every((d) => byClass(d, 'fgp-explain__detail__desc')[0]?.children.length > 0));
+  check('전부 MDN 링크를 갖는다',
+    gridApi.details.every((d) => byClass(d, 'fgp-explain__detail__mdn')[0]
+      ?.getAttribute('href')?.startsWith('https://developer.mozilla.org')));
+
+  const empty = GRID_SCHEMA.filter((e, i) => byClass(gridApi.details[i], CASE_CLASS).length === 0);
+  check('사례 없는 속성 0건', empty.length === 0, empty.map((e) => e.prop).join(', ') || '19개 전부');
+}
+
+section('Grid — 값 수');
+
+{
+  const rows = GRID_SCHEMA.map((entry, i) => ({
+    entry,
+    cases: byClass(gridApi.details[i], CASE_CLASS).length,
+    want: (entry.values ?? GRID_EXPLAIN_SAMPLES[entry.prop] ?? []).length,
+  }));
+
+  const enums = rows.filter((r) => r.entry.control === 'enum');
+  const others = rows.filter((r) => r.entry.control !== 'enum');
+
+  check('enum 7개', enums.length === 7, enums.map((r) => r.entry.prop).join(', '));
+  check('enum은 스키마 values 길이와 같다',
+    enums.every((r) => r.cases === r.entry.values.length),
+    enums.map((r) => `${r.entry.prop} ${r.cases}/${r.entry.values.length}`).join(' · '));
+
+  check('비-enum 12개', others.length === 12);
+  check('비-enum은 전부 대표 사례를 갖는다',
+    others.every((r) => r.cases >= 2),
+    others.map((r) => `${r.entry.prop} ${r.cases}`).join(' · '));
+  check('사례 수가 선언한 만큼 나온다', rows.every((r) => r.cases === r.want));
+  check('사례마다 설명이 붙어 있다',
+    Object.values(GRID_EXPLAIN_SAMPLES).every((list) => list.every((v) => (v.desc ?? '').trim().length > 0)));
+}
+
+section('Grid — 데모 판');
+
+{
+  const demoOf = (prop) => {
+    const i = GRID_SCHEMA.findIndex((e) => e.prop === prop);
+    return byClass(gridApi.details[i], DEMO_CLASS)[0];
+  };
+
+  check('데모가 그리드로 선다', demoOf('justify-items').style.display === GRID_DISPLAY,
+    '기본값 flex로 두면 트랙이 서지 않는다');
+
+  /**
+   * 조건부 5건 (F-13 유형 B). 조건이 판에 심겨 있어야 값 차이가 보인다.
+   * 값을 바꿔도 그림이 같다면 판이 틀린 것이다.
+   */
+  const CONDITIONS = [
+    ['justify-content', (st) => /px/.test(st.gridTemplateColumns ?? ''), '트랙이 px라야 가로 여백이 생긴다'],
+    ['align-content', (st) => Boolean(st.height) && Boolean(st.gridTemplateRows), '높이와 행 트랙이 있어야 줄 뭉치가 움직인다'],
+    ['grid-auto-columns', (st) => st.gridAutoFlow === 'column', '자동 배치가 열 방향이라야 암시적 열이 생긴다'],
+    ['grid-auto-rows', (st) => Boolean(st.gridTemplateRows) && Boolean(st.height), '선언한 행보다 아이템이 많아야 암시적 행이 생긴다'],
+  ];
+
+  CONDITIONS.forEach(([prop, ok, why]) => {
+    const st = { ...(GRID_SCHEMA.find((e) => e.prop === prop).demo?.containerStyle ?? {}),
+      ...(GRID_EXPLAIN_DEMOS[prop]?.containerStyle ?? {}) };
+    check(`${prop} — 조건이 판에 있다`, ok(st), why);
+  });
+
+  const flow = GRID_EXPLAIN_DEMOS['grid-auto-flow'];
+  check('dense — 빈 칸을 만드는 아이템이 있다',
+    (flow.itemStyles ?? []).some((s) => /span/.test(s.gridColumn ?? '')),
+    '메울 자리가 없으면 dense가 할 일이 없다');
+  check('dense — 아이템이 칸보다 적다',
+    flow.itemCount < 3 * 3, `아이템 ${flow.itemCount}개`);
+
+  // 라인 번호
+  const lineProps = Object.entries(GRID_EXPLAIN_DEMOS).filter(([, d]) => d.lines).map(([p]) => p);
+  check('라인 좌표 속성에 번호 띠', lineProps.length === 5, lineProps.join(', '));
+  const spanDemo = demoOf('grid-column-start');
+  const strip = byClass(gridApi.details[GRID_SCHEMA.findIndex((e) => e.prop === 'grid-column-start')], LINES_CLASS)[0];
+  check('번호 띠가 실제로 그려진다', Boolean(strip));
+  check('트랙 3개면 번호 4개', byClass(strip, LINE_CLASS).length === 4,
+    byClass(strip, LINE_CLASS).map((n) => n.textContent).join('  '));
+  check('repeat()를 풀어 센다',
+    trackCount('repeat(3, 1fr)') === 3 && trackCount('repeat(2, 60px 1fr)') === 4,
+    'repeat(3, 1fr)은 토큰 둘이지만 트랙 셋이다');
+  check('minmax()는 하나로 센다', trackCount('minmax(120px, 1fr) 1fr') === 2);
+  check('양수와 음수를 함께 적는다',
+    byClass(strip, LINE_CLASS).every((n) => /^\d+ \/ -\d+$/.test(n.textContent)));
+  check('데모와 같은 격자를 쓴다',
+    strip.style.gridTemplateColumns === GRID_EXPLAIN_DEMOS['grid-column-start'].containerStyle.gridTemplateColumns);
+  void spanDemo;
+
+  check('stretch를 보여야 하는 데모는 아이템 크기를 비운다',
+    ['justify-items', 'align-items', 'justify-self', 'align-self']
+      .every((p) => GRID_EXPLAIN_DEMOS[p].itemSizes === 'fill'),
+    '크기가 박혀 있으면 stretch가 할 일이 없다');
+}
+
+section('Grid — 문장 출처와 무해');
+
+{
+  const src = readFileSync(new URL('../js/topics/grid/explain.js', import.meta.url), 'utf8');
+  const stripped = src.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
+
+  const descs = GRID_SCHEMA.map((e) => e.desc).filter(Boolean);
+  const tips = GRID_SCHEMA.map((e) => e.tip).filter(Boolean);
+  check('스키마 desc를 베껴 두지 않았다', !descs.some((d) => stripped.includes(d)));
+  check('스키마 tip도 베껴 두지 않았다', !tips.some((t) => stripped.includes(t)));
+  check('값 설명도 베끼지 않았다',
+    !GRID_SCHEMA.flatMap((e) => e.values ?? []).map((v) => v.desc).filter(Boolean)
+      .some((d) => stripped.includes(d)));
+
+  const uiSrc = readFileSync(new URL('../js/ui/explain.js', import.meta.url), 'utf8');
+  const uiStripped = uiSrc.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
+  const names = [...new Set([...FLEX_SCHEMA, ...GRID_SCHEMA].flatMap((e) => [e.prop, e.jsProp]))];
+  const hits = names.filter((n) => uiStripped.includes(`'${n}'`) || uiStripped.includes(`"${n}"`));
+  check('ui/explain.js에 속성명 0건', hits.length === 0, hits.join(', ') || `${names.length}개 전부 없음`);
+  check('ui/explain.js가 store를 모른다', !/from '.*store/.test(uiSrc));
+
+  // 메인 store 를 건드리지 않는다
+  const store = createStore({ flex: FLEX_SCHEMA, grid: GRID_SCHEMA });
+  let notified = 0;
+  store.subscribe(() => { notified += 1; });
+  const before = JSON.stringify(store.getState());
+
+  const probe = createElement('section');
+  createExplain({
+    schema: GRID_SCHEMA, notes: GRID_EXPLAIN_NOTES, samples: GRID_EXPLAIN_SAMPLES,
+    demos: GRID_EXPLAIN_DEMOS, display: GRID_DISPLAY, root: probe, doc,
+  });
+  GRID_SCHEMA.forEach((e) => gridApi.select(e.prop));
+
+  check('설명 탭을 지어도 store 통지 0', notified === 0, `${notified}회`);
+  check('상태가 한 글자도 바뀌지 않는다', JSON.stringify(store.getState()) === before);
+  check('innerHTML 0건', stats.innerHTML === 0, `${stats.innerHTML}회`);
 }
 
 /* ========================================================================== */
