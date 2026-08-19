@@ -12,6 +12,7 @@
  */
 
 import { createStore, TABS } from './core/store.js';
+import { createRouter } from './core/router.js';
 import { createRenderer } from './core/renderer.js';
 import { createControl, createRangeControl } from './ui/controls.js';
 import { createTabs, panelId } from './ui/tabs.js';
@@ -974,6 +975,19 @@ function sync(state) {
 
 store.subscribe(sync);
 sync(store.getState());
+
+/**
+ * 주소 붙이기 (F-09).
+ *
+ * sync 구독보다 뒤에 건다. router.start() 가 주소에 적힌 상태를 밀어 넣는데,
+ * 그 알림이 화면까지 닿으려면 sync 가 먼저 구독돼 있어야 한다.
+ *
+ * 주소에서 복원한 경우 되돌리기 한 칸이 생긴다. store 에 "히스토리에 쌓지 않는
+ * 갱신" 이 없어서인데, 그대로 두기로 했다 — 공유받은 주소에서 기본값으로
+ * 되돌아갈 수 있는 편이 오히려 낫다.
+ */
+const router = createRouter({ store, schemas: SCHEMAS, maxItems: MAX_ITEMS });
+router.start();
 
 /**
  * 본문을 드러낸다 (layout.css 의 fgp-booting).
