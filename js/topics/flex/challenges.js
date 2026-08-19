@@ -5,6 +5,13 @@
  * 힌트 · target · ignore · itemCount · miniStyle 은 한 글자도 고치지 않았다.
  * 회귀 검증(PRD 7.1)에서 v0.1 화면과 나란히 대조해야 한다.
  *
+ * 예외가 하나 있다. 8번은 v1.0 에서 다시 썼다. v0.1 의 '사이드바 레이아웃'은
+ * target 네 키가 전부 스키마 기본값이라 문제를 열고 제출만 눌러도 통과했다.
+ * 사이드바는 아이템에 flex-grow 를 줘야 성립하는데 챌린지 탭은 컨테이너 속성만
+ * 다루므로, 힌트가 '아이템2에 flex-grow:1 적용'이라고 적어 두고도 그 조작을 할
+ * 수단이 없었다. 같은 자리에서 물을 수 있는 문제로 갈아 끼웠다. 이 한 건은
+ * v0.1 대조 대상이 아니다.
+ *
  * 9~40 은 v1.0 에서 더한 것이다. 난이도는 바꿔야 하는 속성 수를 따른다 —
  * ⭐ 하나(9~20), ⭐⭐ 둘(21~32), ⭐⭐⭐ 셋 이상이거나 align-content 가 얽힌
  * 것(33~40).
@@ -97,16 +104,19 @@ export const FLEX_CHALLENGES = [
       miniStyle: { alignItems:'flex-end', height:'60px' },
     },
     {
-      id: 8, title: '사이드바 레이아웃', difficulty: '⭐⭐⭐',
-      desc: '첫 아이템은 고정 너비, 두 번째 아이템은 남은 공간을 채우게 하세요.',
-      hint: 'align-items: stretch + (아이템2에 flex-grow:1 적용)',
-      target: { flexDirection:'row', flexWrap:'nowrap', justifyContent:'flex-start', alignItems:'stretch' },
+      id: 8, title: '양끝 + 높이 채우기', difficulty: '⭐',
+      desc: '아이템을 양끝에 붙이고, 세로로는 컨테이너 높이를 남김없이 채우게 하세요.',
+      hint: '주축 정렬과 교차축 정렬을 함께 씁니다. 높이를 채우는 값은 align-items 의 기본값이기도 합니다.',
+      target: {
+        flexDirection: 'row',
+        flexWrap: 'nowrap',
+        justifyContent: 'space-between',
+        alignItems: 'stretch',
+      },
       ignore: ['alignContent', 'gap'],
-      itemCount: 2,
-      accents: [1,2],
-      miniStyle: { alignItems:'stretch', height:'52px' },
-      itemWidths: ['40px','auto'],
-      itemGrows: [0, 1],
+      itemCount: 3,
+      accents: [1, 4, 7],
+      miniStyle: { justifyContent: 'space-between', alignItems: 'stretch', height: '52px' },
     },
   /* ===================== ⭐ 단일 속성 (9~20) ===================== */
   {

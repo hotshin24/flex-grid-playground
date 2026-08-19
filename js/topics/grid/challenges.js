@@ -14,6 +14,13 @@
  * column-gap · grid-auto-columns · grid-auto-rows)도 쓰지 않는다 — 값 공간이
  * 사실상 무한이라 좋은 문제가 나오지 않는다.
  *
+ * 다루지 않는 개념이 둘 있다. grid-template-areas 와 dense 다. 둘 다 아이템에
+ * grid-area · span 을 줘야 그림이 되는데 챌린지 탭은 컨테이너 속성만 다룬다.
+ * areas 는 이름만 있고 아이템이 안 들어간 행이 높이 0으로 접혔고, dense 는 빈
+ * 칸을 만들 수단이 없어 dense 없는 값과 같은 그림이었다. 정답 판정은 되지만
+ * 맞혀도 화면이 답을 보여 주지 못해 문제로 두지 않는다. 두 개념은 속성 설명
+ * 탭이 전용 데모로 다루므로 학습 경로는 끊기지 않는다.
+ *
  * 설계 규칙 세 가지. 어기면 정답을 맞혀도 그림이 변하지 않는다.
  *   1. 세로 정렬(alignItems·alignContent)을 물으면 gridTemplateRows 를 함께 정한다.
  *      행이 auto 면 늘어날 자리가 없어 start 와 stretch 가 같은 그림이다.
@@ -169,37 +176,70 @@ export const GRID_CHALLENGES = [
 
   /* ================= ⭐⭐⭐ 세 개념 이상 (16~20) ================= */
   {
-    id: 16, title: '홀리 그레일 영역', difficulty: '⭐⭐⭐',
-    desc: '헤더가 위 두 칸을 가로지르고, 아래에 사이드바와 본문이 나란히 놓이도록 영역 이름을 정하세요.',
-    hint: '같은 이름을 여러 칸에 적으면 그 칸들이 하나로 합쳐집니다. 각 영역은 직사각형이어야 합니다.',
+    id: 16, title: '카드 판 정중앙', difficulty: '⭐⭐⭐',
+    desc: '양옆은 120px 고정, 가운데는 남은 공간을 갖는 3열 2행 판을 만들고, 각 아이템을 셀 안 가로·세로 정중앙에 두세요.',
+    hint: '트랙 정의 두 개와 셀 안 정렬 두 개, 네 속성을 씁니다.',
     target: {
-      gridTemplateColumns: '160px 1fr',
-      gridTemplateAreas: '"header header"\n"nav main"',
+      gridTemplateColumns: '120px 1fr 120px',
+      gridTemplateRows: '60px 60px',
+      justifyItems: 'center',
+      alignItems: 'center',
     },
-    itemCount: 3,
-    accents: [4, 2, 6],
-    miniStyle: { display: 'grid', gridTemplateColumns: '30px 1fr', gridTemplateRows: '16px 1fr', gap: '3px', height: '56px' },
-  },
-  {
-    id: 17, title: '빈 칸이 있는 영역', difficulty: '⭐⭐⭐',
-    desc: '왼쪽 아래 한 칸을 비워두고 나머지 세 칸에 이름을 붙이세요.',
-    hint: '마침표 하나가 빈 칸을 뜻합니다.',
-    target: {
-      gridTemplateColumns: '1fr 1fr',
-      gridTemplateAreas: '"head head"\n". body"',
-    },
-    itemCount: 2,
-    accents: [1, 7],
-    miniStyle: { display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: '18px 18px', gap: '3px', height: '56px' },
-  },
-  {
-    id: 18, title: '빈 칸 메우기', difficulty: '⭐⭐⭐',
-    desc: '자동 배치가 앞쪽에 생긴 빈 칸을 건너뛰지 않고 뒤 아이템으로 메우게 하세요.',
-    hint: '배치 방향 값 뒤에 한 단어를 붙이면 됩니다. 시각 순서와 DOM 순서가 어긋나므로 접근성 주의가 필요합니다.',
-    target: { gridTemplateColumns: '1fr 1fr 1fr', gridAutoFlow: 'row dense' },
     itemCount: 6,
-    accents: [8, 1, 2, 3, 4, 5],
-    miniStyle: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gridAutoFlow: 'row dense', gap: '4px', height: '56px' },
+    accents: [4, 2, 6, 1, 5, 3],
+    miniStyle: {
+      display: 'grid',
+      gridTemplateColumns: '26px 1fr 26px',
+      gridTemplateRows: '18px 18px',
+      justifyItems: 'center',
+      alignItems: 'center',
+      gap: '3px',
+      height: '60px',
+    },
+  },
+  {
+    id: 17, title: '사방 양끝 분배', difficulty: '⭐⭐⭐',
+    desc: '열 셋과 행 둘을 모두 고정 크기로 두고, 가로·세로 모두 첫 트랙은 시작 끝 트랙은 끝에 붙이며 남는 공간을 사이에 넣으세요.',
+    hint: '두 축 모두 트랙이 고정 단위여야 여백이 생깁니다. 같은 이름의 값을 가로·세로에 각각 씁니다.',
+    target: {
+      gridTemplateColumns: '100px 100px 100px',
+      gridTemplateRows: '50px 50px',
+      justifyContent: 'space-between',
+      alignContent: 'space-between',
+    },
+    itemCount: 6,
+    accents: [1, 7, 1, 7, 1, 7],
+    miniStyle: {
+      display: 'grid',
+      gridTemplateColumns: '22px 22px 22px',
+      gridTemplateRows: '16px 16px',
+      justifyContent: 'space-between',
+      alignContent: 'space-between',
+      gap: '3px',
+      height: '60px',
+    },
+  },
+  {
+    id: 18, title: '오른쪽 아래로 몰기', difficulty: '⭐⭐⭐',
+    desc: '가운데 열이 양옆의 두 배인 3열 2행 판을 만들고, 각 아이템을 셀의 오른쪽 아래 구석에 붙이세요.',
+    hint: 'fr 은 비율입니다. 셀 안 가로와 세로 정렬은 서로 다른 속성이고 값 이름은 end 입니다.',
+    target: {
+      gridTemplateColumns: '1fr 2fr 1fr',
+      gridTemplateRows: '70px 70px',
+      justifyItems: 'end',
+      alignItems: 'end',
+    },
+    itemCount: 6,
+    accents: [8, 3, 8, 3, 8, 3],
+    miniStyle: {
+      display: 'grid',
+      gridTemplateColumns: '1fr 2fr 1fr',
+      gridTemplateRows: '20px 20px',
+      justifyItems: 'end',
+      alignItems: 'end',
+      gap: '3px',
+      height: '60px',
+    },
   },
   {
     id: 19, title: '양축 트랙 정렬', difficulty: '⭐⭐⭐',
@@ -352,13 +392,20 @@ export const GRID_CHALLENGES = [
     miniStyle: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gridTemplateRows: '52px', alignItems: 'baseline', gap: '4px', height: '60px' },
   },
   {
-    id: 34, title: '열 우선 + 빈 칸 메우기', difficulty: '⭐⭐',
-    desc: '아이템이 세로로 먼저 채워지되, 앞쪽에 생긴 빈 칸을 뒤 아이템이 메우게 하세요.',
-    hint: '방향 값 뒤에 한 단어를 붙입니다.',
-    target: { gridTemplateRows: '60px 60px', gridAutoFlow: 'column dense' },
+    id: 34, title: '열 우선 + 세로 가운데', difficulty: '⭐⭐',
+    desc: '행 두 개를 60px 로 정하고, 아이템이 세로 방향으로 먼저 채워지되 각 아이템은 셀 안 세로 가운데에 놓이게 하세요.',
+    hint: '배치 방향과 셀 안 정렬은 서로 다른 속성입니다. 행 높이가 정해져야 가운데가 보입니다.',
+    target: { gridTemplateRows: '60px 60px', gridAutoFlow: 'column', alignItems: 'center' },
     itemCount: 6,
     accents: [2, 4, 6, 8, 1, 3],
-    miniStyle: { display: 'grid', gridTemplateRows: '22px 22px', gridAutoFlow: 'column dense', gap: '4px', height: '56px' },
+    miniStyle: {
+      display: 'grid',
+      gridTemplateRows: '22px 22px',
+      gridAutoFlow: 'column',
+      alignItems: 'center',
+      gap: '4px',
+      height: '56px',
+    },
   },
   {
     id: 35, title: '양옆 고정 헤더', difficulty: '⭐⭐',
@@ -372,28 +419,47 @@ export const GRID_CHALLENGES = [
 
   /* ================= ⭐⭐⭐ 세 개념 이상 (36~40) ================= */
   {
-    id: 36, title: '3행 영역 배치', difficulty: '⭐⭐⭐',
-    desc: '헤더와 푸터가 두 칸을 가로지르고, 가운데 줄에만 사이드바와 본문이 나란히 놓이게 하세요.',
-    hint: '세 줄짜리 판입니다. 같은 이름이 이어진 칸은 하나로 합쳐집니다.',
+    id: 36, title: '상·하한이 있는 열', difficulty: '⭐⭐⭐',
+    desc: '첫 열은 최소 80px 최대 200px 사이에서 움직이고 둘째 열은 남은 공간, 셋째 열은 100px 고정인 2행 판을 만들고, 아이템을 셀 바닥에 붙이세요.',
+    hint: 'minmax 는 최솟값과 최댓값을 함께 정합니다. 세로 정렬은 행이 정해져야 보입니다.',
     target: {
-      gridTemplateColumns: '140px 1fr',
-      gridTemplateAreas: '"head head"\n"side main"\n"foot foot"',
+      gridTemplateColumns: 'minmax(80px, 200px) 1fr 100px',
+      gridTemplateRows: '80px 80px',
+      alignItems: 'end',
     },
-    itemCount: 4,
-    accents: [4, 2, 6, 8],
-    miniStyle: { display: 'grid', gridTemplateColumns: '26px 1fr', gridTemplateRows: '14px 1fr 14px', gap: '3px', height: '60px' },
+    itemCount: 6,
+    accents: [5, 6, 7, 5, 6, 7],
+    miniStyle: {
+      display: 'grid',
+      gridTemplateColumns: '26px 1fr 22px',
+      gridTemplateRows: '22px 22px',
+      alignItems: 'end',
+      gap: '3px',
+      height: '60px',
+    },
   },
   {
-    id: 37, title: '양옆이 빈 영역', difficulty: '⭐⭐⭐',
-    desc: '3열 2행 판에서 아래 줄의 양옆을 비우고 가운데 칸에만 이름을 붙이세요.',
-    hint: '마침표가 빈 칸입니다. 위 줄은 세 칸을 하나로 씁니다.',
+    id: 37, title: '줄 뭉치 여백 감싸기', difficulty: '⭐⭐⭐',
+    desc: '행 두 개를 60px 로 정하고, 각 줄 위아래에 같은 여백을 두세요. 바깥 여백은 사이 여백의 절반이 됩니다. 아이템은 셀 왼쪽 위에 붙입니다.',
+    hint: 'space-between 과 space-evenly 사이에 있는 값입니다. 셀 안 정렬 두 개도 함께 씁니다.',
     target: {
-      gridTemplateColumns: '1fr 1fr 1fr',
-      gridTemplateAreas: '"top top top"\n". mid ."',
+      gridTemplateRows: '60px 60px',
+      justifyItems: 'start',
+      alignItems: 'start',
+      alignContent: 'space-around',
     },
-    itemCount: 2,
-    accents: [3, 5],
-    miniStyle: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gridTemplateRows: '18px 18px', gap: '3px', height: '56px' },
+    itemCount: 6,
+    accents: [3, 5, 7, 2, 4, 6],
+    miniStyle: {
+      display: 'grid',
+      gridTemplateColumns: '1fr 1fr 1fr',
+      gridTemplateRows: '16px 16px',
+      justifyItems: 'start',
+      alignItems: 'start',
+      alignContent: 'space-around',
+      gap: '3px',
+      height: '60px',
+    },
   },
   {
     id: 38, title: '고정 판 정중앙', difficulty: '⭐⭐⭐',

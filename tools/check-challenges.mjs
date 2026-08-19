@@ -534,12 +534,10 @@ section('열자마자 정답');
   check('Grid 40건에 열자마자 정답이 없다', gridTrivial.length === 0,
     gridTrivial.map((c) => `#${c.id} ${c.title}`).join(', ') || '0건');
 
-  // Flex 는 세어서 남기기만 한다. 데이터 40건은 이번 수정 대상이 아니다
+  // Flex 도 0건이어야 한다. #8 이 유일한 위반이었고 v1.0 에서 다시 썼다
   const flexTrivial = trivialIn(FLEX_CHALLENGES, FLEX_SCHEMA);
-  check('Flex 열자마자 정답 — 세어서 남긴다', true,
+  check('Flex 40건에 열자마자 정답이 없다', flexTrivial.length === 0,
     flexTrivial.map((c) => `#${c.id} ${c.title}`).join(', ') || '0건');
-  check('Flex 열자마자 정답이 1건을 넘지 않는다', flexTrivial.length <= 1,
-    `${flexTrivial.length}건 — 늘어나면 데이터가 더 나빠진 것이다`);
 
   // 판정이 실제로 잡는지. 기본값만 담은 가짜 문제를 넣어 본다
   const D = defaultsFrom(GRID_SCHEMA, 'container');
@@ -686,18 +684,26 @@ section('Grid 챌린지 — 설계 규칙');
   check(`트랙 세로 정렬 ${ac.length}건의 행에 fr 이 없다`, acBad.length === 0,
     acBad.map((c) => `#${c.id}`).join(', ') || ac.map((c) => `#${c.id}`).join(' '));
 
-  // 규칙 4 — areas 는 판 모양이 열 개수와 맞아야 한다
+  /* 규칙 4 — 아이템 속성 없이는 그림이 되지 않는 개념은 묻지 않는다
+
+     areas 는 이름 붙인 칸에 아이템을 넣으려면 아이템에 grid-area 가 필요하고,
+     dense 는 메울 빈 칸을 만들려면 span 이 필요하다. 챌린지 탭은 컨테이너
+     속성만 다루므로 둘 다 정답을 맞혀도 화면이 답을 보여 주지 못한다.
+     실측으로 확인했다 — areas 는 빈 행이 0px 로 접혔고 dense 는 dense 없는
+     값과 배치가 한 칸도 다르지 않았다. 두 개념은 속성 설명 탭이 맡는다. */
   const areas = GRID_CHALLENGES.filter((ch) => 'gridTemplateAreas' in ch.target);
-  const areaBad = areas.filter((ch) => {
-    const cols = gnorm('gridTemplateColumns', colsOf(ch) ?? '').trim().split(/\s+/).filter(Boolean).length;
-    const rows = gnorm('gridTemplateAreas', ch.target.gridTemplateAreas).split('\n');
-    return cols === 0 || rows.some((r) => r.replace(/"/g, '').trim().split(/\s+/).length !== cols);
-  });
-  check(`areas ${areas.length}건의 칸 수가 열 개수와 맞음`, areaBad.length === 0,
-    areaBad.map((c) => `#${c.id}`).join(', ') || areas.map((c) => `#${c.id}`).join(' '));
-  check('areas 가 계약 검증을 통과', areas.every((ch) =>
-    CONTROL_TYPES['area-grid'].parse(ch.target.gridTemplateAreas).errors.length === 0),
-    '이름마다 직사각형이어야 한다');
+  check('areas 를 묻는 문제가 없다', areas.length === 0,
+    areas.map((c) => `#${c.id}`).join(', ') || '아이템에 grid-area 를 줄 수단이 없다');
+
+  const dense = GRID_CHALLENGES.filter((ch) => String(ch.target.gridAutoFlow ?? '').includes('dense'));
+  check('dense 를 묻는 문제가 없다', dense.length === 0,
+    dense.map((c) => `#${c.id}`).join(', ') || '빈 칸을 만들 span 컨트롤이 없다');
+
+  check('그래도 계약은 areas 를 읽는다',
+    CONTROL_TYPES['area-grid'].parse('"a a" "b c"').errors.length === 0,
+    '속성 설명 탭과 플레이그라운드가 쓴다');
+  check('빠진 이유가 파일 주석에 남아 있다',
+    /다루지 않는 개념이 둘 있다/.test(readFileSync(new URL('../js/topics/grid/challenges.js', import.meta.url), 'utf8')));
 
   // 판정이 실제로 잡는지 — 규칙을 어긴 가짜 문제를 넣어 본다
   const brokenRows = [{ id: 0, target: { alignItems: 'center' } }];
@@ -1129,13 +1135,26 @@ section('v0.1 이관');
   const v01 = read('../js/data.js');
 
   // v0.1에서 옮겨온 것은 1~8뿐이다. 9번부터는 v1.0에서 새로 쓴 문제다.
+  //
+  // 8번은 예외다. v0.1 의 '사이드바 레이아웃'은 target 네 키가 전부 스키마
+  // 기본값이라 열고 제출만 눌러도 통과했고, 사이드바 자체가 아이템 속성 없이는
+  // 성립하지 않는다. v1.0 에서 다시 썼으므로 글자 대조에서 뺀다.
+  const REWRITTEN = [8];
+
   const v01Ids = [...v01.matchAll(/^      id: (\d+), title: '([^']+)'/gm)].map((m) => Number(m[1]));
-  const ported = FLEX_CHALLENGES.filter((c) => v01Ids.includes(c.id));
+  const ported = FLEX_CHALLENGES.filter((c) => v01Ids.includes(c.id) && !REWRITTEN.includes(c.id));
+  const rewritten = FLEX_CHALLENGES.filter((c) => REWRITTEN.includes(c.id));
   const added = FLEX_CHALLENGES.filter((c) => !v01Ids.includes(c.id));
 
   check('v0.1 원본은 8건', v01Ids.length === 8, v01Ids.join(', '));
-  check('이관분과 신규분의 합이 전체', ported.length + added.length === FLEX_CHALLENGES.length,
-    `이관 ${ported.length}건 · 신규 ${added.length}건`);
+  check('이관 · 재작성 · 신규의 합이 전체',
+    ported.length + rewritten.length + added.length === FLEX_CHALLENGES.length,
+    `이관 ${ported.length}건 · 재작성 ${rewritten.length}건 · 신규 ${added.length}건`);
+  check('재작성분은 v0.1 과 제목이 다르다',
+    rewritten.every((ch) => !v01.includes(ch.title)),
+    rewritten.map((c) => `#${c.id} ${c.title}`).join(', '));
+  check('재작성 사유가 파일 주석에 남아 있다',
+    /8번은 v1\.0 에서 다시 썼다/.test(read('../js/topics/flex/challenges.js')));
 
   const notFound = [];
   ported.forEach((ch) => {
@@ -1160,8 +1179,10 @@ section('v0.1 이관');
   const v01Colors = [...v01.matchAll(/^\s+colors: \[(.+)\],$/gm)]
     .map((m) => m[1].split(',').map((s) => s.trim().replace(/'/g, '')));
   check('이관분의 accents가 v0.1의 색을 그대로 가리킨다',
-    ported.every((ch, i) => ch.accents.every((n, j) => palette.get(n) === v01Colors[i][j])),
-    `${v01Colors.flat().length}개 색 일치`);
+    ported.every((ch) => ch.accents.every((n, j) => palette.get(n) === v01Colors[ch.id - 1][j])),
+    `${ported.reduce((n, c) => n + c.accents.length, 0)}개 색 일치`);
+  check('재작성분의 accents도 팔레트 안에 있다',
+    rewritten.every((ch) => ch.accents.every((n) => palette.has(n))));
   check('신규분의 accents도 팔레트 안에 있다',
     added.every((ch) => ch.accents.every((n) => palette.has(n))),
     `${added.reduce((n, c) => n + c.accents.length, 0)}개`);
