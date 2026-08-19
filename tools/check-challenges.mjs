@@ -1031,6 +1031,40 @@ section('줄 넘김');
   check('CSS가 컨테이너 폭에 상한을 건다',
     /\.fgp-challenge__preview \.fgp-preview__container \{[^}]*max-width: calc\(var\(--sp-16\) \* 16\)/.test(css),
     '--sp-16 × 16 = 1024 = REFERENCE_WIDTH');
+
+  /* 답안 아이템의 최소 폭 —
+     늘어나는 답은 renderer 가 크기를 얹지 않아 주축 쪽이 글자 너비까지 줄어든다.
+     바닥을 올려 그림을 읽히게 하되, 계산은 건드리지 않는다. 그러려면 그 바닥이
+     챌린지가 실제로 쓰는 모든 폭보다 아래에 있어야 한다. 위로 올라가는 순간
+     80×60 아이템이 뭉개지고 줄 수가 바뀐다. */
+  const floorToken = css.match(
+    /\.fgp-challenge__preview \.fgp-preview__item \{[^}]*min-width: var\((--sp-[\w-]+)\)/);
+  check('CSS가 답안 아이템에 최소 폭을 건다', Boolean(floorToken), floorToken?.[1]);
+
+  const tokens = read('../css/tokens.css');
+  const floor = Number.parseFloat(
+    tokens.match(new RegExp(`${floorToken?.[1] ?? '--sp-none'}:\\s*([\\d.]+)px`))?.[1]);
+  check('그 토큰이 tokens.css 에 px 로 있다', Number.isFinite(floor), `${floor}px`);
+
+  check('최소 폭이 80×60 아이템보다 좁다', floor < 80, `${floor} < 80`);
+
+  const wrapWidths = wrapping.map((ch) => itemWidthFor(ch.itemCount, GAP, REFERENCE));
+  check('최소 폭이 줄 넘김 12건의 아이템 폭보다 좁다',
+    wrapWidths.every((w) => floor < w),
+    `${floor} < ${Math.min(...wrapWidths)}`);
+
+  // 폭이 바닥에 걸리면 한 줄에 들어가는 개수가 달라진다. 걸리지 않음을 줄 수로 확인한다
+  const bent = [];
+  wrapping.forEach((ch) => {
+    const width = itemWidthFor(ch.itemCount, GAP, REFERENCE);
+    [...WIDTHS, ['기준폭', REFERENCE]].forEach(([label, cw]) => {
+      if (rowsAt(ch.itemCount, Math.max(width, floor), cw) !== rowsAt(ch.itemCount, width, cw)) {
+        bent.push(`#${ch.id}@${label}`);
+      }
+    });
+  });
+  check('최소 폭을 걸어도 줄 수가 그대로', bent.length === 0,
+    bent.join(', ') || `${wrapping.length}건 × 5폭`);
 }
 
 /* ==========================================================================
